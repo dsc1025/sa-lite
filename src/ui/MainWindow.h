@@ -1,0 +1,73 @@
+#pragma once
+
+#include <afxwin.h>
+#include <afxcmn.h>
+#include "MiniMap.h"
+#include "../session/GameSession.h"
+#include <unordered_map>
+
+namespace Client
+{
+    class MainWindow : public CFrameWnd
+    {
+    public:
+        MainWindow()
+        {
+            background_.CreateSolidBrush(GetSysColor(COLOR_BTNFACE));
+            white_.CreateSolidBrush(GetSysColor(COLOR_WINDOW));
+        }
+
+        ~MainWindow() override
+        {
+            session_.Stop();
+            session_.Join();
+        }
+
+    protected:
+        BOOL PreTranslateMessage(MSG* message) override;
+        afx_msg int OnCreate(LPCREATESTRUCT create);
+        afx_msg void OnSize(UINT type, int width, int height);
+        afx_msg void OnGetMinMaxInfo(MINMAXINFO* info);
+        afx_msg void OnPaint();
+        afx_msg HBRUSH OnCtlColor(CDC* dc, CWnd* window, UINT type);
+        afx_msg void OnLogin();
+        afx_msg void OnEnter();
+        afx_msg void OnExit();
+        afx_msg void OnClose();
+        afx_msg LRESULT OnSession(WPARAM, LPARAM);
+        afx_msg void OnMainTab(NMHDR*, LRESULT* result);
+        afx_msg void OnTab(NMHDR*, LRESULT* result);
+        afx_msg void OnSelect(NMHDR*, LRESULT* result);
+        afx_msg void OnPetClick(NMHDR* header, LRESULT* result);
+        afx_msg void OnPetState();
+        afx_msg void OnPetStateClose();
+        DECLARE_MESSAGE_MAP()
+
+    private:
+        void Layout();
+        void Refresh();
+        void RefreshDetail();
+        void AddRow(const wchar_t* name, const CString& value);
+        void LoadLogin();
+        void SaveLogin();
+
+        CFont font_;
+        CBrush background_, white_;
+        CStatic summary_, footer_, labels_[4], developing_;
+        CString configPath_;
+        std::unordered_map<int, std::wstring> mapNames_;
+        std::filesystem::path mapDirectory_;
+        MiniMap miniMap_;
+        CEdit address_, port_, account_, password_;
+        CButton login_, enter_, exit_;
+        CTabCtrl mainTabs_, tabs_, shopTabs_;
+        CListCtrl list_, detail_;
+        CComboBox petState_;
+        int editingPet_ = -1;
+        SessionView view_;
+        GameSession session_;
+        bool closeWindow_ = false;
+        bool refreshing_ = false;
+        bool expanded_ = false;
+    };
+}
