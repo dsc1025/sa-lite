@@ -2,6 +2,7 @@
 
 #include "network/SocketConnection.h"
 #include "game/GameTypes.h"
+#include "game/Battle.h"
 #include <cstdint>
 #include <initializer_list>
 #include <string>
@@ -30,11 +31,16 @@ public:
     bool PollGame(int timeoutMs = 100);
     bool MoveTo(int map, int x, int y, int timeoutMs = 2000);
     void SetPetState(int slot, PetState state);
+    void SetEncounterEnabled(bool enabled);
+    void PollEncounter();
+    bool IsEncounterEnabled() const noexcept { return encounter_.enabled; }
+    bool IsEncounterStopping() const noexcept { return encounter_.stopPending; }
     void LeaveGame(int timeoutMs = 10000);
     const PlayerStatus& GetPlayerStatus() const noexcept;
     const std::vector<PetStatus>& GetPets() const noexcept;
     const std::vector<ItemStatus>& GetItems() const noexcept;
     bool HasItems() const noexcept;
+    const Game::BattleState& GetBattle() const noexcept { return battle_; }
     void Disconnect() noexcept;
     bool IsConnected() const noexcept;
 
@@ -42,6 +48,9 @@ private:
     std::vector<std::string> ReceiveStrings(const std::vector<std::string>& fields) const;
     std::vector<std::string> WaitReply(const std::string& function, ULONGLONG deadline);
     bool HandleGamePacket(const std::vector<std::string>& fields);
+    bool HandleBattlePacket(const std::vector<std::string>& fields);
+    bool PollBattle();
+    void FinishBattle();
     bool HandlePositionPacket(const std::vector<std::string>& fields);
     bool HandleServerMessage(const std::vector<std::string>& fields);
     bool HandlePetStateReply(const std::vector<std::string>& fields);
@@ -51,6 +60,7 @@ private:
     bool ApplyPetStatus(const std::vector<std::string>& values);
     void SendNumbers(const char* function, std::initializer_list<int> numbers, ULONGLONG deadline);
     void RefreshPosition(ULONGLONG deadline);
+    void SendEncounterWalk(const std::string& directions, int x, int y);
 
     SocketConnection connection_;
     bool loggedIn_ = false;
@@ -58,6 +68,8 @@ private:
     std::string sessionKey_;
     std::vector<Character> characters_;
     PlayerStatus playerStatus_;
+    Game::EncounterState encounter_;
+    Game::BattleState battle_;
     std::vector<PetStatus> pets_ = std::vector<PetStatus>(5);
     std::vector<ItemStatus> items_ = std::vector<ItemStatus>(20);
     bool itemsReceived_ = false;

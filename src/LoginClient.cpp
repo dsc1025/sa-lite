@@ -35,6 +35,8 @@ void LoginClient::Disconnect() noexcept
     sessionKey_.clear();
     characters_.clear();
     playerStatus_ = {};
+    encounter_ = {};
+    battle_ = {};
     positionSerial_ = 0;
     eventSequence_ = 0;
     pets_.assign(5, {});
@@ -228,9 +230,10 @@ bool LoginClient::PollGame(int timeoutMs)
                 + EncodeInteger(static_cast<std::uint32_t>(heartbeat.size()), sessionKey_) + ";#;"), now + 10000);
             nextHeartbeat_ = GetTickCount64() + 30000;
         }
-        if (!connection_.Poll(timeoutMs))
-            return false;
-        return HandleGamePacket(DecodePacket(connection_.Receive(GetTickCount64() + 10000)));
+        bool changed = false;
+        if (connection_.Poll(timeoutMs))
+            changed = HandleGamePacket(DecodePacket(connection_.Receive(GetTickCount64() + 10000)));
+        return PollBattle() || changed;
     }
     catch (...)
     {

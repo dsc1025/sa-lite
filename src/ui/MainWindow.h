@@ -3,6 +3,7 @@
 #include <afxwin.h>
 #include <afxcmn.h>
 #include "MiniMap.h"
+#include "BattleUi.h"
 #include "../map/MapData.h"
 #include "../session/GameSession.h"
 #include <unordered_map>
@@ -44,9 +45,14 @@ namespace Client
         afx_msg void OnPetStateClose();
         afx_msg void OnMapPosition();
         afx_msg void OnMapRegion();
+        afx_msg void OnBattleStart();
+        afx_msg void OnBattleStop();
         DECLARE_MESSAGE_MAP()
 
     private:
+        void CreateBattleControls();
+        void LayoutBattle(const CRect& mainPage);
+        void RefreshBattle(bool visible);
         void Layout();
         void Refresh();
         void RefreshDetail();
@@ -63,12 +69,17 @@ namespace Client
         std::unordered_map<int, std::vector<MapPosition>> mapPositions_;
         CComboBox mapPosition_, mapRegion_;
         int positionMap_ = -2;
-        int regionMap_ = -2;
         std::filesystem::path mapDirectory_;
         MiniMap miniMap_;
         CEdit address_, port_, account_, password_;
         CButton login_, enter_, exit_;
-        CTabCtrl mainTabs_, tabs_, shopTabs_;
+        CTabCtrl mainTabs_, tabs_, shopTabs_, battleTabs_;
+        BattleGroup battleSides_[2];
+        CButton battleStart_, battleStop_;
+        CStatic battleRound_, battleWaiting_[2];
+        CListCtrl battleMembers_[2];
+        CStatic battleInfoLabel_, battleExperience_;
+        CEdit battleInfo_;
         CListCtrl list_, detail_;
         CComboBox petState_;
         int editingPet_ = -1;

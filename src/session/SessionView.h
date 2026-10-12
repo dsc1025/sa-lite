@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../game/GameTypes.h"
+#include "../game/Battle.h"
 #include <vector>
 
 namespace Client
@@ -14,9 +15,13 @@ namespace Client
         std::wstring characterName;
         std::vector<Game::Character> characters;
         Game::PlayerStatus player;
+        Game::BattleState battle;
         std::vector<Game::PetStatus> pets;
         std::vector<Game::ItemStatus> items;
         bool hasItems = false;
+        bool encounterEnabled = false;
+        bool encounterPending = false;
+        std::wstring encounterMessage = L"遇敌未开始";
         bool failed = false;
     };
 }

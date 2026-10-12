@@ -25,8 +25,10 @@ namespace Client
         void SelectCharacter(int selection);
         void RequestMove(int map, int x, int y);
         bool RequestPetState(int slot, int state);
+        void SetEncounterEnabled(bool enabled);
 
     private:
+        void UpdateEncounter(LoginClient& client);
         void Publish(Screen screen, const std::wstring& message, const LoginClient* client = nullptr);
         void RunSession(std::string address, std::uint16_t port, std::string account, std::string password);
 
@@ -37,6 +39,7 @@ namespace Client
         std::condition_variable wake_;
         std::thread worker_;
         bool stop_ = false, done_ = true;
+        bool encounterRequested_ = false;
         int requestedCharacter_ = -1;
         int requestedPet_ = -1, requestedPetState_ = 0;
         int requestedMap_ = -1, requestedX_ = -1, requestedY_ = -1;

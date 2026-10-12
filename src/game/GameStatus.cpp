@@ -53,6 +53,8 @@ namespace
 
 bool LoginClient::HandleGamePacket(const std::vector<std::string>& fields)
 {
+    if (fields[1] == "15")
+        return HandleBattlePacket(fields);
     if (fields[1] == "2" || fields[1] == "7")
         return HandlePositionPacket(fields);
     if (fields[1] == "36" && waitingRide_)
@@ -96,9 +98,16 @@ bool LoginClient::HandlePositionPacket(const std::vector<std::string>& fields)
     {
         playerStatus_.mapX = static_cast<int>(numbers[0]);
         playerStatus_.mapY = static_cast<int>(numbers[1]);
+        if (playerStatus_.inBattle)
+            FinishBattle();
     }
     else
-        playerStatus_.inBattle = numbers[0] != 0;
+    {
+        bool inBattle = numbers[0] != 0;
+        if (!inBattle || !playerStatus_.inBattle)
+            battle_ = {};
+        playerStatus_.inBattle = inBattle;
+    }
     return true;
 }
 

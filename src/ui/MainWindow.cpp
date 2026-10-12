@@ -1,8 +1,8 @@
 #include "MainWindow.h"
+#include "BattleUi.h"
 #include "UiText.h"
 #include "../map/MapData.h"
 #include "../text/TextEncoding.h"
-#include <algorithm>
 #include <stdexcept>
 
 namespace Client
@@ -23,6 +23,9 @@ namespace Client
         ON_MESSAGE(SessionMessage, &MainWindow::OnSession)
         ON_NOTIFY(TCN_SELCHANGE, MainTabs, &MainWindow::OnMainTab)
         ON_NOTIFY(TCN_SELCHANGE, Tabs, &MainWindow::OnTab)
+        ON_NOTIFY(TCN_SELCHANGE, IDC_BATTLE_TABS, &MainWindow::OnMainTab)
+        ON_BN_CLICKED(IDC_BATTLE_START, &MainWindow::OnBattleStart)
+        ON_BN_CLICKED(IDC_BATTLE_STOP, &MainWindow::OnBattleStop)
         ON_NOTIFY(LVN_ITEMCHANGED, List, &MainWindow::OnSelect)
         ON_NOTIFY(NM_CLICK, List, &MainWindow::OnPetClick)
         ON_CBN_SELENDOK(PetStateCombo, &MainWindow::OnPetState)
@@ -66,8 +69,8 @@ namespace Client
         exit_.Create(L"退出", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, empty, this, ExitButton);
         mainTabs_.Create(WS_CHILD | WS_TABSTOP | WS_CLIPSIBLINGS | TCS_VERTICAL | TCS_MULTILINE,
             empty, this, MainTabs);
-        const wchar_t* mainCaptions[] = { L"角色", L"地图", L"商店", L"任务" };
-        for (int i = 0; i < 4; ++i)
+        const wchar_t* mainCaptions[] = { L"角色", L"地图", L"战斗", L"商店", L"任务" };
+        for (int i = 0; i < 5; ++i)
             mainTabs_.InsertItem(i, mainCaptions[i]);
         mainTabs_.SetPadding(CSize(12, 10));
         developing_.Create(L"开发中", WS_CHILD | SS_CENTER | SS_CENTERIMAGE, empty, this);
@@ -76,8 +79,9 @@ namespace Client
             empty, this, MapPositionCombo);
         mapRegion_.Create(WS_CHILD | WS_TABSTOP | WS_VSCROLL | CBS_DROPDOWNLIST,
             empty, this, MapRegionCombo);
-        const int regions[] = { 500, 5540, 5509, 130, 300, 5100, 5000, 3000,
-            200, 4000, 3400, 3100, 3200, 3300, 10920, 1300, 1400, 1100, 1200, 2000 };
+        mapRegion_.AddString(L"请选择地区");
+        const int regions[] = { 100, 200, 300, 400, 500, 1000, 1100,
+            1200, 1300, 1400, 2000, 3000, 3100, 3200, 3300, 3400, 4000, 5000, 5100, 5509, 5540, 10920, 130 };
         for (int id : regions)
         {
             auto name = mapNames_.find(id);
@@ -93,6 +97,7 @@ namespace Client
         tabs_.InsertItem(0, L"属性");
         tabs_.InsertItem(1, L"宠物");
         tabs_.InsertItem(2, L"道具");
+        CreateBattleControls();
         shopTabs_.Create(WS_CHILD | WS_TABSTOP | WS_CLIPSIBLINGS, empty, this, ShopTabs);
         shopTabs_.InsertItem(0, L"道具");
         shopTabs_.InsertItem(1, L"装备");
@@ -104,6 +109,7 @@ namespace Client
         for (const wchar_t* state : PetStateNames)
             petState_.AddString(state);
         tabs_.SetWindowPos(&CWnd::wndBottom, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        battleTabs_.SetWindowPos(&CWnd::wndBottom, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
         shopTabs_.SetWindowPos(&CWnd::wndBottom, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
         mainTabs_.SetWindowPos(&CWnd::wndBottom, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
         list_.ModifyStyleEx(0, WS_EX_CLIENTEDGE);
@@ -178,13 +184,14 @@ namespace Client
         CRect page = mainPage;
         tabs_.AdjustRect(FALSE, &page);
         page.DeflateRect(6, 6);
-        if (mainTabs_.GetCurSel() == 2)
+        if (mainTabs_.GetCurSel() == 3)
         {
             CRect shopPage = mainPage;
             shopTabs_.AdjustRect(FALSE, &shopPage);
             shopPage.DeflateRect(6, 6);
             developing_.MoveWindow(shopPage);
         }
+        LayoutBattle(mainPage);
         bool characters = view_.screen == Screen::Characters || view_.screen == Screen::Entering;
         bool player = tabs_.GetCurSel() == 0;
         list_.MoveWindow(characters ? 16 : page.left, characters ? 54 : page.top,
@@ -445,16 +452,18 @@ namespace Client
         int selected = mapPosition_.GetCurSel();
         auto positions = mapPositions_.find(positionMap_);
         if (view_.screen != Screen::Game || mainTabs_.GetCurSel() != 1 ||
-            positions == mapPositions_.end() || selected < 0 ||
-            selected >= static_cast<int>(positions->second.size()))
+            positions == mapPositions_.end() || selected <= 0 ||
+            selected > static_cast<int>(positions->second.size()))
             return;
-        const auto& target = positions->second[selected];
+        const auto& target = positions->second[selected - 1];
         session_.RequestMove(positionMap_, target.x, target.y);
     }
 
     void MainWindow::OnMapRegion()
     {
         RefreshMapPositions();
+        if (mapPosition_.IsWindowEnabled())
+            mapPosition_.SetCurSel(1);
         OnMapPosition();
     }
 

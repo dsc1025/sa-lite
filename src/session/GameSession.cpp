@@ -23,6 +23,7 @@ namespace Client
                 stop_ = false; done_ = false; requestedCharacter_ = -1;
                 requestedPet_ = -1;
                 requestedMap_ = -1;
+                encounterRequested_ = false;
                 shared_ = {};
                 shared_.screen = Screen::Connecting;
                 shared_.message = L"正在连接并登录…";
@@ -71,6 +72,7 @@ namespace Client
         std::lock_guard<std::mutex> lock(mutex_);
         if (!stop_ && !done_)
         {
+            encounterRequested_ = false;
             requestedMap_ = map;
             requestedX_ = x;
             requestedY_ = y;
@@ -92,6 +94,7 @@ namespace Client
         {
             std::lock_guard<std::mutex> lock(mutex_);
             stop_ = true;
+            encounterRequested_ = false;
         }
         wake_.notify_all();
     }
@@ -101,10 +104,18 @@ namespace Client
         {
             std::lock_guard<std::mutex> lock(mutex_);
             shared_.screen = screen;
+            if (screen != Screen::Game)
+            {
+                encounterRequested_ = false;
+                shared_.encounterEnabled = false;
+                shared_.encounterPending = false;
+                shared_.encounterMessage = L"遇敌未开始";
+            }
             shared_.message = message;
             if (client)
             {
                 shared_.player = client->GetPlayerStatus();
+                shared_.battle = client->GetBattle();
                 shared_.pets = client->GetPets();
                 shared_.items = client->GetItems();
                 shared_.hasItems = client->HasItems();
@@ -153,10 +164,11 @@ namespace Client
                 std::wstring movementMessage = L"已连接";
                 for (;;)
                 {
-                    int pet, state;
+                    int pet, state, pollTimeout;
                     {
                         std::lock_guard<std::mutex> lock(mutex_);
                         if (stop_) break;
+                        pollTimeout = encounterRequested_ || client.GetPlayerStatus().inBattle ? BATTLE_DELAY_MS : 100;
                         pet = requestedPet_;
                         state = requestedPetState_;
                         requestedPet_ = -1;
@@ -169,8 +181,14 @@ namespace Client
                             movementMessage = L"已连接";
                         }
                     }
-                    if (client.PollGame(100))
+                    if (client.PollGame(pollTimeout))
                         Publish(Screen::Game, movementMessage, &client);
+                    UpdateEncounter(client);
+                    {
+                        std::lock_guard<std::mutex> lock(mutex_);
+                        if (encounterRequested_)
+                            targetMap = -1;
+                    }
                     const auto& position = client.GetPlayerStatus();
                     if (targetMap >= 0 && (position.inBattle ||
                         (position.mapId == targetMap && position.mapX == targetX && position.mapY == targetY)))

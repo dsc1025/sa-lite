@@ -40,6 +40,7 @@
   <ItemGroup>
     <ClInclude Include="src\LoginClient.h" />
     <ClInclude Include="src\game\GameTypes.h" />
+    <ClInclude Include="src\game\Battle.h" />
     <ClInclude Include="src\network\SocketConnection.h" />
     <ClInclude Include="src\protocol\ProtocolCodec.h" />
     <ClInclude Include="src\protocol\LegacyFields.h" />
@@ -48,6 +49,7 @@
     <ClInclude Include="src\map\MapData.h" />
     <ClInclude Include="src\text\TextEncoding.h" />
     <ClInclude Include="src\ui\MainWindow.h" />
+    <ClInclude Include="src\ui\BattleUi.h" />
     <ClInclude Include="src\ui\MiniMap.h" />
     <ClInclude Include="src\ui\UiText.h" />
   </ItemGroup>
@@ -55,15 +57,18 @@
     <ClCompile Include="src\LoginClient.cpp" />
     <ClCompile Include="src\MfcClient.cpp" />
     <ClCompile Include="src\game\GameStatus.cpp" />
+    <ClCompile Include="src\game\Battle.cpp" />
     <ClCompile Include="src\game\Movement.cpp" />
     <ClCompile Include="src\game\PetActions.cpp" />
     <ClCompile Include="src\network\SocketConnection.cpp" />
     <ClCompile Include="src\protocol\ProtocolCodec.cpp" />
     <ClCompile Include="src\protocol\LegacyFields.cpp" />
     <ClCompile Include="src\session\GameSession.cpp" />
+    <ClCompile Include="src\session\BattleSession.cpp" />
     <ClCompile Include="src\map\MapData.cpp" />
     <ClCompile Include="src\text\TextEncoding.cpp" />
     <ClCompile Include="src\ui\MainWindow.cpp" />
+    <ClCompile Include="src\ui\BattleUi.cpp" />
     <ClCompile Include="src\ui\MainWindowDisplay.cpp" />
     <ClCompile Include="src\ui\MiniMap.cpp" />
     <ClCompile Include="src\ui\LoginSettings.cpp" />
