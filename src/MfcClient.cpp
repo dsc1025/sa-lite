@@ -1,17 +1,26 @@
 #include <afxwin.h>
 #include <afxcmn.h>
+#include <uxtheme.h>
 #include "LoginClient.h"
+#include <algorithm>
+#include <climits>
 #include <condition_variable>
+#include <array>
+#include <filesystem>
+#include <fstream>
 #include <mutex>
 #include <stdexcept>
 #include <thread>
+#include <unordered_map>
 
 #pragma comment(linker, "/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
+
+#pragma comment(lib, "UxTheme.lib")
 
 namespace
 {
     constexpr UINT SessionMessage = WM_APP + 1;
-    enum ControlId { LoginButton = 100, EnterButton, ExitButton, Tabs, List, Detail, PetStateCombo };
+    enum ControlId { LoginButton = 100, EnterButton, ExitButton, Tabs, List, Detail, PetStateCombo, MainTabs = 120, ShopTabs };
     enum class Screen { Login, Connecting, Characters, Entering, Game, Closing };
     const wchar_t* PetStateNames[] = { L"等待", L"战斗", L"骑乘" };
 
@@ -67,6 +76,125 @@ namespace
         return text;
     }
 
+    std::unordered_map<int, CString> LoadMapNames(std::filesystem::path& mapDirectory)
+    {
+        std::vector<wchar_t> executable(32768);
+        DWORD length = GetModuleFileNameW(nullptr, executable.data(), static_cast<DWORD>(executable.size()));
+        if (length == 0 || length >= executable.size())
+            throw std::runtime_error("无法确定地图索引路径");
+        auto directory = std::filesystem::path(std::wstring(executable.data(), length)).parent_path();
+        const auto relative = std::filesystem::path(L"data") / L"map" / L"map_index.csv";
+        auto path = directory / relative;
+        while (!std::filesystem::exists(path) && directory != directory.root_path())
+        {
+            directory = directory.parent_path();
+            path = directory / relative;
+        }
+        if (!std::filesystem::exists(path))
+            path = std::filesystem::current_path() / relative;
+        std::ifstream input(path, std::ios::binary);
+        if (!input)
+            throw std::runtime_error("无法打开 data\\map\\map_index.csv");
+        mapDirectory = path.parent_path();
+        if (input.peek() == 0xef)
+        {
+            char bom[3];
+            input.read(bom, 3);
+            if (input.gcount() != 3 || static_cast<unsigned char>(bom[1]) != 0xbb ||
+                static_cast<unsigned char>(bom[2]) != 0xbf)
+                throw std::runtime_error("地图索引的 UTF-8 BOM 无效");
+        }
+        auto readRow = [&](std::vector<std::string>& fields)
+        {
+            fields.clear();
+            std::string field;
+            bool quoted = false, closed = false, started = false;
+            char c;
+            while (input.get(c))
+            {
+                started = true;
+                if (quoted)
+                {
+                    if (c == '"')
+                    {
+                        if (input.peek() == '"')
+                        {
+                            input.get(c);
+                            field += c;
+                        }
+                        else
+                        {
+                            quoted = false;
+                            closed = true;
+                        }
+                    }
+                    else
+                        field += c;
+                }
+                else if (c == ',' || c == '\r' || c == '\n')
+                {
+                    fields.push_back(field);
+                    field.clear();
+                    closed = false;
+                    if (c != ',')
+                    {
+                        if (c == '\r' && input.peek() == '\n')
+                            input.get(c);
+                        return true;
+                    }
+                }
+                else if (c == '"' && field.empty() && !closed)
+                    quoted = true;
+                else if (closed || c == '"')
+                    throw std::runtime_error("地图索引的 CSV 引号格式无效");
+                else
+                    field += c;
+            }
+            if (input.bad() || quoted)
+                throw std::runtime_error("地图索引读取失败或 CSV 字段未闭合");
+            if (started)
+                fields.push_back(field);
+            return started;
+        };
+        std::vector<std::string> header, row;
+        if (!readRow(header))
+            throw std::runtime_error("地图索引为空");
+        std::size_t idColumn = header.size(), nameColumn = header.size();
+        for (std::size_t i = 0; i < header.size(); ++i)
+        {
+            if (header[i] == "map_id") idColumn = i;
+            if (header[i] == "map_name") nameColumn = i;
+        }
+        if (idColumn == header.size() || nameColumn == header.size())
+            throw std::runtime_error("地图索引缺少 map_id 或 map_name 列");
+        std::unordered_map<int, CString> names;
+        while (readRow(row))
+        {
+            if (row.size() == 1 && row[0].empty())
+                continue;
+            if (row.size() != header.size())
+                throw std::runtime_error("地图索引的列数不一致");
+            const auto& idText = row[idColumn];
+            if (idText.empty() || idText.find_first_not_of("0123456789") != std::string::npos)
+                throw std::runtime_error("地图索引的 map_id 无效");
+            int id = std::stoi(idText);
+            const auto& name = row[nameColumn];
+            if (name.empty())
+                continue;
+            int count = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, name.data(),
+                static_cast<int>(name.size()), nullptr, 0);
+            if (count == 0)
+                throw std::runtime_error("地图名称不是有效的 UTF-8 文本");
+            CString text;
+            wchar_t* buffer = text.GetBuffer(count);
+            MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, name.data(),
+                static_cast<int>(name.size()), buffer, count);
+            text.ReleaseBuffer(count);
+            names.emplace(id, text);
+        }
+        return names;
+    }
+
     CString Ratio(int value, int maximum)
     {
         CString text;
@@ -85,6 +213,139 @@ namespace
         std::vector<LoginClient::ItemStatus> items;
         bool hasItems = false;
         bool failed = false;
+    };
+
+    class MiniMap : public CStatic
+    {
+    public:
+        void Update(const std::filesystem::path& directory, int id, int x, int y, const CString& name)
+        {
+            x_ = x;
+            y_ = y;
+            title_.Format(L"地图 %s (%d)   坐标 %d, %d", name.GetString(), id, x, y);
+            if (id != id_ || directory != directory_)
+            {
+                id_ = id;
+                directory_ = directory;
+                pixels_.clear();
+                error_ = L"等待服务器发送地图位置";
+                if (id >= 0 && !directory.empty())
+                {
+                    try { Load(directory, id); }
+                    catch (const std::exception& error) { error_ = ErrorText(error.what()); }
+                }
+            }
+            Invalidate(FALSE);
+        }
+
+    protected:
+        void DrawItem(LPDRAWITEMSTRUCT item) override
+        {
+            CDC dc;
+            dc.Attach(item->hDC);
+            CRect area(item->rcItem);
+            dc.FillSolidRect(area, RGB(255, 255, 255));
+            dc.SetBkMode(TRANSPARENT);
+            dc.SetTextColor(RGB(30, 30, 30));
+            CRect heading = area;
+            heading.DeflateRect(8, 6);
+            heading.bottom = heading.top + 24;
+            dc.DrawText(title_, heading, DT_LEFT | DT_SINGLELINE | DT_END_ELLIPSIS);
+            area.DeflateRect(12, 12);
+            area.top += 30;
+            if (pixels_.empty())
+                dc.DrawText(error_, area, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+            else if (area.Width() > 0 && area.Height() > 0)
+            {
+                int span = width_ + height_;
+                double scale = (std::min)(static_cast<double>(area.Width()) / span,
+                    static_cast<double>(area.Height()) * 2 / span);
+                int width = (std::max)(1, static_cast<int>(span * scale));
+                int height = (std::max)(1, static_cast<int>(span * scale / 2));
+                int left = area.left + (area.Width() - width) / 2;
+                int top = area.top + (area.Height() - height) / 2;
+                std::vector<RGBQUAD> projected(static_cast<std::size_t>(width) * height,
+                    RGBQUAD{ 255, 255, 255, 0 });
+                for (int py = 0; py < height; ++py)
+                {
+                    double difference = (py + 0.5) * span / height - width_;
+                    for (int px = 0; px < width; ++px)
+                    {
+                        double sum = (px + 0.5) * span / width;
+                        double x = (sum - difference) / 2;
+                        double y = (sum + difference) / 2;
+                        if (x >= 0 && x < width_ && y >= 0 && y < height_)
+                            projected[static_cast<std::size_t>(py) * width + px] =
+                                pixels_[static_cast<std::size_t>(static_cast<int>(y)) * width_ + static_cast<int>(x)];
+                    }
+                }
+                BITMAPINFO info{};
+                info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+                info.bmiHeader.biWidth = width;
+                info.bmiHeader.biHeight = -height;
+                info.bmiHeader.biPlanes = 1;
+                info.bmiHeader.biBitCount = 32;
+                info.bmiHeader.biCompression = BI_RGB;
+                SetDIBitsToDevice(dc.GetSafeHdc(), left, top, width, height, 0, 0, 0, height,
+                    projected.data(), &info, DIB_RGB_COLORS);
+                if (x_ >= 0 && x_ < width_ && y_ >= 0 && y_ < height_)
+                {
+                    int px = left + static_cast<int>((x_ + y_ + 1) * static_cast<double>(width) / span);
+                    int py = top + static_cast<int>((y_ - x_ + width_) * static_cast<double>(height) / span);
+                    CBrush marker(RGB(255, 40, 40));
+                    CPen outline(PS_SOLID, 1, RGB(255, 255, 255));
+                    auto oldBrush = dc.SelectObject(&marker);
+                    auto oldPen = dc.SelectObject(&outline);
+                    dc.Ellipse(px - 4, py - 4, px + 5, py + 5);
+                    dc.SelectObject(oldPen);
+                    dc.SelectObject(oldBrush);
+                }
+            }
+            dc.Detach();
+        }
+
+    private:
+        void Load(const std::filesystem::path& directory, int id)
+        {
+            std::ifstream input(directory / (std::to_wstring(id) + L".MAP"), std::ios::binary | std::ios::ate);
+            if (!input)
+                throw std::runtime_error("找不到当前地图的 .MAP 文件");
+            auto size = input.tellg();
+            input.seekg(0);
+            std::uint32_t dimensions[2]{};
+            input.read(reinterpret_cast<char*>(dimensions), sizeof(dimensions));
+            std::uint64_t cells = static_cast<std::uint64_t>(dimensions[0]) * dimensions[1];
+            if (!input || cells == 0 || cells > 16 * 1024 * 1024 ||
+                dimensions[0] > INT_MAX || dimensions[1] > INT_MAX ||
+                size != static_cast<std::streamoff>(8 + cells * 2))
+                throw std::runtime_error("小地图文件尺寸或长度无效");
+            std::vector<unsigned char> colours(static_cast<std::size_t>(cells));
+            input.read(reinterpret_cast<char*>(colours.data()), static_cast<std::streamsize>(colours.size()));
+            if (!input)
+                throw std::runtime_error("小地图颜色数据读取失败");
+            const std::array<COLORREF, 16> palette = { RGB(73,86,99), RGB(105,125,141),
+                RGB(98,143,132), RGB(103,166,150), RGB(72,139,104), RGB(119,168,107),
+                RGB(165,190,122), RGB(192,194,139), RGB(80,149,190), RGB(109,176,201),
+                RGB(211,195,149), RGB(193,174,139), RGB(164,153,139), RGB(137,143,150),
+                RGB(166,175,184), RGB(208,215,217) };
+            std::vector<RGBQUAD> pixels(colours.size());
+            for (std::size_t i = 0; i < colours.size(); ++i)
+            {
+                COLORREF colour = palette[colours[i] / 16];
+                int shade = (colours[i] % 16 - 8) * 2;
+                auto channel = [shade](int value) { return static_cast<BYTE>((std::clamp)(value + shade, 0, 255)); };
+                pixels[i] = { channel(GetBValue(colour)), channel(GetGValue(colour)), channel(GetRValue(colour)), 0 };
+            }
+            width_ = static_cast<int>(dimensions[0]);
+            height_ = static_cast<int>(dimensions[1]);
+            pixels_ = std::move(pixels);
+            error_.Empty();
+        }
+
+        int id_ = -2, x_ = -1, y_ = -1, width_ = 0, height_ = 0;
+        std::filesystem::path directory_;
+        std::vector<RGBQUAD> pixels_;
+        CString title_, error_;
     };
 
     class MainWindow : public CFrameWnd
@@ -115,6 +376,7 @@ namespace
         afx_msg void OnExit();
         afx_msg void OnClose();
         afx_msg LRESULT OnSession(WPARAM, LPARAM);
+        afx_msg void OnMainTab(NMHDR*, LRESULT* result);
         afx_msg void OnTab(NMHDR*, LRESULT* result);
         afx_msg void OnSelect(NMHDR*, LRESULT* result);
         afx_msg void OnPetClick(NMHDR* header, LRESULT* result);
@@ -135,11 +397,14 @@ namespace
 
         CFont font_;
         CBrush background_, white_;
-        CStatic summary_, footer_, labels_[4];
+        CStatic summary_, footer_, labels_[4], developing_;
         CString configPath_;
+        std::unordered_map<int, CString> mapNames_;
+        std::filesystem::path mapDirectory_;
+        MiniMap miniMap_;
         CEdit address_, port_, account_, password_;
         CButton login_, enter_, exit_;
-        CTabCtrl tabs_;
+        CTabCtrl mainTabs_, tabs_, shopTabs_;
         CListCtrl list_, detail_;
         CComboBox petState_;
         int editingPet_ = -1, requestedPet_ = -1, requestedPetState_ = 0;
@@ -164,6 +429,7 @@ namespace
         ON_BN_CLICKED(EnterButton, &MainWindow::OnEnter)
         ON_BN_CLICKED(ExitButton, &MainWindow::OnExit)
         ON_MESSAGE(SessionMessage, &MainWindow::OnSession)
+        ON_NOTIFY(TCN_SELCHANGE, MainTabs, &MainWindow::OnMainTab)
         ON_NOTIFY(TCN_SELCHANGE, Tabs, &MainWindow::OnTab)
         ON_NOTIFY(LVN_ITEMCHANGED, List, &MainWindow::OnSelect)
         ON_NOTIFY(NM_CLICK, List, &MainWindow::OnPetClick)
@@ -176,6 +442,14 @@ namespace
     {
         if (CFrameWnd::OnCreate(create) == -1)
             return -1;
+        try
+        {
+            mapNames_ = LoadMapNames(mapDirectory_);
+        }
+        catch (const std::exception& error)
+        {
+            MessageBox(ErrorText(error.what()), L"地图索引加载失败", MB_OK | MB_ICONWARNING);
+        }
         font_.CreatePointFont(90, L"Microsoft YaHei UI");
         CRect empty(0, 0, 0, 0);
         summary_.Create(L"", WS_CHILD | WS_VISIBLE, empty, this);
@@ -196,10 +470,22 @@ namespace
         login_.Create(L"登录", WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, empty, this, LoginButton);
         enter_.Create(L"进入游戏", WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, empty, this, EnterButton);
         exit_.Create(L"退出", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, empty, this, ExitButton);
+        mainTabs_.Create(WS_CHILD | WS_TABSTOP | WS_CLIPSIBLINGS | TCS_VERTICAL | TCS_MULTILINE,
+            empty, this, MainTabs);
+        const wchar_t* mainCaptions[] = { L"角色", L"地图", L"任务", L"商店" };
+        for (int i = 0; i < 4; ++i)
+            mainTabs_.InsertItem(i, mainCaptions[i]);
+        mainTabs_.SetPadding(CSize(12, 10));
+        developing_.Create(L"开发中", WS_CHILD | SS_CENTER | SS_CENTERIMAGE, empty, this);
+        miniMap_.Create(L"", WS_CHILD | SS_OWNERDRAW, empty, this);
         tabs_.Create(WS_CHILD | WS_TABSTOP | WS_CLIPSIBLINGS, empty, this, Tabs);
-        tabs_.InsertItem(0, L"人物");
+        tabs_.InsertItem(0, L"属性");
         tabs_.InsertItem(1, L"宠物");
         tabs_.InsertItem(2, L"道具");
+        shopTabs_.Create(WS_CHILD | WS_TABSTOP | WS_CLIPSIBLINGS, empty, this, ShopTabs);
+        shopTabs_.InsertItem(0, L"道具");
+        shopTabs_.InsertItem(1, L"装备");
+        shopTabs_.InsertItem(2, L"技能");
         DWORD listStyle = WS_CHILD | WS_TABSTOP | WS_CLIPSIBLINGS | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS;
         list_.Create(listStyle, empty, this, List);
         detail_.Create(listStyle, empty, this, Detail);
@@ -207,6 +493,8 @@ namespace
         for (const wchar_t* state : PetStateNames)
             petState_.AddString(state);
         tabs_.SetWindowPos(&CWnd::wndBottom, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        shopTabs_.SetWindowPos(&CWnd::wndBottom, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        mainTabs_.SetWindowPos(&CWnd::wndBottom, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
         list_.ModifyStyleEx(0, WS_EX_CLIENTEDGE);
         detail_.ModifyStyleEx(0, WS_EX_CLIENTEDGE);
         list_.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
@@ -239,7 +527,7 @@ namespace
         CFrameWnd::OnGetMinMaxInfo(info);
         bool login = view_.screen == Screen::Login || view_.screen == Screen::Connecting;
         bool characters = view_.screen == Screen::Characters || view_.screen == Screen::Entering;
-        info->ptMinTrackSize = CPoint(login || characters ? 460 : 640, login || characters ? 330 : 480);
+        info->ptMinTrackSize = CPoint(login || characters ? 460 : 760, login || characters ? 330 : 480);
     }
 
     void MainWindow::Layout()
@@ -262,10 +550,26 @@ namespace
         login_.MoveWindow(left + 88, 208, 100, 30);
         exit_.MoveWindow(login ? left + 200 : width - 116, login ? 208 : 12, 100, 30);
         enter_.MoveWindow(width - 146, height - 76, 130, 30);
-        tabs_.MoveWindow(16, 54, width - 32, height - 92);
-        CRect page(16, 54, width - 16, height - 38);
+        mainTabs_.MoveWindow(16, 54, width - 32, height - 92);
+        CRect mainPage(16, 54, width - 16, height - 38);
+        CRect tabItem;
+        if (mainTabs_.GetItemRect(0, &tabItem))
+            mainPage.left += tabItem.right;
+        mainPage.DeflateRect(6, 6);
+        developing_.MoveWindow(mainPage);
+        miniMap_.MoveWindow(mainPage);
+        tabs_.MoveWindow(mainPage);
+        shopTabs_.MoveWindow(mainPage);
+        CRect page = mainPage;
         tabs_.AdjustRect(FALSE, &page);
         page.DeflateRect(6, 6);
+        if (mainTabs_.GetCurSel() == 3)
+        {
+            CRect shopPage = mainPage;
+            shopTabs_.AdjustRect(FALSE, &shopPage);
+            shopPage.DeflateRect(6, 6);
+            developing_.MoveWindow(shopPage);
+        }
         bool characters = view_.screen == Screen::Characters || view_.screen == Screen::Entering;
         bool player = tabs_.GetCurSel() == 0;
         list_.MoveWindow(characters ? 16 : page.left, characters ? 54 : page.top,
@@ -353,6 +657,7 @@ namespace
     void MainWindow::RefreshDetail()
     {
         detail_.DeleteAllItems();
+        if (mainTabs_.GetCurSel() != 0) return;
         int tab = tabs_.GetCurSel();
         if (tab == 0)
         {
@@ -425,7 +730,7 @@ namespace
         if (game && !expanded_)
         {
             expanded_ = true;
-            SetWindowPos(nullptr, 0, 0, 640, 480, SWP_NOMOVE | SWP_NOZORDER);
+            SetWindowPos(nullptr, 0, 0, 760, 480, SWP_NOMOVE | SWP_NOZORDER);
             CenterWindow();
         }
         else if ((login || characters) && expanded_)
@@ -446,12 +751,25 @@ namespace
         login_.EnableWindow(view_.screen == Screen::Login);
         enter_.ShowWindow(characters ? SW_SHOW : SW_HIDE);
         enter_.EnableWindow(view_.screen == Screen::Characters);
-        tabs_.ShowWindow(game ? SW_SHOW : SW_HIDE);
-        list_.ShowWindow(characters || (game && tabs_.GetCurSel() != 0) ? SW_SHOW : SW_HIDE);
-        detail_.ShowWindow(game ? SW_SHOW : SW_HIDE);
+        bool role = game && mainTabs_.GetCurSel() == 0;
+        mainTabs_.ShowWindow(game ? SW_SHOW : SW_HIDE);
+        bool mapPage = game && mainTabs_.GetCurSel() == 1;
+        bool shop = game && mainTabs_.GetCurSel() == 3;
+        developing_.ShowWindow(game && !role && !mapPage ? SW_SHOW : SW_HIDE);
+        miniMap_.ShowWindow(mapPage ? SW_SHOW : SW_HIDE);
+        if (mapPage)
+        {
+            auto name = mapNames_.find(view_.player.mapId);
+            miniMap_.Update(mapDirectory_, view_.player.mapId, view_.player.mapX, view_.player.mapY,
+                name != mapNames_.end() ? name->second : Number(view_.player.mapId));
+        }
+        tabs_.ShowWindow(role ? SW_SHOW : SW_HIDE);
+        shopTabs_.ShowWindow(shop ? SW_SHOW : SW_HIDE);
+        list_.ShowWindow(characters || (role && tabs_.GetCurSel() != 0) ? SW_SHOW : SW_HIDE);
+        detail_.ShowWindow(role ? SW_SHOW : SW_HIDE);
         exit_.EnableWindow(view_.screen != Screen::Closing);
         exit_.SetWindowText(game ? L"退出登录" : L"退出");
-        SetWindowText(login ? L"登录" : characters ? L"选择角色" : L"石器");
+        SetWindowText(login ? L"登录" : characters ? L"选择角色" : L"SA25_#1");
         summary_.ShowWindow(login ? SW_HIDE : SW_SHOW);
         footer_.SetWindowText(view_.message);
         CString summary = game ? view_.characterName : CString();
@@ -461,9 +779,19 @@ namespace
             stats.Format(L"   等级 %d   HP %d/%d   MP %d/%d   金币 %d", view_.player.level,
                 view_.player.hp, view_.player.maxHp, view_.player.mp, view_.player.maxMp, view_.player.gold);
             summary += stats;
+            if (view_.player.mapId >= 0)
+            {
+                CString map;
+                auto name = mapNames_.find(view_.player.mapId);
+                if (name != mapNames_.end())
+                    map.Format(L"   地图 %s", name->second.GetString());
+                else
+                    map.Format(L"   地图 %d", view_.player.mapId);
+                summary += map;
+            }
         }
         summary_.SetWindowText(characters ? CString(L"选择角色后进入游戏") : summary);
-        bool petColumns = game && tabs_.GetCurSel() == 1;
+        bool petColumns = role && tabs_.GetCurSel() == 1;
         int columns = list_.GetHeaderCtrl()->GetItemCount();
         if (petColumns && columns == 2)
             list_.InsertColumn(2, L"状态", LVCFMT_LEFT, 60);
@@ -481,7 +809,7 @@ namespace
                 list_.SetItemData(row, i);
             }
         }
-        else if (game && tabs_.GetCurSel() == 1)
+        else if (role && tabs_.GetCurSel() == 1)
         {
             for (std::size_t i = 0; i < view_.pets.size(); ++i)
             {
@@ -500,7 +828,7 @@ namespace
                 list_.SetItemData(row, i);
             }
         }
-        else if (game && tabs_.GetCurSel() == 2)
+        else if (role && tabs_.GetCurSel() == 2)
         {
             const wchar_t* equipment[] = { L"头部", L"身体", L"武器", L"饰品1", L"饰品2" };
             for (std::size_t i = 0; i < view_.items.size(); ++i)
@@ -805,6 +1133,13 @@ namespace
         return 0;
     }
 
+    void MainWindow::OnMainTab(NMHDR*, LRESULT* result)
+    {
+        OnPetStateClose();
+        Refresh();
+        *result = 0;
+    }
+
     void MainWindow::OnTab(NMHDR*, LRESULT* result)
     {
         list_.DeleteAllItems();
@@ -824,7 +1159,7 @@ namespace
         *result = 0;
         OnPetStateClose();
         auto click = reinterpret_cast<NMITEMACTIVATE*>(header);
-        if (view_.screen != Screen::Game || tabs_.GetCurSel() != 1 ||
+        if (view_.screen != Screen::Game || mainTabs_.GetCurSel() != 0 || tabs_.GetCurSel() != 1 ||
             click->iItem < 0 || click->iSubItem != 2 || !view_.player.received || !view_.player.battleReceived)
             return;
         int slot = static_cast<int>(list_.GetItemData(click->iItem));
@@ -876,6 +1211,7 @@ namespace
             INITCOMMONCONTROLSEX controls{ sizeof(controls), ICC_LISTVIEW_CLASSES | ICC_TAB_CLASSES };
             InitCommonControlsEx(&controls);
             CWinApp::InitInstance();
+            SetThemeAppProperties(0);
             auto window = new MainWindow;
             if (!window->Create(nullptr, L"登录", WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN, CRect(0, 0, 460, 330)))
                 return FALSE;

@@ -549,6 +549,17 @@ bool LoginClient::HandleGamePacket(const std::vector<std::string>& fields)
         return true;
     }
     auto values = SplitLegacy(data);
+    if (data[0] == 'C')
+    {
+        if (values.size() != 5)
+            throw std::runtime_error("Invalid map status");
+        auto status = playerStatus_;
+        status.mapId = ParseNumber(values[0].substr(1));
+        status.mapX = ParseNumber(values[3]);
+        status.mapY = ParseNumber(values[4]);
+        playerStatus_ = status;
+        return true;
+    }
     if (data[0] == 'P')
     {
         auto status = playerStatus_;

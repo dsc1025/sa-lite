@@ -24,6 +24,8 @@ public:
         int maxMp = 0;
         int level = 0;
         int gold = 0;
+        int mapId = -1;
+        int mapX = -1, mapY = -1;
         int vital = 0, strength = 0, toughness = 0, dexterity = 0;
         int experience = 0, nextExperience = 0;
         int attack = 0, defence = 0, quick = 0, charm = 0, luck = 0;
