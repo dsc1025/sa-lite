@@ -150,7 +150,7 @@ namespace Client
                 }
                 Publish(Screen::Game, L"已连接", &client);
                 int targetMap = -1, targetX = -1, targetY = -1;
-                ULONGLONG nextStep = 0;
+                std::wstring movementMessage = L"已连接";
                 for (;;)
                 {
                     int pet, state;
@@ -166,32 +166,32 @@ namespace Client
                             targetX = requestedX_;
                             targetY = requestedY_;
                             requestedMap_ = -1;
+                            movementMessage = L"已连接";
                         }
                     }
                     if (client.PollGame(100))
-                        Publish(Screen::Game, L"已连接", &client);
+                        Publish(Screen::Game, movementMessage, &client);
                     const auto& position = client.GetPlayerStatus();
                     if (targetMap >= 0 && (position.mapId != targetMap || position.inBattle ||
                         (position.mapX == targetX && position.mapY == targetY)))
                         targetMap = -1;
-                    if (targetMap >= 0 && GetTickCount64() >= nextStep)
+                    if (targetMap >= 0)
                     {
-                        int dx = (targetX > position.mapX) - (targetX < position.mapX);
-                        int dy = (targetY > position.mapY) - (targetY < position.mapY);
-                        const int directions[3][3] = { { 7, 0, 1 }, { 6, -1, 2 }, { 5, 4, 3 } };
                         try
                         {
-                            bool moved = client.WalkStep(directions[dy + 1][dx + 1]);
-                            if (!moved || client.GetPlayerStatus().mapId != targetMap)
-                                targetMap = -1;
-                            Publish(Screen::Game, moved ? L"已连接" : L"无法继续通行，移动已停止", &client);
+                            bool moved = client.MoveTo(targetMap, targetX, targetY);
+                            const auto& actual = client.GetPlayerStatus();
+                            movementMessage = moved ? L"已连接" : L"服务器未接受移动：目标 " +
+                                std::to_wstring(targetX) + L"," + std::to_wstring(targetY) + L"，实际 " +
+                                std::to_wstring(actual.mapX) + L"," + std::to_wstring(actual.mapY);
+                            Publish(Screen::Game, movementMessage, &client);
                         }
                         catch (const std::exception& error)
                         {
-                            targetMap = -1;
-                            Publish(Screen::Game, TextEncoding::ErrorText(error.what()), &client);
+                            movementMessage = TextEncoding::ErrorText(error.what());
+                            Publish(Screen::Game, movementMessage, &client);
                         }
-                        nextStep = GetTickCount64() + 2500;
+                        targetMap = -1;
                     }
                     if (pet >= 0)
                     {

@@ -28,7 +28,7 @@ public:
     std::vector<Character> GetCharacters(int timeoutMs = 10000);
     void EnterGame(const Character& character, int timeoutMs = 10000);
     bool PollGame(int timeoutMs = 100);
-    bool WalkStep(int direction, int timeoutMs = 2000);
+    bool MoveTo(int map, int x, int y, int timeoutMs = 2000);
     void SetPetState(int slot, PetState state);
     void LeaveGame(int timeoutMs = 10000);
     const PlayerStatus& GetPlayerStatus() const noexcept;

@@ -19,7 +19,7 @@ namespace Client
     private:
         CRect CanvasRect() const;
 
-        static constexpr double CellScale = 4.0;
+        static constexpr double CellScale = 8.0;
         void Load(const std::filesystem::path& directory, int id);
 
         int id_ = -2, x_ = -1, y_ = -1, width_ = 0, height_ = 0;

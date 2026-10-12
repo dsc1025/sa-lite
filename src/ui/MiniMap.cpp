@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <fstream>
 #include <stdexcept>
 #include <utility>
 
@@ -25,7 +26,7 @@ namespace Client
     {
         x_ = x;
         y_ = y;
-        title_.Format(L"地图 %s (%d)   坐标 %d, %d", name.GetString(), id, x, y);
+        title_.Format(L"%s (%d)   坐标 %d, %d", name.GetString(), id, x, y);
         if (id != id_ || directory != directory_)
         {
             id_ = id;
@@ -117,17 +118,43 @@ namespace Client
     {
         auto map = LoadMap(directory, id);
         const auto& colours = map.colours;
-        const std::array<COLORREF, 16> palette = { RGB(73,86,99), RGB(105,125,141),
-            RGB(98,143,132), RGB(103,166,150), RGB(72,139,104), RGB(119,168,107),
-            RGB(165,190,122), RGB(192,194,139), RGB(80,149,190), RGB(109,176,201),
-            RGB(211,195,149), RGB(193,174,139), RGB(164,153,139), RGB(137,143,150),
-            RGB(166,175,184), RGB(208,215,217) };
+        auto palettePath = directory.parent_path() / L"pal" / L"Palet_1.sap";
+        if (!std::filesystem::exists(palettePath))
+            palettePath = directory.parent_path().parent_path().parent_path() /
+                L"SA2.5" / L"data" / L"pal" / L"Palet_1.sap";
+        std::ifstream paletteFile(palettePath, std::ios::binary | std::ios::ate);
+        if (!paletteFile || paletteFile.tellg() != 708)
+            throw std::runtime_error("找不到有效的小地图配色表 data\\pal\\Palet_1.sap");
+        paletteFile.seekg(0);
+        std::array<unsigned char, 708> raw{};
+        paletteFile.read(reinterpret_cast<char*>(raw.data()), static_cast<std::streamsize>(raw.size()));
+        if (!paletteFile)
+            throw std::runtime_error("小地图配色表读取失败");
+        std::array<COLORREF, 256> palette{};
+        const COLORREF systemColours[] = { RGB(0,0,0), RGB(128,0,0), RGB(0,128,0), RGB(128,128,0),
+            RGB(0,0,128), RGB(128,0,128), RGB(0,128,128), RGB(192,192,192), RGB(192,220,192),
+            RGB(166,202,240), RGB(222,0,0), RGB(255,95,0), RGB(255,255,160), RGB(0,95,210),
+            RGB(80,210,255), RGB(40,225,40) };
+        for (std::size_t i = 0; i < 16; ++i)
+            palette[i] = systemColours[i];
+        for (std::size_t i = 0; i < 224; ++i)
+            palette[16 + i] = RGB(raw[i * 3 + 2], raw[i * 3 + 1], raw[i * 3]);
+        const COLORREF upperColours[] = { RGB(255,251,240), RGB(160,160,164), RGB(128,128,128),
+            RGB(255,0,0), RGB(0,255,0), RGB(255,255,0), RGB(0,0,255), RGB(255,0,255),
+            RGB(0,255,255), RGB(255,255,255), RGB(245,195,150), RGB(225,160,95), RGB(195,125,70),
+            RGB(155,85,30), RGB(70,65,55), RGB(40,35,30) };
+        for (std::size_t i = 0; i < 16; ++i)
+            palette[240 + i] = upperColours[i];
         std::vector<RGBQUAD> pixels(colours.size());
         for (std::size_t i = 0; i < colours.size(); ++i)
         {
-            COLORREF colour = palette[colours[i] / 16];
-            int shade = (colours[i] % 16 - 8) * 2;
-            auto channel = [shade](int value) { return static_cast<BYTE>((std::clamp)(value + shade, 0, 255)); };
+            COLORREF colour = palette[colours[i]];
+            double luminance = GetRValue(colour) * 0.299 + GetGValue(colour) * 0.587 + GetBValue(colour) * 0.114;
+            auto channel = [luminance](int value)
+            {
+                double saturated = luminance + (value - luminance) * 1.1;
+                return static_cast<BYTE>((std::clamp)(static_cast<int>((saturated - 128) * 1.08 + 128), 0, 255));
+            };
             pixels[i] = { channel(GetBValue(colour)), channel(GetGValue(colour)), channel(GetRValue(colour)), 0 };
         }
         width_ = map.width;

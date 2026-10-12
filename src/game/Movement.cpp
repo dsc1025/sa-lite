@@ -18,31 +18,57 @@ void LoginClient::RefreshPosition(ULONGLONG deadline)
     }
 }
 
-bool LoginClient::WalkStep(int direction, int timeoutMs)
+bool LoginClient::MoveTo(int map, int x, int y, int timeoutMs)
 {
-    if (!inGame_ || playerStatus_.mapId < 0 || direction < 0 || direction > 7 || timeoutMs <= 0)
+    if (!inGame_ || map < 0 || x < 0 || y < 0 || timeoutMs <= 0)
         throw std::logic_error("尚未收到有效的地图位置");
     if (playerStatus_.inBattle)
         throw std::runtime_error("战斗中无法移动");
     auto deadline = GetTickCount64() + timeoutMs;
-    int startingMap = playerStatus_.mapId;
     RefreshPosition(deadline);
-    if (playerStatus_.mapId != startingMap)
-        return true;
+    if (playerStatus_.mapId != map)
+        throw std::runtime_error("地图已切换，请重新点击目标位置");
     if (playerStatus_.inBattle)
         throw std::runtime_error("战斗中无法移动");
-    int map = playerStatus_.mapId, x = playerStatus_.mapX, y = playerStatus_.mapY;
-    std::string step(1, static_cast<char>('a' + direction));
-    auto checksum = static_cast<std::uint32_t>(x) + static_cast<std::uint32_t>(y) + 1;
-    connection_.Send(EncodePacket("&;1;" + EncodeInteger(x, sessionKey_) + ";" + EncodeInteger(y, sessionKey_) + ";" +
-        Encode64(step, sessionKey_, -1) + ";" + EncodeInteger(checksum, sessionKey_) + ";#;"), deadline);
+    int startX = playerStatus_.mapX, startY = playerStatus_.mapY;
+    int dx = (x > startX) - (x < startX);
+    int dy = (y > startY) - (y < startY);
+    const int directions[3][3] = { { 7, 0, 1 }, { 6, 0, 2 }, { 5, 4, 3 } };
+    int direction = directions[dy + 1][dx + 1];
+    auto sendMove = [&](int moveX, int moveY, char action)
+    {
+        std::string movement(1, action);
+        auto checksum = static_cast<std::uint32_t>(moveX) + static_cast<std::uint32_t>(moveY) + 1;
+        connection_.Send(EncodePacket("&;0;" + EncodeInteger(moveX, sessionKey_) + ";" +
+            EncodeInteger(moveY, sessionKey_) + ";" + Encode64(movement, sessionKey_, -1) + ";" +
+            EncodeInteger(checksum, sessionKey_) + ";#;"), deadline);
+    };
+    sendMove(x, y, static_cast<char>('A' + direction));
     RefreshPosition(deadline);
     if (playerStatus_.mapId != map)
         return true;
-    if (playerStatus_.mapX == x && playerStatus_.mapY == y)
+    if (playerStatus_.mapX == startX && playerStatus_.mapY == startY && (dx != 0 || dy != 0) &&
+        !playerStatus_.inBattle)
+    {
+        // CHAR_ISWARP blocks coordinate changes until a successful walk clears it.
+        sendMove(startX, startY, static_cast<char>('a' + direction));
+        RefreshPosition(deadline);
+        if (playerStatus_.mapId != map)
+            return true;
+        if (playerStatus_.mapX == startX && playerStatus_.mapY == startY)
+            return false;
+        if (playerStatus_.inBattle)
+            throw std::runtime_error("战斗中无法移动");
+        if (playerStatus_.mapX != x || playerStatus_.mapY != y)
+        {
+            sendMove(x, y, static_cast<char>('A' + direction));
+            RefreshPosition(deadline);
+            if (playerStatus_.mapId != map)
+                return true;
+        }
+    }
+    if (playerStatus_.mapX != x || playerStatus_.mapY != y)
         return false;
-    x = playerStatus_.mapX;
-    y = playerStatus_.mapY;
     SendNumbers("38", { map, x, y, x + 1, y + 1 }, deadline);
     for (;;)
     {

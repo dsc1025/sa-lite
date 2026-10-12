@@ -109,7 +109,7 @@ namespace Client
         bool role = game && mainTabs_.GetCurSel() == 0;
         mainTabs_.ShowWindow(game ? SW_SHOW : SW_HIDE);
         bool mapPage = game && mainTabs_.GetCurSel() == 1;
-        bool shop = game && mainTabs_.GetCurSel() == 3;
+        bool shop = game && mainTabs_.GetCurSel() == 2;
         developing_.ShowWindow(game && !role && !mapPage ? SW_SHOW : SW_HIDE);
         miniMap_.ShowWindow(mapPage ? SW_SHOW : SW_HIDE);
         if (mapPage)
