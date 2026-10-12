@@ -76,6 +76,23 @@ namespace Client
         }
     }
 
+    void MainWindow::RefreshMapPositions()
+    {
+        mapPosition_.ShowDropDown(FALSE);
+        mapPosition_.ResetContent();
+        int selected = mapRegion_.GetCurSel();
+        positionMap_ = selected == CB_ERR ? -1 : static_cast<int>(mapRegion_.GetItemData(selected));
+        auto positions = mapPositions_.find(positionMap_);
+        bool hasPositions = positions != mapPositions_.end() && !positions->second.empty();
+        if (hasPositions)
+            for (const auto& position : positions->second)
+                mapPosition_.AddString(position.name.c_str());
+        else
+            mapPosition_.AddString(L"暂无地点");
+        mapPosition_.SetCurSel(0);
+        mapPosition_.EnableWindow(hasPositions);
+    }
+
     void MainWindow::Refresh()
     {
         refreshing_ = true;
@@ -112,11 +129,29 @@ namespace Client
         bool shop = game && mainTabs_.GetCurSel() == 2;
         developing_.ShowWindow(game && !role && !mapPage ? SW_SHOW : SW_HIDE);
         miniMap_.ShowWindow(mapPage ? SW_SHOW : SW_HIDE);
+        if (!mapPage)
+        {
+            mapPosition_.ShowDropDown(FALSE);
+            mapRegion_.ShowDropDown(FALSE);
+        }
+        mapPosition_.ShowWindow(mapPage ? SW_SHOW : SW_HIDE);
+        mapRegion_.ShowWindow(mapPage ? SW_SHOW : SW_HIDE);
         if (mapPage)
         {
-            auto name = mapNames_.find(view_.player.mapId);
-            miniMap_.Update(mapDirectory_, view_.player.mapId, view_.player.mapX, view_.player.mapY,
-                name != mapNames_.end() ? CString(name->second.c_str()) : Number(view_.player.mapId));
+            miniMap_.Update(mapDirectory_, view_.player.mapId, view_.player.mapX, view_.player.mapY);
+            if (regionMap_ != view_.player.mapId)
+            {
+                regionMap_ = view_.player.mapId;
+                mapRegion_.ShowDropDown(FALSE);
+                mapRegion_.SetCurSel(0);
+                for (int i = 0; i < mapRegion_.GetCount(); ++i)
+                    if (static_cast<int>(mapRegion_.GetItemData(i)) == regionMap_)
+                    {
+                        mapRegion_.SetCurSel(i);
+                        break;
+                    }
+                RefreshMapPositions();
+            }
         }
         tabs_.ShowWindow(role ? SW_SHOW : SW_HIDE);
         shopTabs_.ShowWindow(shop ? SW_SHOW : SW_HIDE);

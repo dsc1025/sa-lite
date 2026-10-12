@@ -3,6 +3,7 @@
 #include <afxwin.h>
 #include <afxcmn.h>
 #include "MiniMap.h"
+#include "../map/MapData.h"
 #include "../session/GameSession.h"
 #include <unordered_map>
 
@@ -41,12 +42,15 @@ namespace Client
         afx_msg void OnPetClick(NMHDR* header, LRESULT* result);
         afx_msg void OnPetState();
         afx_msg void OnPetStateClose();
+        afx_msg void OnMapPosition();
+        afx_msg void OnMapRegion();
         DECLARE_MESSAGE_MAP()
 
     private:
         void Layout();
         void Refresh();
         void RefreshDetail();
+        void RefreshMapPositions();
         void AddRow(const wchar_t* name, const CString& value);
         void LoadLogin();
         void SaveLogin();
@@ -56,6 +60,10 @@ namespace Client
         CStatic summary_, footer_, labels_[4], developing_;
         CString configPath_;
         std::unordered_map<int, std::wstring> mapNames_;
+        std::unordered_map<int, std::vector<MapPosition>> mapPositions_;
+        CComboBox mapPosition_, mapRegion_;
+        int positionMap_ = -2;
+        int regionMap_ = -2;
         std::filesystem::path mapDirectory_;
         MiniMap miniMap_;
         CEdit address_, port_, account_, password_;

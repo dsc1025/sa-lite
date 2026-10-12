@@ -9,7 +9,8 @@
 
 namespace Client
 {
-    std::unordered_map<int, std::wstring> LoadMapNames(std::filesystem::path& mapDirectory)
+    std::unordered_map<int, std::wstring> LoadMapNames(std::filesystem::path& mapDirectory,
+        std::unordered_map<int, std::vector<MapPosition>>& positions)
     {
         std::vector<wchar_t> executable(32768);
         DWORD length = GetModuleFileNameW(nullptr, executable.data(), static_cast<DWORD>(executable.size()));
@@ -92,15 +93,17 @@ namespace Client
         std::vector<std::string> header, row;
         if (!readRow(header))
             throw std::runtime_error("地图索引为空");
-        std::size_t idColumn = header.size(), nameColumn = header.size();
+        std::size_t idColumn = header.size(), nameColumn = header.size(), posColumn = header.size();
         for (std::size_t i = 0; i < header.size(); ++i)
         {
             if (header[i] == "map_id") idColumn = i;
             if (header[i] == "map_name") nameColumn = i;
+            if (header[i] == "pos") posColumn = i;
         }
         if (idColumn == header.size() || nameColumn == header.size())
             throw std::runtime_error("地图索引缺少 map_id 或 map_name 列");
         std::unordered_map<int, std::wstring> names;
+        std::unordered_map<int, std::vector<MapPosition>> loadedPositions;
         while (readRow(row))
         {
             if (row.size() == 1 && row[0].empty())
@@ -123,7 +126,36 @@ namespace Client
             MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, name.data(),
                 static_cast<int>(name.size()), buffer, count);
             names.emplace(id, text);
+            if (posColumn != header.size() && !row[posColumn].empty())
+            {
+                const auto& value = row[posColumn];
+                std::size_t start = 0;
+                while (start < value.size())
+                {
+                    auto end = value.find('|', start);
+                    auto entry = value.substr(start, end == std::string::npos ? end : end - start);
+                    auto first = entry.find(','), second = entry.find(',', first == std::string::npos ? first : first + 1);
+                    if (first == std::string::npos || second == std::string::npos)
+                        throw std::runtime_error("地图索引的 pos 格式无效");
+                    auto xText = entry.substr(0, first), yText = entry.substr(first + 1, second - first - 1);
+                    if (xText.empty() || yText.empty() || xText.find_first_not_of("0123456789") != std::string::npos ||
+                        yText.find_first_not_of("0123456789") != std::string::npos)
+                        throw std::runtime_error("地图索引的 pos 坐标无效");
+                    auto label = entry.substr(second + 1);
+                    int labelCount = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, label.data(),
+                        static_cast<int>(label.size()), nullptr, 0);
+                    if (labelCount == 0)
+                        throw std::runtime_error("地图索引的 pos 名称无效");
+                    std::wstring labelText(labelCount, L'\0');
+                    MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, label.data(),
+                        static_cast<int>(label.size()), labelText.data(), labelCount);
+                    loadedPositions[id].push_back({ std::stoi(xText), std::stoi(yText), std::move(labelText) });
+                    if (end == std::string::npos) break;
+                    start = end + 1;
+                }
+            }
         }
+        positions = std::move(loadedPositions);
         return names;
     }
 

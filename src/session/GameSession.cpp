@@ -172,8 +172,8 @@ namespace Client
                     if (client.PollGame(100))
                         Publish(Screen::Game, movementMessage, &client);
                     const auto& position = client.GetPlayerStatus();
-                    if (targetMap >= 0 && (position.mapId != targetMap || position.inBattle ||
-                        (position.mapX == targetX && position.mapY == targetY)))
+                    if (targetMap >= 0 && (position.inBattle ||
+                        (position.mapId == targetMap && position.mapX == targetX && position.mapY == targetY)))
                         targetMap = -1;
                     if (targetMap >= 0)
                     {
@@ -209,7 +209,7 @@ namespace Client
             }
             if (entered)
             {
-                Publish(Screen::Closing, L"正在退出并等待服务器保存…");
+                Publish(Screen::Closing, L"正在原地登出…");
                 client.LeaveGame();
             }
             Publish(Screen::Login, L"连接已关闭");

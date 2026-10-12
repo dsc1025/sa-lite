@@ -256,18 +256,5 @@ void LoginClient::LeaveGame(int timeoutMs)
 {
     if (!inGame_ || timeoutMs <= 0)
         throw std::logic_error("Logout requires a character login");
-    try
-    {
-        auto deadline = GetTickCount64() + timeoutMs;
-        connection_.Send(EncodePacket("&;81;" + EncodeInteger(0, sessionKey_) + ";#;"), deadline);
-        auto reply = WaitReply("82", deadline);
-        if (reply[0] != "successful")
-            throw std::runtime_error("Character logout failed: " + reply[1]);
-        Disconnect();
-    }
-    catch (...)
-    {
-        Disconnect();
-        throw;
-    }
+    Disconnect();
 }

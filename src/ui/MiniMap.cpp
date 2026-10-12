@@ -22,11 +22,11 @@ namespace Client
         return x >= 0 && x < width_ && y >= 0 && y < height_;
     }
 
-    void MiniMap::Update(const std::filesystem::path& directory, int id, int x, int y, const CString& name)
+    void MiniMap::Update(const std::filesystem::path& directory, int id, int x, int y)
     {
         x_ = x;
         y_ = y;
-        title_.Format(L"%s (%d)   坐标 %d, %d", name.GetString(), id, x, y);
+        title_.Format(L"坐标 %d, %d", x, y);
         if (id != id_ || directory != directory_)
         {
             id_ = id;
@@ -46,6 +46,7 @@ namespace Client
     {
         CDC dc;
         dc.Attach(item->hDC);
+        auto oldFont = dc.SelectObject(GetFont());
         CRect area(item->rcItem);
         dc.FillSolidRect(area, RGB(255, 255, 255));
         dc.SetBkMode(TRANSPARENT);
@@ -53,6 +54,7 @@ namespace Client
         CRect heading = area;
         heading.DeflateRect(8, 6);
         heading.bottom = heading.top + 24;
+        heading.left = 404;
         dc.DrawText(title_, heading, DT_LEFT | DT_SINGLELINE | DT_END_ELLIPSIS);
         area = CanvasRect();
         if (pixels_.empty())
@@ -98,6 +100,7 @@ namespace Client
                 dc.SelectObject(oldBrush);
             }
         }
+        dc.SelectObject(oldFont);
         dc.Detach();
     }
 

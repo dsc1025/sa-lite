@@ -10,8 +10,7 @@ namespace Client
     {
     public:
         bool GetTarget(CPoint point, int& x, int& y) const;
-
-        void Update(const std::filesystem::path& directory, int id, int x, int y, const CString& name);
+        void Update(const std::filesystem::path& directory, int id, int x, int y);
 
     protected:
         void DrawItem(LPDRAWITEMSTRUCT item) override;

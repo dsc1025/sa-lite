@@ -8,7 +8,7 @@
 namespace Client
 {
     constexpr UINT SessionMessage = WM_APP + 1;
-    enum ControlId { LoginButton = 100, EnterButton, ExitButton, Tabs, List, Detail, PetStateCombo, MainTabs = 120, ShopTabs };
+    enum ControlId { LoginButton = 100, EnterButton, ExitButton, Tabs, List, Detail, PetStateCombo, MainTabs = 120, ShopTabs, MapPositionCombo, MapRegionCombo };
 
     BEGIN_MESSAGE_MAP(MainWindow, CFrameWnd)
         ON_WM_CREATE()
@@ -28,6 +28,8 @@ namespace Client
         ON_CBN_SELENDOK(PetStateCombo, &MainWindow::OnPetState)
         ON_CBN_SELENDCANCEL(PetStateCombo, &MainWindow::OnPetStateClose)
         ON_CBN_KILLFOCUS(PetStateCombo, &MainWindow::OnPetStateClose)
+        ON_CBN_SELENDOK(MapPositionCombo, &MainWindow::OnMapPosition)
+        ON_CBN_SELENDOK(MapRegionCombo, &MainWindow::OnMapRegion)
     END_MESSAGE_MAP()
 
     int MainWindow::OnCreate(LPCREATESTRUCT create)
@@ -36,7 +38,7 @@ namespace Client
             return -1;
         try
         {
-            mapNames_ = LoadMapNames(mapDirectory_);
+            mapNames_ = LoadMapNames(mapDirectory_, mapPositions_);
         }
         catch (const std::exception& error)
         {
@@ -69,7 +71,24 @@ namespace Client
             mainTabs_.InsertItem(i, mainCaptions[i]);
         mainTabs_.SetPadding(CSize(12, 10));
         developing_.Create(L"开发中", WS_CHILD | SS_CENTER | SS_CENTERIMAGE, empty, this);
-        miniMap_.Create(L"", WS_CHILD | SS_OWNERDRAW | SS_NOTIFY, empty, this);
+        miniMap_.Create(L"", WS_CHILD | WS_CLIPSIBLINGS | SS_OWNERDRAW | SS_NOTIFY, empty, this);
+        mapPosition_.Create(WS_CHILD | WS_TABSTOP | WS_VSCROLL | CBS_DROPDOWNLIST,
+            empty, this, MapPositionCombo);
+        mapRegion_.Create(WS_CHILD | WS_TABSTOP | WS_VSCROLL | CBS_DROPDOWNLIST,
+            empty, this, MapRegionCombo);
+        const int regions[] = { 500, 5540, 5509, 130, 300, 5100, 5000, 3000,
+            200, 4000, 3400, 3100, 3200, 3300, 10920, 1300, 1400, 1100, 1200, 2000 };
+        for (int id : regions)
+        {
+            auto name = mapNames_.find(id);
+            if (name != mapNames_.end())
+            {
+                int item = mapRegion_.AddString(name->second.c_str());
+                if (item != CB_ERR && item != CB_ERRSPACE)
+                    mapRegion_.SetItemData(item, id);
+            }
+        }
+        mapRegion_.SetCurSel(0);
         tabs_.Create(WS_CHILD | WS_TABSTOP | WS_CLIPSIBLINGS, empty, this, Tabs);
         tabs_.InsertItem(0, L"属性");
         tabs_.InsertItem(1, L"宠物");
@@ -150,6 +169,10 @@ namespace Client
         mainPage.DeflateRect(6, 6);
         developing_.MoveWindow(mainPage);
         miniMap_.MoveWindow(mainPage);
+        int regionLeft = mainPage.left + 8;
+        mapRegion_.SetWindowPos(&CWnd::wndTop, regionLeft, mainPage.top + 4, 180, 300, SWP_NOACTIVATE);
+        mapPosition_.SetWindowPos(&CWnd::wndTop, regionLeft + 188,
+            mainPage.top + 4, 200, 220, SWP_NOACTIVATE);
         tabs_.MoveWindow(mainPage);
         shopTabs_.MoveWindow(mainPage);
         CRect page = mainPage;
@@ -262,6 +285,10 @@ namespace Client
 
     BOOL MainWindow::PreTranslateMessage(MSG* message)
     {
+        if ((message->hwnd == mapPosition_.GetSafeHwnd() || message->hwnd == mapRegion_.GetSafeHwnd()) &&
+            message->message == WM_KEYDOWN &&
+            (message->wParam == VK_RETURN || message->wParam == VK_ESCAPE))
+            return CFrameWnd::PreTranslateMessage(message);
         if (message->message == WM_LBUTTONDOWN && message->hwnd == miniMap_.GetSafeHwnd() &&
             view_.screen == Screen::Game && mainTabs_.GetCurSel() == 1)
         {
@@ -411,6 +438,24 @@ namespace Client
         if (!session_.RequestPetState(slot, state))
             return;
         footer_.SetWindowText(L"正在设置宠物状态…");
+    }
+
+    void MainWindow::OnMapPosition()
+    {
+        int selected = mapPosition_.GetCurSel();
+        auto positions = mapPositions_.find(positionMap_);
+        if (view_.screen != Screen::Game || mainTabs_.GetCurSel() != 1 ||
+            positions == mapPositions_.end() || selected < 0 ||
+            selected >= static_cast<int>(positions->second.size()))
+            return;
+        const auto& target = positions->second[selected];
+        session_.RequestMove(positionMap_, target.x, target.y);
+    }
+
+    void MainWindow::OnMapRegion()
+    {
+        RefreshMapPositions();
+        OnMapPosition();
     }
 
     void MainWindow::OnPetStateClose()

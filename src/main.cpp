@@ -242,7 +242,7 @@ int main()
                 itemsShown = true;
             }
         }
-        std::cout << "正在退出并等待服务器保存角色…\n";
+        std::cout << "正在原地登出…\n";
         client.LeaveGame();
         std::cout << "角色已退出。\n";
     }
