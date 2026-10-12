@@ -6,11 +6,21 @@
 #include <stdexcept>
 #include <thread>
 
+#pragma comment(linker, "/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
+
 namespace
 {
     constexpr UINT SessionMessage = WM_APP + 1;
-    enum ControlId { LoginButton = 100, EnterButton, ExitButton, Tabs, List, Detail };
+    enum ControlId { LoginButton = 100, EnterButton, ExitButton, Tabs, List, Detail, PetStateCombo };
     enum class Screen { Login, Connecting, Characters, Entering, Game, Closing };
+    const wchar_t* PetStateNames[] = { L"等待", L"战斗", L"骑乘" };
+
+    int PetStateIndex(const LoginClient::PlayerStatus& player, int slot)
+    {
+        if (player.ridePet == slot) return static_cast<int>(LoginClient::PetState::Ride);
+        if (player.battlePet == slot) return static_cast<int>(LoginClient::PetState::Battle);
+        return static_cast<int>(LoginClient::PetState::Standby);
+    }
 
     CString LegacyText(const std::string& text)
     {
@@ -82,8 +92,8 @@ namespace
     public:
         MainWindow()
         {
-            background_.CreateSolidBrush(RGB(246, 247, 249));
-            white_.CreateSolidBrush(RGB(255, 255, 255));
+            background_.CreateSolidBrush(GetSysColor(COLOR_BTNFACE));
+            white_.CreateSolidBrush(GetSysColor(COLOR_WINDOW));
         }
 
         ~MainWindow() override
@@ -107,6 +117,9 @@ namespace
         afx_msg LRESULT OnSession(WPARAM, LPARAM);
         afx_msg void OnTab(NMHDR*, LRESULT* result);
         afx_msg void OnSelect(NMHDR*, LRESULT* result);
+        afx_msg void OnPetClick(NMHDR* header, LRESULT* result);
+        afx_msg void OnPetState();
+        afx_msg void OnPetStateClose();
         DECLARE_MESSAGE_MAP()
 
     private:
@@ -114,17 +127,22 @@ namespace
         void Refresh();
         void RefreshDetail();
         void AddRow(const wchar_t* name, const CString& value);
+        void LoadLogin();
+        void SaveLogin();
         void StopWorker();
         void Publish(Screen screen, const CString& message, const LoginClient* client = nullptr);
         void RunSession(std::string address, std::uint16_t port, std::string account, std::string password);
 
-        CFont font_, headingFont_;
+        CFont font_;
         CBrush background_, white_;
-        CStatic heading_, summary_, footer_, description_, labels_[4];
+        CStatic summary_, footer_, labels_[4];
+        CString configPath_;
         CEdit address_, port_, account_, password_;
         CButton login_, enter_, exit_;
         CTabCtrl tabs_;
         CListCtrl list_, detail_;
+        CComboBox petState_;
+        int editingPet_ = -1, requestedPet_ = -1, requestedPetState_ = 0;
         SessionView view_, shared_;
         std::mutex mutex_;
         std::condition_variable wake_;
@@ -148,20 +166,21 @@ namespace
         ON_MESSAGE(SessionMessage, &MainWindow::OnSession)
         ON_NOTIFY(TCN_SELCHANGE, Tabs, &MainWindow::OnTab)
         ON_NOTIFY(LVN_ITEMCHANGED, List, &MainWindow::OnSelect)
+        ON_NOTIFY(NM_CLICK, List, &MainWindow::OnPetClick)
+        ON_CBN_SELENDOK(PetStateCombo, &MainWindow::OnPetState)
+        ON_CBN_SELENDCANCEL(PetStateCombo, &MainWindow::OnPetStateClose)
+        ON_CBN_KILLFOCUS(PetStateCombo, &MainWindow::OnPetStateClose)
     END_MESSAGE_MAP()
 
     int MainWindow::OnCreate(LPCREATESTRUCT create)
     {
         if (CFrameWnd::OnCreate(create) == -1)
             return -1;
-        font_.CreatePointFont(100, L"Microsoft YaHei UI");
-        headingFont_.CreatePointFont(180, L"Microsoft YaHei UI");
+        font_.CreatePointFont(90, L"Microsoft YaHei UI");
         CRect empty(0, 0, 0, 0);
-        heading_.Create(L"石器", WS_CHILD | WS_VISIBLE, empty, this);
         summary_.Create(L"", WS_CHILD | WS_VISIBLE, empty, this);
         footer_.Create(L"", WS_CHILD | WS_VISIBLE, empty, this);
-        description_.Create(L"", WS_CHILD | WS_VISIBLE, empty, this);
-        const wchar_t* captions[] = { L"服务器 IPv4", L"端口", L"账号", L"密码" };
+        const wchar_t* captions[] = { L"服务器", L"端口", L"账号", L"密码" };
         for (int i = 0; i < 4; ++i)
             labels_[i].Create(captions[i], WS_CHILD, empty, this);
         DWORD editStyle = WS_CHILD | WS_TABSTOP | WS_BORDER | ES_AUTOHSCROLL;
@@ -177,13 +196,19 @@ namespace
         login_.Create(L"登录", WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, empty, this, LoginButton);
         enter_.Create(L"进入游戏", WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, empty, this, EnterButton);
         exit_.Create(L"退出", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, empty, this, ExitButton);
-        tabs_.Create(WS_CHILD | WS_TABSTOP | TCS_FLATBUTTONS | TCS_BUTTONS, empty, this, Tabs);
+        tabs_.Create(WS_CHILD | WS_TABSTOP | WS_CLIPSIBLINGS, empty, this, Tabs);
         tabs_.InsertItem(0, L"人物");
         tabs_.InsertItem(1, L"宠物");
         tabs_.InsertItem(2, L"道具");
-        DWORD listStyle = WS_CHILD | WS_TABSTOP | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS;
+        DWORD listStyle = WS_CHILD | WS_TABSTOP | WS_CLIPSIBLINGS | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS;
         list_.Create(listStyle, empty, this, List);
         detail_.Create(listStyle, empty, this, Detail);
+        petState_.Create(WS_CHILD | WS_TABSTOP | WS_VSCROLL | CBS_DROPDOWNLIST, empty, this, PetStateCombo);
+        for (const wchar_t* state : PetStateNames)
+            petState_.AddString(state);
+        tabs_.SetWindowPos(&CWnd::wndBottom, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        list_.ModifyStyleEx(0, WS_EX_CLIENTEDGE);
+        detail_.ModifyStyleEx(0, WS_EX_CLIENTEDGE);
         list_.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
         detail_.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
         list_.InsertColumn(0, L"名称", LVCFMT_LEFT, 180);
@@ -192,11 +217,12 @@ namespace
         detail_.InsertColumn(1, L"数值", LVCFMT_LEFT, 230);
         list_.SetBkColor(RGB(255, 255, 255));
         detail_.SetBkColor(RGB(255, 255, 255));
-        list_.SetTextColor(RGB(40, 45, 55));
-        detail_.SetTextColor(RGB(40, 45, 55));
+        list_.SetTextColor(GetSysColor(COLOR_WINDOWTEXT));
+        detail_.SetTextColor(GetSysColor(COLOR_WINDOWTEXT));
         for (CWnd* child = GetWindow(GW_CHILD); child; child = child->GetNextWindow())
             child->SetFont(&font_);
-        heading_.SetFont(&headingFont_);
+        try { LoadLogin(); }
+        catch (const std::exception& error) { view_.message = ErrorText(error.what()); }
         Refresh();
         return 0;
     }
@@ -204,7 +230,7 @@ namespace
     void MainWindow::OnSize(UINT type, int width, int height)
     {
         CFrameWnd::OnSize(type, width, height);
-        if (heading_.GetSafeHwnd())
+        if (detail_.GetSafeHwnd())
             Layout();
     }
 
@@ -212,37 +238,56 @@ namespace
     {
         CFrameWnd::OnGetMinMaxInfo(info);
         bool login = view_.screen == Screen::Login || view_.screen == Screen::Connecting;
-        info->ptMinTrackSize = CPoint(login ? 520 : 720, 580);
+        bool characters = view_.screen == Screen::Characters || view_.screen == Screen::Entering;
+        info->ptMinTrackSize = CPoint(login || characters ? 460 : 640, login || characters ? 330 : 480);
     }
 
     void MainWindow::Layout()
     {
+        OnPetStateClose();
         CRect area;
         GetClientRect(&area);
         int width = area.Width(), height = area.Height();
-        heading_.MoveWindow(32, 24, width - 180, 44);
-        summary_.MoveWindow(54, 80, width - 90, 28);
-        exit_.MoveWindow(width - 112, 30, 80, 32);
-        footer_.MoveWindow(32, height - 38, width - 64, 28);
-        int left = (width - 340) / 2;
+        bool login = view_.screen == Screen::Login || view_.screen == Screen::Connecting;
+        summary_.MoveWindow(16, 16, width - 128, 24);
+        footer_.MoveWindow(16, height - 30, width - 32, 24);
+        int left = (width - 360) / 2;
         CEdit* edits[] = { &address_, &port_, &account_, &password_ };
         for (int i = 0; i < 4; ++i)
         {
-            int top = 148 + i * 68;
-            labels_[i].MoveWindow(left, top, 340, 24);
-            edits[i]->MoveWindow(left, top + 25, 340, 32);
+            int top = 30 + i * 42;
+            labels_[i].MoveWindow(left, top + 4, 80, 24);
+            edits[i]->MoveWindow(left + 88, top, 272, 26);
         }
-        login_.MoveWindow(left, 434, 340, 38);
-        enter_.MoveWindow(width - 182, height - 92, 150, 38);
-        tabs_.MoveWindow(32, 120, width - 64, 38);
+        login_.MoveWindow(left + 88, 208, 100, 30);
+        exit_.MoveWindow(login ? left + 200 : width - 116, login ? 208 : 12, 100, 30);
+        enter_.MoveWindow(width - 146, height - 76, 130, 30);
+        tabs_.MoveWindow(16, 54, width - 32, height - 92);
+        CRect page(16, 54, width - 16, height - 38);
+        tabs_.AdjustRect(FALSE, &page);
+        page.DeflateRect(6, 6);
         bool characters = view_.screen == Screen::Characters || view_.screen == Screen::Entering;
         bool player = tabs_.GetCurSel() == 0;
-        list_.MoveWindow(32, characters ? 134 : 172, characters ? width - 64 : 280,
-            characters ? height - 246 : height - 242);
-        detail_.MoveWindow(player ? 32 : 332, 172, player ? width - 64 : width - 364, height - 326);
-        description_.MoveWindow(player ? 32 : 332, height - 138, player ? width - 64 : width - 364, 82);
-        detail_.SetColumnWidth(1, (player ? width - 64 : width - 364) - 174);
-        list_.SetColumnWidth(0, characters ? width - 164 : 190);
+        list_.MoveWindow(characters ? 16 : page.left, characters ? 54 : page.top,
+            characters ? width - 32 : 220, characters ? height - 146 : page.Height());
+        detail_.MoveWindow(player ? page.left : page.left + 236, page.top,
+            player ? page.Width() : page.Width() - 236, page.Height());
+        if (!login)
+        {
+            CRect detailArea, listArea;
+            detail_.GetClientRect(&detailArea);
+            list_.GetClientRect(&listArea);
+            int detailWidth = detailArea.Width() - 150 - GetSystemMetrics(SM_CXVSCROLL);
+            bool petColumns = tabs_.GetCurSel() == 1 && list_.GetHeaderCtrl()->GetItemCount() == 3;
+            int listWidth = listArea.Width() - (petColumns ? 105 : 70) - GetSystemMetrics(SM_CXVSCROLL);
+            list_.SetColumnWidth(1, petColumns ? 45 : 70);
+            if (petColumns)
+                list_.SetColumnWidth(2, 60);
+            detail_.SetColumnWidth(1, detailWidth > 0 ? detailWidth : 0);
+            list_.SetColumnWidth(0, listWidth > 0 ? listWidth : 0);
+            detail_.ShowScrollBar(SB_HORZ, FALSE);
+            list_.ShowScrollBar(SB_HORZ, FALSE);
+        }
         Invalidate(FALSE);
     }
 
@@ -251,23 +296,14 @@ namespace
         CPaintDC dc(this);
         CRect area;
         GetClientRect(&area);
-        dc.FillSolidRect(area, RGB(246, 247, 249));
-        COLORREF color = view_.screen == Screen::Game || view_.screen == Screen::Characters
-            ? RGB(45, 160, 105) : RGB(160, 166, 176);
-        CBrush dot(color);
-        auto oldBrush = dc.SelectObject(&dot);
-        auto oldPen = dc.SelectStockObject(NULL_PEN);
-        dc.Ellipse(34, 87, 43, 96);
-        dc.SelectObject(oldPen);
-        dc.SelectObject(oldBrush);
+        dc.FillSolidRect(area, GetSysColor(COLOR_BTNFACE));
     }
 
     HBRUSH MainWindow::OnCtlColor(CDC* dc, CWnd* window, UINT type)
     {
         CFrameWnd::OnCtlColor(dc, window, type);
-        dc->SetTextColor(window == &heading_ ? RGB(40, 100, 210)
-            : window == &footer_ ? RGB(100, 108, 122) : RGB(40, 45, 55));
-        dc->SetBkColor(type == CTLCOLOR_EDIT ? RGB(255, 255, 255) : RGB(246, 247, 249));
+        dc->SetTextColor(GetSysColor(type == CTLCOLOR_EDIT ? COLOR_WINDOWTEXT : COLOR_BTNTEXT));
+        dc->SetBkColor(GetSysColor(type == CTLCOLOR_EDIT ? COLOR_WINDOW : COLOR_BTNFACE));
         return static_cast<HBRUSH>((type == CTLCOLOR_EDIT ? white_ : background_).GetSafeHandle());
     }
 
@@ -277,17 +313,53 @@ namespace
         detail_.SetItemText(row, 1, value);
     }
 
+    void MainWindow::LoadLogin()
+    {
+        std::vector<wchar_t> path(32768);
+        DWORD length = GetModuleFileNameW(nullptr, path.data(), static_cast<DWORD>(path.size()));
+        if (length == 0 || length >= path.size())
+            throw std::runtime_error("无法获取程序目录，不能读取登录配置");
+        CString executable(path.data(), static_cast<int>(length));
+        int separator = executable.ReverseFind(L'\\');
+        if (separator < 0)
+            throw std::runtime_error("无法获取程序目录，不能读取登录配置");
+        configPath_ = executable.Left(separator + 1) + L"login.ini";
+        wchar_t value[256];
+        GetPrivateProfileStringW(L"Login", L"Server", L"", value, 256, configPath_);
+        address_.SetWindowText(value);
+        GetPrivateProfileStringW(L"Login", L"Port", L"9065", value, 256, configPath_);
+        port_.SetWindowText(value);
+        GetPrivateProfileStringW(L"Login", L"Account", L"", value, 256, configPath_);
+        account_.SetWindowText(value);
+        GetPrivateProfileStringW(L"Login", L"Password", L"", value, 256, configPath_);
+        password_.SetWindowText(value);
+    }
+
+    void MainWindow::SaveLogin()
+    {
+        if (configPath_.IsEmpty())
+            throw std::runtime_error("无法获取程序目录，不能保存登录配置");
+        const wchar_t* keys[] = { L"Server", L"Port", L"Account", L"Password" };
+        CEdit* edits[] = { &address_, &port_, &account_, &password_ };
+        for (int i = 0; i < 4; ++i)
+        {
+            CString value;
+            edits[i]->GetWindowText(value);
+            if (!WritePrivateProfileStringW(L"Login", keys[i], value, configPath_))
+                throw std::runtime_error("无法保存 exe 同目录的 login.ini，请检查目录写入权限");
+        }
+    }
+
     void MainWindow::RefreshDetail()
     {
         detail_.DeleteAllItems();
-        description_.SetWindowText(L"");
         int tab = tabs_.GetCurSel();
         if (tab == 0)
         {
             const auto& p = view_.player;
             if (!p.received)
             {
-                description_.SetWindowText(L"正在等待人物数据…");
+                AddRow(L"状态", L"正在等待人物数据…");
                 return;
             }
             AddRow(L"等级 / 转生", Ratio(p.level, p.rebirth));
@@ -307,13 +379,13 @@ namespace
         {
             if (tab == 2 && !view_.hasItems)
             {
-                description_.SetWindowText(L"正在等待道具数据…");
+                AddRow(L"状态", L"正在等待道具数据…");
                 return;
             }
             int selected = list_.GetNextItem(-1, LVNI_SELECTED);
             if (selected < 0)
             {
-                description_.SetWindowText(tab == 2 ? L"背包与装备为空" : L"选择一个宠物查看属性");
+                AddRow(L"状态", tab == 2 ? L"背包与装备为空" : L"选择一个宠物查看属性");
                 return;
             }
             auto slot = static_cast<std::size_t>(list_.GetItemData(selected));
@@ -322,7 +394,7 @@ namespace
                 const auto& p = view_.pets[slot];
                 if (!p.received || !p.present)
                 {
-                    description_.SetWindowText(p.received ? L"这个宠物栏位为空" : L"正在等待宠物数据…");
+                    AddRow(L"状态", p.received ? L"这个宠物栏位为空" : L"正在等待宠物数据…");
                     return;
                 }
                 AddRow(L"名称", LegacyText(p.name)); AddRow(L"昵称", LegacyText(p.nickname));
@@ -339,7 +411,7 @@ namespace
             {
                 const auto& item = view_.items[slot];
                 AddRow(L"名称", LegacyText(item.name)); AddRow(L"使用等级", Number(item.level));
-                description_.SetWindowText(LegacyText(item.description));
+                AddRow(L"说明", LegacyText(item.description));
             }
         }
     }
@@ -350,16 +422,16 @@ namespace
         bool login = view_.screen == Screen::Login || view_.screen == Screen::Connecting;
         bool characters = view_.screen == Screen::Characters || view_.screen == Screen::Entering;
         bool game = view_.screen == Screen::Game;
-        if ((characters || game) && !expanded_)
+        if (game && !expanded_)
         {
             expanded_ = true;
-            SetWindowPos(nullptr, 0, 0, 1024, 768, SWP_NOMOVE | SWP_NOZORDER);
+            SetWindowPos(nullptr, 0, 0, 640, 480, SWP_NOMOVE | SWP_NOZORDER);
             CenterWindow();
         }
-        else if (login && expanded_)
+        else if ((login || characters) && expanded_)
         {
             expanded_ = false;
-            SetWindowPos(nullptr, 0, 0, 520, 610, SWP_NOMOVE | SWP_NOZORDER);
+            SetWindowPos(nullptr, 0, 0, 460, 330, SWP_NOMOVE | SWP_NOZORDER);
             CenterWindow();
         }
         for (auto& label : labels_)
@@ -377,9 +449,10 @@ namespace
         tabs_.ShowWindow(game ? SW_SHOW : SW_HIDE);
         list_.ShowWindow(characters || (game && tabs_.GetCurSel() != 0) ? SW_SHOW : SW_HIDE);
         detail_.ShowWindow(game ? SW_SHOW : SW_HIDE);
-        description_.ShowWindow(game ? SW_SHOW : SW_HIDE);
         exit_.EnableWindow(view_.screen != Screen::Closing);
-        heading_.SetWindowText(login ? L"石器 · 登录" : characters ? L"选择角色" : L"石器");
+        exit_.SetWindowText(game ? L"退出登录" : L"退出");
+        SetWindowText(login ? L"登录" : characters ? L"选择角色" : L"石器");
+        summary_.ShowWindow(login ? SW_HIDE : SW_SHOW);
         footer_.SetWindowText(view_.message);
         CString summary = game ? view_.characterName : CString();
         if (game && view_.player.received)
@@ -389,7 +462,13 @@ namespace
                 view_.player.hp, view_.player.maxHp, view_.player.mp, view_.player.maxMp, view_.player.gold);
             summary += stats;
         }
-        summary_.SetWindowText(summary.IsEmpty() ? L"石器放置" : summary);
+        summary_.SetWindowText(characters ? CString(L"选择角色后进入游戏") : summary);
+        bool petColumns = game && tabs_.GetCurSel() == 1;
+        int columns = list_.GetHeaderCtrl()->GetItemCount();
+        if (petColumns && columns == 2)
+            list_.InsertColumn(2, L"状态", LVCFMT_LEFT, 60);
+        else if (!petColumns && columns == 3)
+            list_.DeleteColumn(2);
         int previous = list_.GetNextItem(-1, LVNI_SELECTED);
         DWORD_PTR previousSlot = previous >= 0 ? list_.GetItemData(previous) : 0;
         list_.DeleteAllItems();
@@ -407,10 +486,17 @@ namespace
             for (std::size_t i = 0; i < view_.pets.size(); ++i)
             {
                 const auto& pet = view_.pets[i];
-                CString name = pet.present ? LegacyText(pet.nickname.empty() ? pet.name : pet.nickname) : L"空栏位";
+                CString name = pet.present ? LegacyText(pet.nickname.empty() ? pet.name : pet.nickname) : CString(L"空栏位");
                 if (!pet.received) name = L"等待数据…";
                 int row = list_.InsertItem(static_cast<int>(i), name);
                 list_.SetItemText(row, 1, pet.present ? Number(pet.level) : CString());
+                CString state;
+                if (pet.received && pet.present)
+                {
+                    int index = PetStateIndex(view_.player, static_cast<int>(i));
+                    state = PetStateNames[index];
+                }
+                list_.SetItemText(row, 2, state);
                 list_.SetItemData(row, i);
             }
         }
@@ -428,7 +514,6 @@ namespace
                 list_.SetItemText(row, 1, Number(view_.items[i].level));
                 list_.SetItemData(row, i);
             }
-            if (!view_.hasItems) description_.SetWindowText(L"正在等待道具数据…");
         }
         int selection = 0;
         for (int i = 0; i < list_.GetItemCount(); ++i)
@@ -504,12 +589,28 @@ namespace
                 Publish(Screen::Game, L"已连接", &client);
                 for (;;)
                 {
+                    int pet, state;
                     {
                         std::lock_guard<std::mutex> lock(mutex_);
                         if (stop_) break;
+                        pet = requestedPet_;
+                        state = requestedPetState_;
+                        requestedPet_ = -1;
                     }
                     if (client.PollGame(100))
                         Publish(Screen::Game, L"已连接", &client);
+                    if (pet >= 0)
+                    {
+                        try
+                        {
+                            client.SetPetState(pet, static_cast<LoginClient::PetState>(state));
+                            Publish(Screen::Game, L"宠物状态已更新", &client);
+                        }
+                        catch (const std::exception& error)
+                        {
+                            Publish(Screen::Game, ErrorText(error.what()), &client);
+                        }
+                    }
                 }
             }
             if (entered)
@@ -550,15 +651,16 @@ namespace
             auto port = std::stoul(portText);
             if (address.empty() || account.empty() || password.empty() || port == 0 || port > 65535)
                 throw std::invalid_argument("请填写服务器、端口、账号和密码");
+            SaveLogin();
             if (worker_.joinable()) worker_.join();
             {
                 std::lock_guard<std::mutex> lock(mutex_);
                 stop_ = false; done_ = false; requestedCharacter_ = -1;
+                requestedPet_ = -1;
                 shared_ = {};
                 shared_.screen = Screen::Connecting;
                 shared_.message = L"正在连接并登录…";
             }
-            password_.SetWindowText(L"");
             view_ = {};
             view_.screen = Screen::Connecting;
             view_.message = L"正在连接并登录…";
@@ -596,11 +698,35 @@ namespace
 
     void MainWindow::OnExit()
     {
-        OnClose();
+        if (view_.screen == Screen::Login)
+        {
+            OnClose();
+            return;
+        }
+        if (view_.screen == Screen::Closing)
+            return;
+        StopWorker();
+        view_.screen = Screen::Closing;
+        view_.message = L"正在退出并返回账号登录…";
+        Refresh();
     }
 
     BOOL MainWindow::PreTranslateMessage(MSG* message)
     {
+        if (petState_.GetSafeHwnd() && petState_.IsWindowVisible() && message->message == WM_KEYDOWN)
+        {
+            if (message->wParam == VK_ESCAPE)
+            {
+                petState_.ShowDropDown(FALSE);
+                OnPetStateClose();
+                return TRUE;
+            }
+            if (message->wParam == VK_RETURN)
+            {
+                OnPetState();
+                return TRUE;
+            }
+        }
         if (message->message == WM_KEYDOWN)
         {
             if (message->wParam == VK_RETURN)
@@ -611,7 +737,7 @@ namespace
             }
             if (message->wParam == VK_ESCAPE)
             {
-                OnClose();
+                OnExit();
                 return TRUE;
             }
             if (message->wParam == VK_TAB && IsDialogMessage(message))
@@ -622,6 +748,11 @@ namespace
 
     void MainWindow::OnClose()
     {
+        if (view_.screen == Screen::Login && !closeWindow_)
+        {
+            try { SaveLogin(); }
+            catch (const std::exception& error) { AfxMessageBox(ErrorText(error.what()), MB_OK | MB_ICONWARNING); }
+        }
         closeWindow_ = true;
         StopWorker();
         bool done;
@@ -644,11 +775,12 @@ namespace
 
     LRESULT MainWindow::OnSession(WPARAM, LPARAM)
     {
-        bool done;
+        bool done, stopped;
         {
             std::lock_guard<std::mutex> lock(mutex_);
             view_ = shared_;
             done = done_;
+            stopped = stop_;
         }
         if (done && worker_.joinable()) worker_.join();
         if (closeWindow_)
@@ -664,6 +796,11 @@ namespace
         // A failed session can publish its final state just before the thread ends.
         if (view_.screen == Screen::Login && !done)
             view_.screen = Screen::Connecting;
+        if (stopped && !done)
+        {
+            view_.screen = Screen::Closing;
+            view_.message = L"正在退出并返回账号登录…";
+        }
         Refresh();
         return 0;
     }
@@ -682,6 +819,56 @@ namespace
         *result = 0;
     }
 
+    void MainWindow::OnPetClick(NMHDR* header, LRESULT* result)
+    {
+        *result = 0;
+        OnPetStateClose();
+        auto click = reinterpret_cast<NMITEMACTIVATE*>(header);
+        if (view_.screen != Screen::Game || tabs_.GetCurSel() != 1 ||
+            click->iItem < 0 || click->iSubItem != 2 || !view_.player.received || !view_.player.battleReceived)
+            return;
+        int slot = static_cast<int>(list_.GetItemData(click->iItem));
+        if (slot < 0 || slot >= static_cast<int>(view_.pets.size()) ||
+            !view_.pets[slot].received || !view_.pets[slot].present)
+            return;
+        CRect cell;
+        if (!list_.GetSubItemRect(click->iItem, 2, LVIR_BOUNDS, cell))
+            return;
+        list_.ClientToScreen(&cell);
+        ScreenToClient(&cell);
+        editingPet_ = slot;
+        int state = PetStateIndex(view_.player, slot);
+        petState_.SetCurSel(state);
+        petState_.SetWindowPos(&CWnd::wndTop, cell.left, cell.top, cell.Width(), 150, SWP_SHOWWINDOW);
+        petState_.SetFocus();
+        petState_.ShowDropDown(TRUE);
+    }
+
+    void MainWindow::OnPetState()
+    {
+        int slot = editingPet_, state = petState_.GetCurSel();
+        OnPetStateClose();
+        if (slot < 0 || state < 0 || view_.screen != Screen::Game)
+            return;
+        if (state == PetStateIndex(view_.player, slot))
+            return;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            if (stop_ || done_ || requestedPet_ >= 0)
+                return;
+            requestedPet_ = slot;
+            requestedPetState_ = state;
+        }
+        footer_.SetWindowText(L"正在设置宠物状态…");
+    }
+
+    void MainWindow::OnPetStateClose()
+    {
+        editingPet_ = -1;
+        if (petState_.GetSafeHwnd())
+            petState_.ShowWindow(SW_HIDE);
+    }
+
     class ClientApp : public CWinApp
     {
         BOOL InitInstance() override
@@ -690,7 +877,7 @@ namespace
             InitCommonControlsEx(&controls);
             CWinApp::InitInstance();
             auto window = new MainWindow;
-            if (!window->Create(nullptr, L"石器", WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN, CRect(0, 0, 520, 610)))
+            if (!window->Create(nullptr, L"登录", WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN, CRect(0, 0, 460, 330)))
                 return FALSE;
             m_pMainWnd = window;
             window->CenterWindow();

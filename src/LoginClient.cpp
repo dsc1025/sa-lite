@@ -2,6 +2,7 @@
 #include <ws2tcpip.h>
 #include <algorithm>
 #include <array>
+#include <initializer_list>
 #include <stdexcept>
 #include <vector>
 
@@ -282,6 +283,10 @@ void LoginClient::Disconnect() noexcept
     pets_.assign(5, {});
     items_.assign(20, {});
     itemsReceived_ = false;
+    battleReplySerial_ = 0;
+    battleReplyAccepted_ = false;
+    waitingRide_ = false;
+    rideError_.clear();
     nextHeartbeat_ = 0;
     pending_.clear();
 }
@@ -462,6 +467,59 @@ std::vector<std::string> LoginClient::ReceiveStrings(const std::vector<std::stri
 
 bool LoginClient::HandleGamePacket(const std::vector<std::string>& fields)
 {
+    if (fields[1] == "36" && waitingRide_)
+    {
+        if (fields.size() != 7)
+            throw std::runtime_error("Invalid server message");
+        auto sender = ReadInteger(Decode64(fields[2], sessionKey_, -1), { 2, 4, 1, 3 });
+        auto message = Decode64(fields[3], sessionKey_, 1);
+        auto color = ReadInteger(Decode64(fields[4], sessionKey_, -1), { 2, 4, 1, 3 });
+        auto checksum = ReadInteger(Decode64(fields[5], sessionKey_, -1), { 2, 4, 1, 3 });
+        if (checksum != sender + static_cast<std::uint32_t>(message.size()) + color)
+            throw std::runtime_error("Invalid server message checksum");
+        if (sender == static_cast<std::uint32_t>(-1) && message.compare(0, 2, "P|") == 0)
+        {
+            auto text = UnescapeLegacy(message.substr(2));
+            int length = MultiByteToWideChar(936, 0, text.data(), static_cast<int>(text.size()), nullptr, 0);
+            std::wstring wide(length, L'\0');
+            if (length > 0)
+                MultiByteToWideChar(936, 0, text.data(), static_cast<int>(text.size()), &wide[0], length);
+            if (wide.find(L"骑") != std::wstring::npos || wide.find(L"忠诚") != std::wstring::npos ||
+                wide.find(L"模型不匹配") != std::wstring::npos)
+                rideError_ = text;
+        }
+        return false;
+    }
+    if (fields[1] == "55" || fields[1] == "115")
+    {
+        if (fields.size() != 6)
+            throw std::runtime_error("Invalid pet state reply");
+        auto slot = ReadInteger(Decode64(fields[2], sessionKey_, -1), { 2, 4, 1, 3 });
+        auto result = ReadInteger(Decode64(fields[3], sessionKey_, -1), { 2, 4, 1, 3 });
+        auto checksum = ReadInteger(Decode64(fields[4], sessionKey_, -1), { 2, 4, 1, 3 });
+        if (checksum != slot + result)
+            throw std::runtime_error("Invalid pet state checksum");
+        if (fields[1] == "55")
+        {
+            ++battleReplySerial_;
+            battleReplyAccepted_ = result != 0;
+        }
+        if (!result)
+            return false;
+        if (fields[1] == "115")
+        {
+            if (slot & ~((std::uint32_t{1} << pets_.size()) - 1))
+                throw std::runtime_error("Invalid standby pet mask");
+            playerStatus_.standbyPets = slot;
+            playerStatus_.standbyReceived = true;
+            return true;
+        }
+        if (slot != static_cast<std::uint32_t>(-1) && slot >= pets_.size())
+            throw std::runtime_error("Invalid battle pet slot");
+        playerStatus_.battlePet = slot == static_cast<std::uint32_t>(-1) ? -1 : static_cast<int>(slot);
+        playerStatus_.battleReceived = true;
+        return true;
+    }
     if (fields[1] != "46" && fields[1] != "88" && fields[1] != "22")
         return false;
     auto strings = ReceiveStrings(fields);
@@ -499,9 +557,11 @@ bool LoginClient::HandleGamePacket(const std::vector<std::string>& fields)
             &status.experience, &status.nextExperience, &status.level, &status.attack,
             &status.defence, &status.quick, &status.charm, &status.luck,
             &status.earth, &status.water, &status.fire, &status.wind, &status.gold,
-            &status.title, &status.duelPoints, &status.rebirth };
+            &status.title, &status.duelPoints, &status.rebirth, nullptr, nullptr, &status.ridePet };
         bool full = values[0] == "P1";
         ApplyStatus(values, 1, full ? 0x01fffffe : ParseMask(values[0].substr(1)), numbers);
+        if (full && values.size() > 25)
+            status.ridePet = ParseNumber(values[25]);
         ApplyExtra(values, status.perception, status.rebirth);
         if (full)
             status.received = true;
@@ -657,6 +717,80 @@ bool LoginClient::PollGame(int timeoutMs)
         Disconnect();
         throw;
     }
+}
+
+void LoginClient::SetPetState(int slot, PetState state)
+{
+    if (!inGame_ || slot < 0 || slot >= static_cast<int>(pets_.size()) || !pets_[slot].present ||
+        !pets_[slot].received || state < PetState::Standby || state > PetState::Ride)
+        throw std::invalid_argument("请选择有效的宠物");
+    if (state == PetState::Ride && playerStatus_.ridePet >= 0 && playerStatus_.ridePet != slot)
+        throw std::invalid_argument("当前已有骑宠，请先将它改为等待，再选择新的骑宠");
+    auto deadline = GetTickCount64() + 10000;
+    auto sendNumbers = [&](const char* function, std::initializer_list<int> numbers)
+    {
+        std::string raw = std::string("&;") + function + ";";
+        std::uint32_t checksum = 0;
+        for (int number : numbers)
+        {
+            auto value = static_cast<std::uint32_t>(number);
+            raw += EncodeInteger(value, sessionKey_) + ";";
+            checksum += value;
+        }
+        Send(EncodePacket(raw + EncodeInteger(checksum, sessionKey_) + ";#;"), deadline);
+    };
+    auto ride = [&](int pet)
+    {
+        if (playerStatus_.ridePet == pet)
+            return;
+        waitingRide_ = true;
+        rideError_.clear();
+        try
+        {
+            std::string message = "R|P|" + std::to_string(pet);
+            Send(EncodePacket("&;94;" + Encode64(message, sessionKey_, -1) + ";" +
+                EncodeInteger(static_cast<std::uint32_t>(message.size()), sessionKey_) + ";#;"), deadline);
+            while (playerStatus_.ridePet != pet)
+            {
+                if (!rideError_.empty())
+                    throw std::runtime_error(rideError_);
+                if (GetTickCount64() >= deadline)
+                    throw std::runtime_error("服务器未确认骑乘，请检查宠物等级、忠诚及骑乘资格");
+                PollGame(100);
+            }
+        }
+        catch (...)
+        {
+            waitingRide_ = false;
+            throw;
+        }
+        waitingRide_ = false;
+    };
+    auto battle = [&](int pet)
+    {
+        if (playerStatus_.battlePet == pet)
+            return;
+        auto serial = battleReplySerial_;
+        sendNumbers("54", { pet });
+        while (battleReplySerial_ == serial)
+        {
+            if (GetTickCount64() >= deadline)
+                throw std::runtime_error("服务器未确认出战，请检查宠物状态及是否正在战斗");
+            PollGame(100);
+        }
+        if (!battleReplyAccepted_ || playerStatus_.battlePet != pet)
+            throw std::runtime_error("服务器拒绝出战设置，请检查宠物状态及是否正在战斗");
+    };
+    if (playerStatus_.ridePet == slot && state != PetState::Ride)
+        ride(-1);
+    if (state != PetState::Battle && playerStatus_.battlePet == slot)
+        battle(-1);
+    if (state == PetState::Standby)
+        sendNumbers("96", { slot, 1 });
+    if (state == PetState::Battle)
+        battle(slot);
+    if (state == PetState::Ride)
+        ride(slot);
 }
 
 void LoginClient::LeaveGame(int timeoutMs)

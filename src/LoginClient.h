@@ -9,6 +9,7 @@ class LoginClient
 {
 public:
     enum class LoginResult { Accepted, Rejected };
+    enum class PetState { Standby, Battle, Ride };
     struct Character
     {
         std::string name;
@@ -28,6 +29,10 @@ public:
         int attack = 0, defence = 0, quick = 0, charm = 0, luck = 0;
         int earth = 0, water = 0, fire = 0, wind = 0;
         int title = 0, duelPoints = 0, rebirth = 0, perception = 0;
+        int ridePet = -1, battlePet = -1;
+        std::uint32_t standbyPets = 0;
+        bool standbyReceived = false;
+        bool battleReceived = false;
     };
     struct PetStatus
     {
@@ -57,6 +62,7 @@ public:
     std::vector<Character> GetCharacters(int timeoutMs = 10000);
     void EnterGame(const Character& character, int timeoutMs = 10000);
     bool PollGame(int timeoutMs = 100);
+    void SetPetState(int slot, PetState state);
     void LeaveGame(int timeoutMs = 10000);
     const PlayerStatus& GetPlayerStatus() const noexcept;
     const std::vector<PetStatus>& GetPets() const noexcept;
@@ -82,6 +88,10 @@ private:
     std::vector<PetStatus> pets_ = std::vector<PetStatus>(5);
     std::vector<ItemStatus> items_ = std::vector<ItemStatus>(20);
     bool itemsReceived_ = false;
+    std::uint32_t battleReplySerial_ = 0;
+    bool battleReplyAccepted_ = false;
+    bool waitingRide_ = false;
+    std::string rideError_;
     ULONGLONG nextHeartbeat_ = 0;
     std::string pending_;
 };
