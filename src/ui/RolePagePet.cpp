@@ -58,6 +58,30 @@ namespace Client
                 pet.hp, pet.maxHp, pet.mp, pet.maxMp, pet.attack, pet.defence, pet.quick,
                 pet.perception, pet.loyalty, pet.skillSlots, pet.earth, pet.water, pet.fire, pet.wind,
                 pet.experience, pet.nextExperience);
+            text += L"\r\n\r\n宠物技能：";
+            if (!pet.skillsReceived)
+                text += L"\r\n等待技能数据…";
+            else
+            {
+                bool hasSkills = false;
+                for (std::size_t i = 0; i < pet.skills.size(); ++i)
+                {
+                    const auto& skill = pet.skills[i];
+                    if (!skill.present)
+                        continue;
+                    CString line;
+                    line.Format(L"\r\n%d. %s", static_cast<int>(i + 1), LegacyText(skill.name).GetString());
+                    text += line;
+                    if (!skill.description.empty())
+                    {
+                        text += L"  ";
+                        text += LegacyText(skill.description);
+                    }
+                    hasSkills = true;
+                }
+                if (!hasSkills)
+                    text += L"\r\n无";
+            }
         }
         petProperties_.Show(GetTopLevelParent(), text, L"宠物属性");
     }

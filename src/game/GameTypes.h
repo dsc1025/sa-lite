@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace Game
 {
@@ -43,6 +44,12 @@ namespace Game
         bool standbyReceived = false;
         bool battleReceived = false;
     };
+    struct PetSkillStatus
+    {
+        bool present = false;
+        std::string name, description;
+        int id = 0, useField = 0, target = 0;
+    };
     struct PetStatus
     {
         bool received = false, present = false;
@@ -52,6 +59,8 @@ namespace Game
         int attack = 0, defence = 0, quick = 0, loyalty = 0;
         int earth = 0, water = 0, fire = 0, wind = 0;
         int skillSlots = 0, canRename = 0, perception = 0, rebirth = 0;
+        bool skillsReceived = false;
+        std::vector<PetSkillStatus> skills;
     };
     struct HealingSettings
     {

@@ -86,6 +86,7 @@ private:
     bool ApplyMapStatus(const std::vector<std::string>& values);
     bool ApplyPlayerStatus(const std::vector<std::string>& values);
     bool ApplyPetStatus(const std::vector<std::string>& values);
+    bool ApplyPetSkillStatus(const std::vector<std::string>& values);
     void SendNumbers(const char* function, std::initializer_list<int> numbers, ULONGLONG deadline);
     void RefreshPosition(ULONGLONG deadline);
     void SendEncounterWalk(const std::string& directions, int x, int y);

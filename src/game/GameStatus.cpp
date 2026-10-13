@@ -2,6 +2,7 @@
 #include "../protocol/ProtocolCodec.h"
 #include "../protocol/LegacyFields.h"
 #include <stdexcept>
+#include <utility>
 
 using namespace Protocol;
 
@@ -86,6 +87,8 @@ bool LoginClient::HandleGamePacket(const std::vector<std::string>& fields)
         return ApplyPlayerStatus(values);
     if (data[0] == 'J')
         return ApplyMagicStatus(values);
+    if (data[0] == 'W')
+        return ApplyPetSkillStatus(values);
     if (data[0] == 'K')
         return ApplyPetStatus(values);
     return false;
@@ -260,6 +263,32 @@ bool LoginClient::ApplyPlayerStatus(const std::vector<std::string>& values)
     if (full)
         status.received = true;
     playerStatus_ = status;
+    return true;
+}
+
+bool LoginClient::ApplyPetSkillStatus(const std::vector<std::string>& values)
+{
+    if (values.size() < 2 || !values.back().empty() || (values.size() - 2) % 5 != 0)
+        throw std::runtime_error("Invalid pet skill status");
+    int slot = ParseNumber(values[0].substr(1));
+    if (slot < 0 || static_cast<std::size_t>(slot) >= pets_.size())
+        throw std::runtime_error("Invalid pet slot");
+    std::vector<Game::PetSkillStatus> skills((values.size() - 2) / 5);
+    for (std::size_t i = 0; i < skills.size(); ++i)
+    {
+        std::size_t start = 1 + i * 5;
+        if (values[start].empty())
+            continue;
+        auto& skill = skills[i];
+        skill.present = true;
+        skill.id = ParseNumber(values[start]);
+        skill.useField = ParseNumber(values[start + 1]);
+        skill.target = ParseNumber(values[start + 2]);
+        skill.name = UnescapeLegacy(values[start + 3]);
+        skill.description = UnescapeLegacy(values[start + 4]);
+    }
+    pets_[slot].skills = std::move(skills);
+    pets_[slot].skillsReceived = true;
     return true;
 }
 
