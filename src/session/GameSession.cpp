@@ -23,7 +23,10 @@ namespace Client
                 stop_ = false; done_ = false; requestedCharacter_ = -1;
                 requestedPet_ = -1;
                 storageRequested_ = false;
+                requestedFood_ = -1;
                 requestedStorageCode_.clear();
+                itemStorageRequested_ = false;
+                requestedItemStorageCode_.clear();
                 requestedMap_ = -1;
                 encounterRequested_ = false;
                 shared_ = {};
@@ -84,7 +87,7 @@ namespace Client
     bool GameSession::RequestPetState(int slot, int state)
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (stop_ || done_ || requestedPet_ >= 0 || shared_.petStoragePending)
+        if (stop_ || done_ || requestedPet_ >= 0 || shared_.petStoragePending || shared_.itemPending)
             return false;
         requestedPet_ = slot;
         requestedPetState_ = state;
@@ -95,7 +98,7 @@ namespace Client
     {
         {
             std::lock_guard<std::mutex> lock(mutex_);
-            if (stop_ || done_ || shared_.screen != Screen::Game || shared_.petStoragePending ||
+            if (stop_ || done_ || shared_.screen != Screen::Game || shared_.petStoragePending || shared_.itemPending ||
                 requestedPet_ >= 0 || encounterRequested_ || shared_.encounterPending || shared_.player.inBattle)
                 return false;
             if (action != Game::PetStorageAction::List &&
@@ -108,6 +111,57 @@ namespace Client
             shared_.petStoragePending = true;
             shared_.message = action == Game::PetStorageAction::List ? L"正在加载宠物仓库…" :
                 action == Game::PetStorageAction::Put ? L"正在存入宠物…" : L"正在取出宠物…";
+        }
+        ::PostMessage(window_, message_, 0, 0);
+        return true;
+    }
+
+    bool GameSession::RequestFood(int slot, std::uint32_t revision)
+    {
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            if (stop_ || done_ || shared_.screen != Screen::Game || shared_.itemPending ||
+                shared_.petStoragePending || requestedPet_ >= 0 || encounterRequested_ ||
+                shared_.encounterPending || shared_.player.inBattle || slot < 5 ||
+                slot >= static_cast<int>(shared_.items.size()) || !shared_.items[slot].present ||
+                shared_.items[slot].type != 20 || shared_.items[slot].revision != revision)
+                return false;
+            requestedFood_ = slot;
+            requestedFoodRevision_ = revision;
+            shared_.itemPending = true;
+            shared_.message = L"正在对当前角色使用食物…";
+        }
+        ::PostMessage(window_, message_, 0, 0);
+        return true;
+    }
+
+    bool GameSession::RequestItemStorage(Game::ItemStorageAction action, int slot,
+        std::uint32_t revision, const std::string& uniqueCode)
+    {
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            if (stop_ || done_ || shared_.screen != Screen::Game || shared_.itemPending ||
+                shared_.petStoragePending || requestedPet_ >= 0 || encounterRequested_ ||
+                shared_.encounterPending || shared_.player.inBattle)
+                return false;
+            if (action != Game::ItemStorageAction::List && (!shared_.hasItemStorage || !shared_.hasItems))
+                return false;
+            if (action == Game::ItemStorageAction::Put && (slot < 5 ||
+                slot >= static_cast<int>(shared_.items.size()) || !shared_.items[slot].present ||
+                shared_.items[slot].revision != revision))
+                return false;
+            if (action == Game::ItemStorageAction::Get && (slot < 0 ||
+                slot >= static_cast<int>(shared_.itemStorage.size()) || !shared_.itemStorage[slot].present ||
+                shared_.itemStorage[slot].uniqueCode != uniqueCode || uniqueCode.empty()))
+                return false;
+            itemStorageRequested_ = true;
+            requestedItemStorageAction_ = action;
+            requestedItemStorageSlot_ = slot;
+            requestedItemStorageRevision_ = revision;
+            requestedItemStorageCode_ = uniqueCode;
+            shared_.itemPending = true;
+            shared_.message = action == Game::ItemStorageAction::List ? L"正在加载道具仓库…" :
+                action == Game::ItemStorageAction::Put ? L"正在存入道具…" : L"正在取出道具…";
         }
         ::PostMessage(window_, message_, 0, 0);
         return true;
@@ -135,6 +189,7 @@ namespace Client
                 shared_.encounterPending = false;
                 shared_.encounterMessage = L"遇敌未开始";
                 shared_.petStoragePending = false;
+                shared_.itemPending = false;
             }
             shared_.message = message;
             if (client)
@@ -145,6 +200,8 @@ namespace Client
                 shared_.pets = client->GetPets();
                 shared_.items = client->GetItems();
                 shared_.hasItems = client->HasItems();
+                shared_.itemStorage = client->GetItemStorage();
+                shared_.hasItemStorage = client->HasItemStorage();
                 shared_.petStorage = client->GetPetStorage();
                 shared_.hasPetStorage = client->HasPetStorage();
             }
@@ -197,7 +254,12 @@ namespace Client
                 std::wstring movementMessage = storageMessage;
                 for (;;)
                 {
-                    int pet, state, pollTimeout, storageSlot;
+                    int pet, state, pollTimeout, storageSlot, food;
+                    std::uint32_t foodRevision, itemStorageRevision;
+                    bool itemStorage;
+                    int itemStorageSlot;
+                    Game::ItemStorageAction itemStorageAction;
+                    std::string itemStorageCode;
                     bool storage;
                     Game::PetStorageAction storageAction;
                     std::string storageCode;
@@ -207,6 +269,15 @@ namespace Client
                         pollTimeout = encounterRequested_ || client.GetPlayerStatus().inBattle ? BATTLE_DELAY_MS : 100;
                         pet = requestedPet_;
                         state = requestedPetState_;
+                        food = requestedFood_;
+                        foodRevision = requestedFoodRevision_;
+                        requestedFood_ = -1;
+                        itemStorage = itemStorageRequested_;
+                        itemStorageAction = requestedItemStorageAction_;
+                        itemStorageSlot = requestedItemStorageSlot_;
+                        itemStorageRevision = requestedItemStorageRevision_;
+                        itemStorageCode = requestedItemStorageCode_;
+                        itemStorageRequested_ = false;
                         requestedPet_ = -1;
                         storage = storageRequested_;
                         storageAction = requestedStorageAction_;
@@ -243,6 +314,53 @@ namespace Client
                         {
                             std::lock_guard<std::mutex> lock(mutex_);
                             shared_.petStoragePending = false;
+                        }
+                        if (!client.IsConnected())
+                            throw std::runtime_error(failure);
+                        movementMessage = message;
+                        Publish(Screen::Game, message, &client);
+                    }
+                    if (itemStorage)
+                    {
+                        std::wstring message;
+                        std::string failure;
+                        try
+                        {
+                            if (itemStorageAction == Game::ItemStorageAction::List)
+                                client.RefreshItemStorage();
+                            else
+                                client.TransferItemStorage(itemStorageAction == Game::ItemStorageAction::Put,
+                                    itemStorageSlot, itemStorageRevision, itemStorageCode);
+                            message = itemStorageAction == Game::ItemStorageAction::List ? L"道具仓库已刷新" :
+                                itemStorageAction == Game::ItemStorageAction::Put ? L"道具已存入" : L"道具已取出到背包";
+                        }
+                        catch (const std::exception& error)
+                        {
+                            failure = error.what();
+                            message = TextEncoding::ErrorText(error.what());
+                        }
+                        {
+                            std::lock_guard<std::mutex> lock(mutex_);
+                            shared_.itemPending = false;
+                        }
+                        if (!client.IsConnected())
+                            throw std::runtime_error(failure);
+                        movementMessage = message;
+                        Publish(Screen::Game, message, &client);
+                    }
+                    if (food >= 0)
+                    {
+                        std::wstring message;
+                        std::string failure;
+                        try { message = TextEncoding::ErrorText(client.UseFood(food, foodRevision).c_str()); }
+                        catch (const std::exception& error)
+                        {
+                            failure = error.what();
+                            message = TextEncoding::ErrorText(error.what());
+                        }
+                        {
+                            std::lock_guard<std::mutex> lock(mutex_);
+                            shared_.itemPending = false;
                         }
                         if (!client.IsConnected())
                             throw std::runtime_error(failure);

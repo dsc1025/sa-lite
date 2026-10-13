@@ -138,6 +138,11 @@ namespace Client
             list_.InsertColumn(2, L"状态", LVCFMT_LEFT, 60);
         else if (!petColumns && columns == 3)
             list_.DeleteColumn(2);
+        LVCOLUMN column{};
+        column.mask = LVCF_TEXT | LVCF_FMT;
+        column.pszText = const_cast<wchar_t*>(items ? L"分类" : L"等级");
+        column.fmt = items ? LVCFMT_LEFT : LVCFMT_RIGHT;
+        list_.SetColumn(1, &column);
         int previous = list_.GetNextItem(-1, LVNI_SELECTED);
         DWORD_PTR previousSlot = previous >= 0 ? list_.GetItemData(previous) : 0;
         list_.DeleteAllItems();
@@ -180,7 +185,7 @@ namespace Client
                 else name.Format(L"背包 %d", static_cast<int>(i - 4));
                 name += L" · "; name += LegacyText(view_.items[i].name);
                 int row = list_.InsertItem(list_.GetItemCount(), name);
-                list_.SetItemText(row, 1, Number(view_.items[i].level));
+                list_.SetItemText(row, 1, view_.items[i].type == 20 ? L"食物" : L"未分类");
                 list_.SetItemData(row, i);
             }
         }
@@ -192,18 +197,24 @@ namespace Client
         int previousStorage = itemStorage_.GetNextItem(-1, LVNI_SELECTED);
         DWORD_PTR previousStorageSlot = previousStorage >= 0 ? itemStorage_.GetItemData(previousStorage) : 0;
         itemStorage_.DeleteAllItems();
-        if (items)
+        if (items && view_.hasItemStorage)
         {
-            for (std::size_t i = 0; i < itemStorageItems_.size(); ++i)
+            for (std::size_t i = 0; i < view_.itemStorage.size(); ++i)
             {
-                const auto& item = itemStorageItems_[i];
+                const auto& item = view_.itemStorage[i];
                 if (!item.present) continue;
                 int row = itemStorage_.InsertItem(itemStorage_.GetItemCount(), LegacyText(item.name));
-                itemStorage_.SetItemText(row, 1, Number(item.level));
+                itemStorage_.SetItemText(row, 1, item.type == 20 ? L"食物" : L"未分类");
                 itemStorage_.SetItemData(row, i);
                 if (i == previousStorageSlot)
                     itemStorage_.SetItemState(row, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
             }
+        }
+        if (items && !itemStorage_.GetItemCount())
+        {
+            int row = itemStorage_.InsertItem(0, view_.hasItemStorage ? L"仓库为空" :
+                view_.itemPending ? L"正在加载…" : L"未加载，右键刷新");
+            itemStorage_.SetItemData(row, static_cast<DWORD_PTR>(-1));
         }
         int storageSelection = petStorage_.GetNextItem(-1, LVNI_SELECTED);
         DWORD_PTR storageSlot = storageSelection >= 0 ? petStorage_.GetItemData(storageSelection) : 0;

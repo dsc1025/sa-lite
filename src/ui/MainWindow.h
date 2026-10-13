@@ -100,7 +100,6 @@ namespace Client
         CButton battleStart_, battleStop_, battleSettings_;
         CStatic battleRound_, battleInfo_, battleExperience_;
         CListCtrl list_, detail_, petStorage_, itemStorage_;
-        std::vector<Game::ItemStatus> itemStorageItems_;
         ItemPropertiesWindow itemProperties_, petProperties_;
         CComboBox petState_;
         int editingPet_ = -1;

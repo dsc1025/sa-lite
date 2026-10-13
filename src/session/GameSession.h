@@ -26,6 +26,9 @@ namespace Client
         void RequestMove(int map, int x, int y);
         bool RequestPetState(int slot, int state);
         bool RequestPetStorage(Game::PetStorageAction action, int slot = -1, const std::string& uniqueCode = {});
+        bool RequestFood(int slot, std::uint32_t revision);
+        bool RequestItemStorage(Game::ItemStorageAction action, int slot = -1,
+            std::uint32_t revision = 0, const std::string& uniqueCode = {});
         void SetEncounterEnabled(bool enabled);
 
     private:
@@ -47,6 +50,13 @@ namespace Client
         Game::PetStorageAction requestedStorageAction_ = Game::PetStorageAction::List;
         int requestedStorageSlot_ = -1;
         std::string requestedStorageCode_;
+        bool itemStorageRequested_ = false;
+        Game::ItemStorageAction requestedItemStorageAction_ = Game::ItemStorageAction::List;
+        int requestedItemStorageSlot_ = -1;
+        std::uint32_t requestedItemStorageRevision_ = 0;
+        std::string requestedItemStorageCode_;
+        int requestedFood_ = -1;
+        std::uint32_t requestedFoodRevision_ = 0;
         int requestedMap_ = -1, requestedX_ = -1, requestedY_ = -1;
     };
 }

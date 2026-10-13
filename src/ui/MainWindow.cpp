@@ -177,7 +177,7 @@ namespace Client
         itemStorage_.ModifyStyleEx(0, WS_EX_CLIENTEDGE);
         itemStorage_.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
         itemStorage_.InsertColumn(0, L"名称", LVCFMT_LEFT, 180);
-        itemStorage_.InsertColumn(1, L"等级", LVCFMT_RIGHT, 70);
+        itemStorage_.InsertColumn(1, L"分类", LVCFMT_LEFT, 80);
         itemStorage_.SetBkColor(RGB(255, 255, 255));
         itemStorage_.SetTextColor(GetSysColor(COLOR_WINDOWTEXT));
         petState_.Create(WS_CHILD | WS_TABSTOP | WS_VSCROLL | CBS_DROPDOWNLIST, empty, this, PetStateCombo);
@@ -295,8 +295,8 @@ namespace Client
             list_.GetClientRect(&listArea);
             int detailWidth = detailArea.Width() - 150 - GetSystemMetrics(SM_CXVSCROLL);
             bool petColumns = tabs_.GetCurSel() == 1 && list_.GetHeaderCtrl()->GetItemCount() == 3;
-            int listWidth = listArea.Width() - (petColumns ? 105 : 70) - GetSystemMetrics(SM_CXVSCROLL);
-            list_.SetColumnWidth(1, petColumns ? 45 : 70);
+            int listWidth = listArea.Width() - (petColumns ? 105 : items ? 80 : 70) - GetSystemMetrics(SM_CXVSCROLL);
+            list_.SetColumnWidth(1, petColumns ? 45 : items ? 80 : 70);
             if (petColumns)
                 list_.SetColumnWidth(2, 60);
             detail_.SetColumnWidth(1, detailWidth > 0 ? detailWidth : 0);
@@ -311,9 +311,9 @@ namespace Client
             petStorage_.ShowScrollBar(SB_HORZ, FALSE);
             CRect itemStorageArea;
             itemStorage_.GetClientRect(&itemStorageArea);
-            int itemStorageWidth = itemStorageArea.Width() - 70 - GetSystemMetrics(SM_CXVSCROLL);
+            int itemStorageWidth = itemStorageArea.Width() - 80 - GetSystemMetrics(SM_CXVSCROLL);
             itemStorage_.SetColumnWidth(0, itemStorageWidth > 0 ? itemStorageWidth : 0);
-            itemStorage_.SetColumnWidth(1, 70);
+            itemStorage_.SetColumnWidth(1, 80);
             itemStorage_.ShowScrollBar(SB_HORZ, FALSE);
         }
         Invalidate(FALSE);
@@ -496,6 +496,8 @@ namespace Client
         Refresh();
         if (view_.screen == Screen::Game && mainTabs_.GetCurSel() == 0 && tabs_.GetCurSel() == 1)
             session_.RequestPetStorage(Game::PetStorageAction::List);
+        else if (view_.screen == Screen::Game && mainTabs_.GetCurSel() == 0 && tabs_.GetCurSel() == 2)
+            session_.RequestItemStorage(Game::ItemStorageAction::List);
         *result = 0;
     }
 
@@ -505,6 +507,8 @@ namespace Client
         Refresh();
         if (view_.screen == Screen::Game && mainTabs_.GetCurSel() == 0 && tabs_.GetCurSel() == 1)
             session_.RequestPetStorage(Game::PetStorageAction::List);
+        else if (view_.screen == Screen::Game && mainTabs_.GetCurSel() == 0 && tabs_.GetCurSel() == 2)
+            session_.RequestItemStorage(Game::ItemStorageAction::List);
         *result = 0;
     }
 
@@ -523,7 +527,7 @@ namespace Client
         if (view_.screen != Screen::Game || mainTabs_.GetCurSel() != 0 || tabs_.GetCurSel() != 1 || click->iItem < 0)
             return;
         RefreshDetail();
-        if (click->iSubItem != 2 || !view_.player.received || !view_.player.battleReceived || view_.petStoragePending)
+        if (click->iSubItem != 2 || !view_.player.received || !view_.player.battleReceived || view_.petStoragePending || view_.itemPending)
             return;
         int slot = static_cast<int>(list_.GetItemData(click->iItem));
         if (slot < 0 || slot >= static_cast<int>(view_.pets.size()) ||
@@ -555,6 +559,8 @@ namespace Client
         bool pet = tab == 1;
         bool enabled = true;
         std::string uniqueCode;
+        bool food = false;
+        std::uint32_t itemRevision = 0;
         CString name;
         if (pet)
         {
@@ -573,6 +579,8 @@ namespace Client
                 !view_.items[slot].present)
                 return;
             name = LegacyText(view_.items[slot].name);
+            food = view_.items[slot].type == 20 && slot >= 5;
+            itemRevision = view_.items[slot].revision;
         }
         list_.SetItemState(click->iItem, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
         RefreshDetail();
@@ -581,10 +589,18 @@ namespace Client
         if (!menu.CreatePopupMenu())
             return;
         UINT flags = MF_STRING | (enabled ? MF_ENABLED : MF_GRAYED);
-        bool canStore = enabled && (!pet || (view_.hasPetStorage && !view_.petStoragePending &&
-            !view_.player.inBattle && !view_.encounterEnabled && !view_.encounterPending));
+        bool idle = !view_.petStoragePending && !view_.itemPending && !view_.player.inBattle &&
+            !view_.encounterEnabled && !view_.encounterPending;
+        bool canStore = enabled && idle && (pet ? view_.hasPetStorage : view_.hasItemStorage && slot >= 5);
         menu.AppendMenu(MF_STRING | (canStore ? MF_ENABLED : MF_GRAYED), 1, L"存入");
         menu.AppendMenu(flags, 2, L"丢弃");
+        if (food)
+        {
+            const auto& item = view_.items[slot];
+            bool canUse = !view_.itemPending && !view_.petStoragePending && !view_.player.inBattle &&
+                !view_.encounterEnabled && !view_.encounterPending && item.useField != 1 && item.target <= 2;
+            menu.AppendMenu(MF_STRING | (canUse ? MF_ENABLED : MF_GRAYED), 4, L"使用");
+        }
         menu.AppendMenu(MF_STRING, 3, L"属性");
         CPoint point = click->ptAction;
         list_.ClientToScreen(&point);
@@ -596,8 +612,20 @@ namespace Client
             else ShowItemProperties(list_, click->iItem);
             return;
         }
+        if (command == 4 && food)
+        {
+            if (session_.RequestFood(slot, itemRevision))
+                footer_.SetWindowText(L"正在对当前角色使用食物…");
+            return;
+        }
         if (!enabled || (command != 1 && command != 2))
             return;
+        if (!pet && command == 1)
+        {
+            if (canStore)
+                session_.RequestItemStorage(Game::ItemStorageAction::Put, slot, itemRevision);
+            return;
+        }
         if (pet && command == 1)
         {
             if (!canStore) return;
@@ -629,14 +657,23 @@ namespace Client
             row < 0 || row >= list.GetItemCount())
             return;
         bool storage = &list == &itemStorage_;
-        const auto& items = storage ? itemStorageItems_ : view_.items;
+        if (storage && !view_.hasItemStorage) return;
+        const auto& items = storage ? view_.itemStorage : view_.items;
         auto slot = static_cast<std::size_t>(list.GetItemData(row));
         if (slot >= items.size() || !items[slot].present)
             return;
         const auto item = items[slot];
         CString text;
-        text.Format(L"名称：%s\r\n使用等级：%d\r\n\r\n说明：\r\n%s",
-            LegacyText(item.name).GetString(), item.level, LegacyText(item.description).GetString());
+        text.Format(L"名称：%s\r\n分类：%s\r\n", LegacyText(item.name).GetString(),
+            item.type == 20 ? L"食物" : L"未分类");
+        if (item.levelKnown)
+        {
+            CString level;
+            level.Format(L"使用等级：%d\r\n", item.level);
+            text += level;
+        }
+        text += L"\r\n说明：\r\n";
+        text += LegacyText(item.description);
         itemProperties_.Show(this, text);
     }
 
@@ -689,29 +726,38 @@ namespace Client
     {
         *result = 0;
         auto click = reinterpret_cast<NMITEMACTIVATE*>(header);
-        if (view_.screen != Screen::Game || mainTabs_.GetCurSel() != 0 || tabs_.GetCurSel() != 2 ||
-            click->iItem < 0 || click->iItem >= itemStorage_.GetItemCount())
+        if (view_.screen != Screen::Game || mainTabs_.GetCurSel() != 0 || tabs_.GetCurSel() != 2)
             return;
-        auto slot = static_cast<std::size_t>(itemStorage_.GetItemData(click->iItem));
-        if (slot >= itemStorageItems_.size() || !itemStorageItems_[slot].present)
-            return;
-        itemStorage_.SetItemState(click->iItem, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+        auto slot = click->iItem < 0 ? view_.itemStorage.size() :
+            static_cast<std::size_t>(itemStorage_.GetItemData(click->iItem));
+        bool available = view_.hasItemStorage && slot < view_.itemStorage.size() && view_.itemStorage[slot].present;
+        std::string code = available ? view_.itemStorage[slot].uniqueCode : std::string();
+        if (click->iItem >= 0)
+            itemStorage_.SetItemState(click->iItem, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
         itemStorage_.SetFocus();
+        bool idle = !view_.itemPending && !view_.petStoragePending && !view_.player.inBattle &&
+            !view_.encounterEnabled && !view_.encounterPending;
         CMenu menu;
-        if (!menu.CreatePopupMenu())
-            return;
-        menu.AppendMenu(MF_STRING, 1, L"取出");
-        menu.AppendMenu(MF_STRING, 2, L"丢弃");
-        menu.AppendMenu(MF_STRING, 3, L"属性");
+        if (!menu.CreatePopupMenu()) return;
+        if (available)
+        {
+            menu.AppendMenu(MF_STRING | (idle ? MF_ENABLED : MF_GRAYED), 1, L"取出");
+            menu.AppendMenu(MF_STRING, 2, L"丢弃");
+            menu.AppendMenu(MF_STRING, 3, L"属性");
+        }
+        menu.AppendMenu(MF_STRING | (idle ? MF_ENABLED : MF_GRAYED), 4, L"刷新");
         CPoint point = click->ptAction;
         itemStorage_.ClientToScreen(&point);
         UINT command = menu.TrackPopupMenu(TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON,
             point.x, point.y, this);
-        if (command == 3)
+        if (command == 3 && available)
             ShowItemProperties(itemStorage_, click->iItem);
-        else if (command == 1 || command == 2)
-            footer_.SetWindowText(command == 1 ? L"道具取出功能尚未接入，当前仅提供 UI" :
-                L"道具丢弃功能尚未接入，当前仅提供 UI");
+        else if (command == 1 && available && idle)
+            session_.RequestItemStorage(Game::ItemStorageAction::Get, static_cast<int>(slot), 0, code);
+        else if (command == 4 && idle)
+            session_.RequestItemStorage(Game::ItemStorageAction::List);
+        else if (command == 2 && available)
+            footer_.SetWindowText(L"道具丢弃功能尚未接入，当前仅提供 UI");
     }
 
     void MainWindow::OnPetStorageRightClick(NMHDR* header, LRESULT* result)
@@ -731,7 +777,7 @@ namespace Client
             RefreshDetail();
         }
         petStorage_.SetFocus();
-        bool idle = !view_.petStoragePending && !view_.player.inBattle &&
+        bool idle = !view_.petStoragePending && !view_.itemPending && !view_.player.inBattle &&
             !view_.encounterEnabled && !view_.encounterPending;
         CMenu menu;
         if (!menu.CreatePopupMenu()) return;

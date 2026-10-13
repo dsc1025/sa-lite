@@ -20,6 +20,9 @@ namespace Client
         std::vector<Game::PetStatus> pets;
         std::vector<Game::ItemStatus> items;
         bool hasItems = false;
+        bool itemPending = false;
+        std::vector<Game::ItemStatus> itemStorage;
+        bool hasItemStorage = false;
         std::vector<Game::StoredPet> petStorage;
         bool hasPetStorage = false;
         bool petStoragePending = false;

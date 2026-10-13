@@ -31,6 +31,11 @@ public:
     bool PollGame(int timeoutMs = 100);
     bool MoveTo(int map, int x, int y, int timeoutMs = 2000);
     void SetPetState(int slot, PetState state);
+    std::string UseFood(int slot, std::uint32_t revision);
+    void RefreshItemStorage();
+    void TransferItemStorage(bool put, int slot, std::uint32_t revision, const std::string& uniqueCode);
+    const std::vector<ItemStatus>& GetItemStorage() const noexcept { return itemStorage_; }
+    bool HasItemStorage() const noexcept { return itemStorageReceived_; }
     void RefreshPetStorage();
     void TransferPetStorage(bool put, int slot, const std::string& uniqueCode);
     const std::vector<Game::StoredPet>& GetPetStorage() const noexcept { return petStorage_; }
@@ -61,6 +66,8 @@ private:
     bool HandleServerMessage(const std::vector<std::string>& fields);
     bool HandlePetStateReply(const std::vector<std::string>& fields);
     std::string PetStorageRequest(const std::string& action, int slot, const std::string& uniqueCode);
+    std::string ItemStorageRequest(const std::string& action, int slot, const std::string& uniqueCode,
+        std::uint32_t revision = 0);
     bool ApplyItemStatus(const std::string& data, bool partial);
     bool ApplyMapStatus(const std::vector<std::string>& values);
     bool ApplyPlayerStatus(const std::vector<std::string>& values);
@@ -81,6 +88,11 @@ private:
     std::vector<PetStatus> pets_ = std::vector<PetStatus>(5);
     std::vector<ItemStatus> items_ = std::vector<ItemStatus>(20);
     bool itemsReceived_ = false;
+    std::uint32_t itemRevision_ = 0;
+    std::vector<ItemStatus> itemStorage_;
+    bool itemStorageReceived_ = false;
+    bool waitingFood_ = false;
+    std::string foodMessage_;
     std::vector<Game::StoredPet> petStorage_;
     bool petStorageReceived_ = false;
     std::uint32_t battleReplySerial_ = 0;

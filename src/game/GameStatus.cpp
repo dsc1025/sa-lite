@@ -47,6 +47,10 @@ namespace
         item.name = UnescapeLegacy(values[start]);
         item.description = UnescapeLegacy(values[start + 3]);
         item.level = ParseNumber(values[start + 7]);
+        item.levelKnown = true;
+        item.useField = ParseNumber(values[start + 5]);
+        item.target = ParseNumber(values[start + 6]);
+        if (ParseNumber(values[start + 8]) & 4) item.type = 20;
         return item;
     }
 }
@@ -59,7 +63,7 @@ bool LoginClient::HandleGamePacket(const std::vector<std::string>& fields)
         return HandleBattlePacket(fields);
     if (fields[1] == "2" || fields[1] == "7")
         return HandlePositionPacket(fields);
-    if (fields[1] == "36" && waitingRide_)
+    if (fields[1] == "36" && (waitingRide_ || waitingFood_))
         return HandleServerMessage(fields);
     if (fields[1] == "55" || fields[1] == "115")
         return HandlePetStateReply(fields);
@@ -134,6 +138,7 @@ bool LoginClient::HandleServerMessage(const std::vector<std::string>& fields)
     if (sender == static_cast<std::uint32_t>(-1) && message.compare(0, 2, "P|") == 0)
     {
         auto text = UnescapeLegacy(message.substr(2));
+        if (waitingFood_) foodMessage_ = text;
         int length = MultiByteToWideChar(936, 0, text.data(), static_cast<int>(text.size()), nullptr, 0);
         std::wstring wide(length, L'\0');
         if (length > 0)
@@ -189,6 +194,7 @@ bool LoginClient::ApplyItemStatus(const std::string& data, bool partial)
         if (slot < 0 || static_cast<std::size_t>(slot) >= updated.size())
             throw std::runtime_error("Invalid item slot");
         updated[slot] = ParseItem(values, i + (partial ? 1 : 0));
+        updated[slot].revision = ++itemRevision_;
     }
     items_ = updated;
     if (!partial)
