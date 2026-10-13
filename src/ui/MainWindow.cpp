@@ -8,7 +8,7 @@
 namespace Client
 {
     constexpr UINT SessionMessage = WM_APP + 1;
-    enum ControlId { LoginButton = 100, EnterButton, ExitButton, CharacterList = 104, MainTabs = 120, ShopTabs, MapPositionCombo, MapRegionCombo };
+    enum ControlId { LoginButton = 100, EnterButton, ExitButton, CharacterList = 104, MainTabs = 120, ShopTabs, MapPositionButton, MapRegionButton };
 
     BEGIN_MESSAGE_MAP(MainWindow, CFrameWnd)
         ON_WM_CREATE()
@@ -26,8 +26,8 @@ namespace Client
         ON_BN_CLICKED(IDC_BATTLE_START, &MainWindow::OnBattleStart)
         ON_BN_CLICKED(IDC_BATTLE_STOP, &MainWindow::OnBattleStop)
         ON_BN_CLICKED(IDC_BATTLE_SETTINGS, &MainWindow::OnBattleSettings)
-        ON_CBN_SELENDOK(MapPositionCombo, &MainWindow::OnMapPosition)
-        ON_CBN_SELENDOK(MapRegionCombo, &MainWindow::OnMapRegion)
+        ON_BN_CLICKED(MapPositionButton, &MainWindow::OnMapPosition)
+        ON_BN_CLICKED(MapRegionButton, &MainWindow::OnMapRegion)
     END_MESSAGE_MAP()
 
     int MainWindow::OnCreate(LPCREATESTRUCT create)
@@ -36,7 +36,7 @@ namespace Client
             return -1;
         try
         {
-            mapNames_ = LoadMapNames(mapDirectory_, mapPositions_);
+            mapNodes_ = LoadMapIndex(mapDirectory_, mapNames_);
         }
         catch (const std::exception& error)
         {
@@ -70,24 +70,12 @@ namespace Client
         mainTabs_.SetPadding(CSize(12, 10));
         developing_.Create(L"开发中", WS_CHILD | SS_CENTER | SS_CENTERIMAGE, empty, this);
         miniMap_.Create(L"", WS_CHILD | WS_CLIPSIBLINGS | SS_OWNERDRAW | SS_NOTIFY, empty, this);
-        mapPosition_.Create(WS_CHILD | WS_TABSTOP | WS_VSCROLL | CBS_DROPDOWNLIST,
-            empty, this, MapPositionCombo);
-        mapRegion_.Create(WS_CHILD | WS_TABSTOP | WS_VSCROLL | CBS_DROPDOWNLIST,
-            empty, this, MapRegionCombo);
-        mapRegion_.AddString(L"请选择地区");
-        const int regions[] = { 100, 200, 300, 400, 500, 1000, 1100,
-            1200, 1300, 1400, 2000, 3000, 3100, 3200, 3300, 3400, 4000, 5000, 5100, 5509, 5540, 10920, 130 };
-        for (int id : regions)
-        {
-            auto name = mapNames_.find(id);
-            if (name != mapNames_.end())
-            {
-                int item = mapRegion_.AddString(name->second.c_str());
-                if (item != CB_ERR && item != CB_ERRSPACE)
-                    mapRegion_.SetItemData(item, id);
-            }
-        }
-        mapRegion_.SetCurSel(0);
+        mapPosition_.Create(L"选择地点 ▾", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON,
+            empty, this, MapPositionButton);
+        mapRegion_.Create(L"选择地图 ▾", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON,
+            empty, this, MapRegionButton);
+        mapRegion_.EnableWindow(!mapNodes_.empty());
+        RefreshMapPositions();
         if (!rolePage_.Create(this, &font_))
             return -1;
         CreateBattleControls();
@@ -158,9 +146,9 @@ namespace Client
         developing_.MoveWindow(mainPage);
         miniMap_.MoveWindow(mainPage);
         int regionLeft = mainPage.left + 8;
-        mapRegion_.SetWindowPos(&CWnd::wndTop, regionLeft, mainPage.top + 4, 180, 300, SWP_NOACTIVATE);
-        mapPosition_.SetWindowPos(&CWnd::wndTop, regionLeft + 188,
-            mainPage.top + 4, 200, 220, SWP_NOACTIVATE);
+        mapRegion_.SetWindowPos(&CWnd::wndTop, regionLeft, mainPage.top + 4, 160, 26, SWP_NOACTIVATE);
+        mapPosition_.SetWindowPos(&CWnd::wndTop, regionLeft + 168,
+            mainPage.top + 4, 160, 26, SWP_NOACTIVATE);
         rolePage_.MoveWindow(mainPage);
         shopTabs_.MoveWindow(mainPage);
         if (mainTabs_.GetCurSel() == 3)
@@ -262,7 +250,15 @@ namespace Client
         if ((message->hwnd == mapPosition_.GetSafeHwnd() || message->hwnd == mapRegion_.GetSafeHwnd()) &&
             message->message == WM_KEYDOWN &&
             (message->wParam == VK_RETURN || message->wParam == VK_ESCAPE))
+        {
+            if (message->wParam == VK_RETURN)
+            {
+                if (message->hwnd == mapRegion_.GetSafeHwnd()) OnMapRegion();
+                else OnMapPosition();
+                return TRUE;
+            }
             return CFrameWnd::PreTranslateMessage(message);
+        }
         if (message->message == WM_LBUTTONDOWN && message->hwnd == miniMap_.GetSafeHwnd() &&
             view_.screen == Screen::Game && mainTabs_.GetCurSel() == 1)
         {
@@ -348,25 +344,5 @@ namespace Client
         if (view_.screen == Screen::Game && mainTabs_.GetCurSel() == 0)
             rolePage_.Activate();
         *result = 0;
-    }
-
-    void MainWindow::OnMapPosition()
-    {
-        int selected = mapPosition_.GetCurSel();
-        auto positions = mapPositions_.find(positionMap_);
-        if (view_.screen != Screen::Game || mainTabs_.GetCurSel() != 1 ||
-            positions == mapPositions_.end() || selected <= 0 ||
-            selected > static_cast<int>(positions->second.size()))
-            return;
-        const auto& target = positions->second[selected - 1];
-        session_.RequestMove(positionMap_, target.x, target.y);
-    }
-
-    void MainWindow::OnMapRegion()
-    {
-        RefreshMapPositions();
-        if (mapPosition_.IsWindowEnabled())
-            mapPosition_.SetCurSel(1);
-        OnMapPosition();
     }
 }

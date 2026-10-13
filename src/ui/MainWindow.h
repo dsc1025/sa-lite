@@ -61,9 +61,9 @@ namespace Client
         CStatic summary_, footer_, labels_[4], developing_;
         CString configPath_;
         std::unordered_map<int, std::wstring> mapNames_;
-        std::unordered_map<int, std::vector<MapPosition>> mapPositions_;
-        CComboBox mapPosition_, mapRegion_;
-        int positionMap_ = -2;
+        std::vector<MapNode> mapNodes_;
+        CButton mapPosition_, mapRegion_;
+        const MapNode* selectedMap_ = nullptr;
         std::filesystem::path mapDirectory_;
         MiniMap miniMap_;
         CEdit address_, port_, account_, password_;

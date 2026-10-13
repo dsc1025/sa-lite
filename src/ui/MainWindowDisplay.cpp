@@ -3,22 +3,6 @@
 
 namespace Client
 {
-    void MainWindow::RefreshMapPositions()
-    {
-        mapPosition_.ShowDropDown(FALSE);
-        mapPosition_.ResetContent();
-        mapPosition_.AddString(L"请选择地点");
-        int selected = mapRegion_.GetCurSel();
-        positionMap_ = selected <= 0 ? -1 : static_cast<int>(mapRegion_.GetItemData(selected));
-        auto positions = mapPositions_.find(positionMap_);
-        bool hasPositions = positions != mapPositions_.end() && !positions->second.empty();
-        if (hasPositions)
-            for (const auto& position : positions->second)
-                mapPosition_.AddString(position.name.c_str());
-        mapPosition_.SetCurSel(0);
-        mapPosition_.EnableWindow(hasPositions);
-    }
-
     void MainWindow::Refresh()
     {
         bool login = view_.screen == Screen::Login || view_.screen == Screen::Connecting;
@@ -58,18 +42,11 @@ namespace Client
         if (!game && battleSettingsWindow_.GetSafeHwnd())
             battleSettingsWindow_.ShowWindow(SW_HIDE);
         miniMap_.ShowWindow(mapPage ? SW_SHOW : SW_HIDE);
-        if (!mapPage)
-        {
-            mapPosition_.ShowDropDown(FALSE);
-            mapRegion_.ShowDropDown(FALSE);
-        }
         mapPosition_.ShowWindow(mapPage ? SW_SHOW : SW_HIDE);
         mapRegion_.ShowWindow(mapPage ? SW_SHOW : SW_HIDE);
         if (mapPage)
         {
             miniMap_.Update(mapDirectory_, view_.player.mapId, view_.player.mapX, view_.player.mapY);
-            if (positionMap_ == -2)
-                RefreshMapPositions();
         }
         rolePage_.ShowWindow(role ? SW_SHOW : SW_HIDE);
         rolePage_.Refresh();
@@ -96,6 +73,9 @@ namespace Client
                 else
                     map.Format(L"   地图 %d", view_.player.mapId);
                 summary += map;
+                CString position;
+                position.Format(L"   坐标 %d, %d", view_.player.mapX, view_.player.mapY);
+                summary += position;
             }
         }
         summary_.SetWindowText(characters ? CString(L"选择角色后进入游戏") : summary);

@@ -69,6 +69,7 @@
     <ClCompile Include="src\session\GameSession.cpp" />
     <ClCompile Include="src\session\BattleSession.cpp" />
     <ClCompile Include="src\map\MapData.cpp" />
+    <ClCompile Include="src\map\MapIndex.cpp" />
     <ClCompile Include="src\text\TextEncoding.cpp" />
     <ClCompile Include="src\ui\MainWindow.cpp" />
     <ClCompile Include="src\ui\PropertiesWindow.cpp" />
@@ -79,6 +80,7 @@
     <ClCompile Include="src\ui\RolePageItem.cpp" />
     <ClCompile Include="src\ui\BattleUi.cpp" />
     <ClCompile Include="src\ui\MainWindowDisplay.cpp" />
+    <ClCompile Include="src\ui\MainWindowMap.cpp" />
     <ClCompile Include="src\ui\MiniMap.cpp" />
     <ClCompile Include="src\ui\LoginSettings.cpp" />
     <ClCompile Include="src\ui\UiText.cpp" />

@@ -24,6 +24,6 @@ namespace Client
         int id_ = -2, x_ = -1, y_ = -1, width_ = 0, height_ = 0;
         std::filesystem::path directory_;
         std::vector<RGBQUAD> pixels_;
-        CString title_, error_;
+        CString error_;
     };
 }

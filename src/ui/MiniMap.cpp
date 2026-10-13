@@ -26,7 +26,6 @@ namespace Client
     {
         x_ = x;
         y_ = y;
-        title_.Format(L"坐标 %d, %d", x, y);
         if (id != id_ || directory != directory_)
         {
             id_ = id;
@@ -51,11 +50,6 @@ namespace Client
         dc.FillSolidRect(area, RGB(255, 255, 255));
         dc.SetBkMode(TRANSPARENT);
         dc.SetTextColor(RGB(30, 30, 30));
-        CRect heading = area;
-        heading.DeflateRect(8, 6);
-        heading.bottom = heading.top + 24;
-        heading.left = 404;
-        dc.DrawText(title_, heading, DT_LEFT | DT_SINGLELINE | DT_END_ELLIPSIS);
         area = CanvasRect();
         if (pixels_.empty())
             dc.DrawText(error_, area, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
@@ -108,13 +102,11 @@ namespace Client
     {
         CRect area;
         GetClientRect(&area);
-        area.DeflateRect(12, 12);
+        area.DeflateRect(4, 4);
         area.top += 30;
-        int width = (std::max)(0, (std::min)(512, area.Width()));
-        int height = (std::max)(0, (std::min)(256, area.Height()));
-        CPoint center = area.CenterPoint();
-        return CRect(center.x - width / 2, center.y - height / 2,
-            center.x - width / 2 + width, center.y - height / 2 + height);
+        area.right = (std::max)(area.left, area.right);
+        area.bottom = (std::max)(area.top, area.bottom);
+        return area;
     }
 
     void MiniMap::Load(const std::filesystem::path& directory, int id)
