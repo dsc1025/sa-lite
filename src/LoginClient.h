@@ -31,7 +31,7 @@ public:
     bool PollGame(int timeoutMs = 100);
     bool MoveTo(int map, int x, int y, int timeoutMs = 2000);
     void SetPetState(int slot, PetState state);
-    std::string UseFood(int slot, std::uint32_t revision);
+    std::string UseFood(int slot, std::uint32_t revision, int petSlot);
     void RefreshItemStorage();
     void TransferItemStorage(bool put, int slot, std::uint32_t revision, const std::string& uniqueCode);
     const std::vector<ItemStatus>& GetItemStorage() const noexcept { return itemStorage_; }

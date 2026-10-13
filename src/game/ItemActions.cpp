@@ -6,7 +6,7 @@
 
 using namespace Protocol;
 
-std::string LoginClient::UseFood(int slot, std::uint32_t revision)
+std::string LoginClient::UseFood(int slot, std::uint32_t revision, int petSlot)
 {
     if (!inGame_ || !playerStatus_.received || playerStatus_.inBattle ||
         IsEncounterEnabled() || IsEncounterStopping())
@@ -16,13 +16,16 @@ std::string LoginClient::UseFood(int slot, std::uint32_t revision)
         throw std::runtime_error("背包道具数据已变化，请重新选择食物");
     const auto& item = items_[slot];
     if (item.useField == 1 || item.target == 3 || item.target == 4)
-        throw std::runtime_error("该食物不能在当前场景对自己使用");
+        throw std::runtime_error("该食物不能在当前场景使用");
+    if (petSlot < -1 || petSlot >= static_cast<int>(pets_.size()) ||
+        (petSlot >= 0 && (!pets_[petSlot].received || !pets_[petSlot].present)))
+        throw std::runtime_error("宠物数据已变化，请重新选择使用目标");
     waitingFood_ = true;
     foodMessage_.clear();
     try
     {
         auto deadline = GetTickCount64() + 2000;
-        SendNumbers("17", { playerStatus_.mapX, playerStatus_.mapY, slot, 0 }, deadline);
+        SendNumbers("17", { playerStatus_.mapX, playerStatus_.mapY, slot, petSlot + 1 }, deadline);
         while (items_[slot].revision == revision && foodMessage_.empty() && GetTickCount64() < deadline)
             PollGame(100);
         waitingFood_ = false;

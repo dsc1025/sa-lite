@@ -49,6 +49,8 @@
     <ClInclude Include="src\map\MapData.h" />
     <ClInclude Include="src\text\TextEncoding.h" />
     <ClInclude Include="src\ui\MainWindow.h" />
+    <ClInclude Include="src\ui\PropertiesWindow.h" />
+    <ClInclude Include="src\ui\RolePage.h" />
     <ClInclude Include="src\ui\BattleUi.h" />
     <ClInclude Include="src\ui\MiniMap.h" />
     <ClInclude Include="src\ui\UiText.h" />
@@ -69,6 +71,12 @@
     <ClCompile Include="src\map\MapData.cpp" />
     <ClCompile Include="src\text\TextEncoding.cpp" />
     <ClCompile Include="src\ui\MainWindow.cpp" />
+    <ClCompile Include="src\ui\PropertiesWindow.cpp" />
+    <ClCompile Include="src\ui\RolePage.cpp" />
+    <ClCompile Include="src\ui\RolePageCharacter.cpp" />
+    <ClCompile Include="src\ui\RolePageActions.cpp" />
+    <ClCompile Include="src\ui\RolePagePet.cpp" />
+    <ClCompile Include="src\ui\RolePageItem.cpp" />
     <ClCompile Include="src\ui\BattleUi.cpp" />
     <ClCompile Include="src\ui\MainWindowDisplay.cpp" />
     <ClCompile Include="src\ui\MiniMap.cpp" />

@@ -3,36 +3,6 @@
 
 namespace Client
 {
-    void MainWindow::AddRow(const wchar_t* name, const CString& value)
-    {
-        int row = detail_.InsertItem(detail_.GetItemCount(), name);
-        detail_.SetItemText(row, 1, value);
-    }
-
-    void MainWindow::RefreshDetail()
-    {
-        detail_.DeleteAllItems();
-        if (mainTabs_.GetCurSel() != 0 || tabs_.GetCurSel() != 0) return;
-        const auto& p = view_.player;
-        if (!p.received)
-        {
-            AddRow(L"状态", L"正在等待人物数据…");
-            return;
-        }
-        AddRow(L"等级 / 转生", Ratio(p.level, p.rebirth));
-        AddRow(L"生命", Ratio(p.hp, p.maxHp));
-        AddRow(L"魔力", Ratio(p.mp, p.maxMp));
-        AddRow(L"体力", Number(p.vital)); AddRow(L"腕力", Number(p.strength));
-        AddRow(L"耐力", Number(p.toughness)); AddRow(L"速度", Number(p.dexterity));
-        AddRow(L"攻击", Number(p.attack)); AddRow(L"防御", Number(p.defence));
-        AddRow(L"敏捷", Number(p.quick)); AddRow(L"魅力", Number(p.charm));
-        AddRow(L"运气", Number(p.luck)); AddRow(L"感知", Number(p.perception));
-        CString elements;
-        elements.Format(L"地 %d   水 %d   火 %d   风 %d", p.earth, p.water, p.fire, p.wind);
-        AddRow(L"元素", elements); AddRow(L"经验 / 下级经验", Ratio(p.experience, p.nextExperience));
-        AddRow(L"金币", Number(p.gold)); AddRow(L"决斗积分", Number(p.duelPoints));
-    }
-
     void MainWindow::RefreshMapPositions()
     {
         mapPosition_.ShowDropDown(FALSE);
@@ -51,7 +21,6 @@ namespace Client
 
     void MainWindow::Refresh()
     {
-        refreshing_ = true;
         bool login = view_.screen == Screen::Login || view_.screen == Screen::Connecting;
         bool characters = view_.screen == Screen::Characters || view_.screen == Screen::Entering;
         bool game = view_.screen == Screen::Game;
@@ -100,14 +69,10 @@ namespace Client
             if (positionMap_ == -2)
                 RefreshMapPositions();
         }
-        tabs_.ShowWindow(role ? SW_SHOW : SW_HIDE);
+        rolePage_.ShowWindow(role ? SW_SHOW : SW_HIDE);
+        rolePage_.Refresh();
         shopTabs_.ShowWindow(shop ? SW_SHOW : SW_HIDE);
-        list_.ShowWindow(characters || (role && tabs_.GetCurSel() != 0) ? SW_SHOW : SW_HIDE);
-        bool items = role && tabs_.GetCurSel() == 2;
-        detail_.ShowWindow(role && tabs_.GetCurSel() == 0 ? SW_SHOW : SW_HIDE);
-        itemStorage_.ShowWindow(items ? SW_SHOW : SW_HIDE);
-        bool pets = role && tabs_.GetCurSel() == 1;
-        petStorage_.ShowWindow(pets ? SW_SHOW : SW_HIDE);
+        list_.ShowWindow(characters ? SW_SHOW : SW_HIDE);
         exit_.EnableWindow(view_.screen != Screen::Closing);
         exit_.SetWindowText(game ? L"退出登录" : L"退出");
         SetWindowText(login ? L"登录" : characters ? L"选择角色" : L"SA25_#1");
@@ -132,17 +97,6 @@ namespace Client
             }
         }
         summary_.SetWindowText(characters ? CString(L"选择角色后进入游戏") : summary);
-        bool petColumns = role && tabs_.GetCurSel() == 1;
-        int columns = list_.GetHeaderCtrl()->GetItemCount();
-        if (petColumns && columns == 2)
-            list_.InsertColumn(2, L"状态", LVCFMT_LEFT, 60);
-        else if (!petColumns && columns == 3)
-            list_.DeleteColumn(2);
-        LVCOLUMN column{};
-        column.mask = LVCF_TEXT | LVCF_FMT;
-        column.pszText = const_cast<wchar_t*>(items ? L"分类" : L"等级");
-        column.fmt = items ? LVCFMT_LEFT : LVCFMT_RIGHT;
-        list_.SetColumn(1, &column);
         int previous = list_.GetNextItem(-1, LVNI_SELECTED);
         DWORD_PTR previousSlot = previous >= 0 ? list_.GetItemData(previous) : 0;
         list_.DeleteAllItems();
@@ -155,95 +109,11 @@ namespace Client
                 list_.SetItemData(row, i);
             }
         }
-        else if (role && tabs_.GetCurSel() == 1)
-        {
-            for (std::size_t i = 0; i < view_.pets.size(); ++i)
-            {
-                const auto& pet = view_.pets[i];
-                CString name = pet.present ? LegacyText(pet.nickname.empty() ? pet.name : pet.nickname) : CString(L"空栏位");
-                if (!pet.received) name = L"等待数据…";
-                int row = list_.InsertItem(static_cast<int>(i), name);
-                list_.SetItemText(row, 1, pet.present ? Number(pet.level) : CString());
-                CString state;
-                if (pet.received && pet.present)
-                {
-                    int index = PetStateIndex(view_.player, static_cast<int>(i));
-                    state = PetStateNames[index];
-                }
-                list_.SetItemText(row, 2, state);
-                list_.SetItemData(row, i);
-            }
-        }
-        else if (role && tabs_.GetCurSel() == 2)
-        {
-            const wchar_t* equipment[] = { L"头部", L"身体", L"武器", L"饰品1", L"饰品2" };
-            for (std::size_t i = 0; i < view_.items.size(); ++i)
-            {
-                if (!view_.items[i].present) continue;
-                CString name;
-                if (i < 5) name = equipment[i];
-                else name.Format(L"背包 %d", static_cast<int>(i - 4));
-                name += L" · "; name += LegacyText(view_.items[i].name);
-                int row = list_.InsertItem(list_.GetItemCount(), name);
-                list_.SetItemText(row, 1, view_.items[i].type == 20 ? L"食物" : L"未分类");
-                list_.SetItemData(row, i);
-            }
-        }
         int selection = 0;
         for (int i = 0; i < list_.GetItemCount(); ++i)
             if (list_.GetItemData(i) == previousSlot) selection = i;
         if (list_.GetItemCount())
             list_.SetItemState(selection, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
-        int previousStorage = itemStorage_.GetNextItem(-1, LVNI_SELECTED);
-        DWORD_PTR previousStorageSlot = previousStorage >= 0 ? itemStorage_.GetItemData(previousStorage) : 0;
-        itemStorage_.DeleteAllItems();
-        if (items && view_.hasItemStorage)
-        {
-            for (std::size_t i = 0; i < view_.itemStorage.size(); ++i)
-            {
-                const auto& item = view_.itemStorage[i];
-                if (!item.present) continue;
-                int row = itemStorage_.InsertItem(itemStorage_.GetItemCount(), LegacyText(item.name));
-                itemStorage_.SetItemText(row, 1, item.type == 20 ? L"食物" : L"未分类");
-                itemStorage_.SetItemData(row, i);
-                if (i == previousStorageSlot)
-                    itemStorage_.SetItemState(row, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
-            }
-        }
-        if (items && !itemStorage_.GetItemCount())
-        {
-            int row = itemStorage_.InsertItem(0, view_.hasItemStorage ? L"仓库为空" :
-                view_.itemPending ? L"正在加载…" : L"未加载，右键刷新");
-            itemStorage_.SetItemData(row, static_cast<DWORD_PTR>(-1));
-        }
-        int storageSelection = petStorage_.GetNextItem(-1, LVNI_SELECTED);
-        DWORD_PTR storageSlot = storageSelection >= 0 ? petStorage_.GetItemData(storageSelection) : 0;
-        petStorage_.DeleteAllItems();
-        if (pets)
-        {
-            if (!view_.hasPetStorage)
-            {
-                int row = petStorage_.InsertItem(0, view_.petStoragePending ? L"正在加载…" : L"未加载，右键刷新");
-                petStorage_.SetItemData(row, static_cast<DWORD_PTR>(-1));
-            }
-            else
-            {
-                for (std::size_t i = 0; i < view_.petStorage.size(); ++i)
-                {
-                    const auto& pet = view_.petStorage[i];
-                    CString name;
-                    name.Format(L"%d · ", static_cast<int>(i + 1));
-                    name += pet.present ? LegacyText(pet.nickname.empty() ? pet.name : pet.nickname) : CString(L"空栏位");
-                    int row = petStorage_.InsertItem(static_cast<int>(i), name);
-                    petStorage_.SetItemText(row, 1, pet.present ? Number(pet.level) : CString());
-                    petStorage_.SetItemData(row, i);
-                    if (i == storageSlot)
-                        petStorage_.SetItemState(row, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
-                }
-            }
-        }
-        if (game) RefreshDetail();
-        refreshing_ = false;
         Layout();
     }
 }

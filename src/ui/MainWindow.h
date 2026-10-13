@@ -4,32 +4,17 @@
 #include <afxcmn.h>
 #include "MiniMap.h"
 #include "BattleUi.h"
+#include "RolePage.h"
 #include "../map/MapData.h"
 #include "../session/GameSession.h"
 #include <unordered_map>
 
 namespace Client
 {
-    class ItemPropertiesWindow : public CWnd
-    {
-    public:
-        void Show(CWnd* owner, const CString& text, const wchar_t* title = L"道具属性");
-
-    protected:
-        BOOL PreTranslateMessage(MSG* message) override;
-        afx_msg int OnCreate(LPCREATESTRUCT create);
-        afx_msg void OnSize(UINT type, int width, int height);
-        DECLARE_MESSAGE_MAP()
-
-    private:
-        CFont font_;
-        CEdit text_;
-    };
-
     class MainWindow : public CFrameWnd
     {
     public:
-        MainWindow()
+        MainWindow() : rolePage_(view_, session_, footer_)
         {
             background_.CreateSolidBrush(GetSysColor(COLOR_BTNFACE));
             white_.CreateSolidBrush(GetSysColor(COLOR_WINDOW));
@@ -54,15 +39,6 @@ namespace Client
         afx_msg void OnClose();
         afx_msg LRESULT OnSession(WPARAM, LPARAM);
         afx_msg void OnMainTab(NMHDR*, LRESULT* result);
-        afx_msg void OnTab(NMHDR*, LRESULT* result);
-        afx_msg void OnSelect(NMHDR*, LRESULT* result);
-        afx_msg void OnPetClick(NMHDR* header, LRESULT* result);
-        afx_msg void OnListRightClick(NMHDR* header, LRESULT* result);
-        afx_msg void OnPetStorageRightClick(NMHDR* header, LRESULT* result);
-        afx_msg void OnListDoubleClick(NMHDR* header, LRESULT* result);
-        afx_msg void OnItemStorageRightClick(NMHDR* header, LRESULT* result);
-        afx_msg void OnPetState();
-        afx_msg void OnPetStateClose();
         afx_msg void OnMapPosition();
         afx_msg void OnMapRegion();
         afx_msg void OnBattleStart();
@@ -75,11 +51,7 @@ namespace Client
         void RefreshBattle(bool visible);
         void Layout();
         void Refresh();
-        void RefreshDetail();
         void RefreshMapPositions();
-        void AddRow(const wchar_t* name, const CString& value);
-        void ShowItemProperties(CListCtrl& list, int row);
-        void ShowPetProperties(CListCtrl& list, int row);
         void LoadLogin();
         void SaveLogin();
 
@@ -95,18 +67,15 @@ namespace Client
         MiniMap miniMap_;
         CEdit address_, port_, account_, password_;
         CButton login_, enter_, exit_;
-        CTabCtrl mainTabs_, tabs_, shopTabs_, battleTabs_;
+        CTabCtrl mainTabs_, shopTabs_, battleTabs_;
         BattleGroup battleSides_[2];
         CButton battleStart_, battleStop_, battleSettings_;
         CStatic battleRound_, battleInfo_, battleExperience_;
-        CListCtrl list_, detail_, petStorage_, itemStorage_;
-        ItemPropertiesWindow itemProperties_, petProperties_;
-        CComboBox petState_;
-        int editingPet_ = -1;
+        CListCtrl list_;
         SessionView view_;
         GameSession session_;
+        RolePage rolePage_;
         bool closeWindow_ = false;
-        bool refreshing_ = false;
         bool expanded_ = false;
     };
 }

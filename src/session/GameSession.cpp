@@ -116,7 +116,7 @@ namespace Client
         return true;
     }
 
-    bool GameSession::RequestFood(int slot, std::uint32_t revision)
+    bool GameSession::RequestFood(int slot, std::uint32_t revision, int petSlot)
     {
         {
             std::lock_guard<std::mutex> lock(mutex_);
@@ -126,10 +126,14 @@ namespace Client
                 slot >= static_cast<int>(shared_.items.size()) || !shared_.items[slot].present ||
                 shared_.items[slot].type != 20 || shared_.items[slot].revision != revision)
                 return false;
+            if (petSlot < -1 || petSlot >= static_cast<int>(shared_.pets.size()) ||
+                (petSlot >= 0 && (!shared_.pets[petSlot].received || !shared_.pets[petSlot].present)))
+                return false;
             requestedFood_ = slot;
+            requestedFoodPet_ = petSlot;
             requestedFoodRevision_ = revision;
             shared_.itemPending = true;
-            shared_.message = L"正在对当前角色使用食物…";
+            shared_.message = petSlot < 0 ? L"正在对当前角色使用食物…" : L"正在对随身宠物使用食物…";
         }
         ::PostMessage(window_, message_, 0, 0);
         return true;
@@ -254,7 +258,7 @@ namespace Client
                 std::wstring movementMessage = storageMessage;
                 for (;;)
                 {
-                    int pet, state, pollTimeout, storageSlot, food;
+                    int pet, state, pollTimeout, storageSlot, food, foodPet;
                     std::uint32_t foodRevision, itemStorageRevision;
                     bool itemStorage;
                     int itemStorageSlot;
@@ -270,6 +274,7 @@ namespace Client
                         pet = requestedPet_;
                         state = requestedPetState_;
                         food = requestedFood_;
+                        foodPet = requestedFoodPet_;
                         foodRevision = requestedFoodRevision_;
                         requestedFood_ = -1;
                         itemStorage = itemStorageRequested_;
@@ -352,7 +357,7 @@ namespace Client
                     {
                         std::wstring message;
                         std::string failure;
-                        try { message = TextEncoding::ErrorText(client.UseFood(food, foodRevision).c_str()); }
+                        try { message = TextEncoding::ErrorText(client.UseFood(food, foodRevision, foodPet).c_str()); }
                         catch (const std::exception& error)
                         {
                             failure = error.what();
