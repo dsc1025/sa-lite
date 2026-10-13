@@ -59,7 +59,7 @@ namespace Client
                 !view_.encounterEnabled && !view_.encounterPending && item.useField != 1 && item.target <= 2;
             if (!useMenu.CreatePopupMenu())
                 return;
-            useMenu.AppendMenu(MF_STRING | (canUse ? MF_ENABLED : MF_GRAYED), 4, L"角色");
+            useMenu.AppendMenu(MF_STRING | (canUse ? MF_ENABLED : MF_GRAYED), 4, view_.characterName.c_str());
             for (int petSlot = 0; petSlot < static_cast<int>(view_.pets.size()); ++petSlot)
             {
                 const auto& status = view_.pets[petSlot];
