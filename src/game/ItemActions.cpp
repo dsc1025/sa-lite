@@ -6,6 +6,23 @@
 
 using namespace Protocol;
 
+std::string LoginClient::DropItem(int slot, std::uint32_t revision)
+{
+    if (!inGame_ || !playerStatus_.received || playerStatus_.inBattle ||
+        IsEncounterEnabled() || IsEncounterStopping())
+        throw std::runtime_error("请先停止遇敌并结束战斗，再丢弃道具");
+    if (slot < 0 || slot >= static_cast<int>(items_.size()) || !items_[slot].present ||
+        items_[slot].revision != revision)
+        throw std::runtime_error("道具数据已变化，请重新选择");
+    auto deadline = GetTickCount64() + 2000;
+    SendNumbers("19", { playerStatus_.mapX, playerStatus_.mapY, slot }, deadline);
+    while (items_[slot].present && items_[slot].revision == revision && GetTickCount64() < deadline)
+        PollGame(100);
+    if (!items_[slot].present)
+        return "道具已丢弃";
+    return "服务器未确认道具丢弃，请检查道具及当前场景是否允许丢弃，勿连续重复操作";
+}
+
 std::string LoginClient::UseFood(int slot, std::uint32_t revision, int petSlot)
 {
     if (!inGame_ || !playerStatus_.received || playerStatus_.inBattle ||

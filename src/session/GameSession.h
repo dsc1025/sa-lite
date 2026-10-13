@@ -23,9 +23,11 @@ namespace Client
         bool IsDone();
         SessionView Snapshot(bool& done, bool& stopped);
         void SelectCharacter(int selection);
+        bool RequestCreateCharacter(const LoginClient::NewCharacter& character);
         void RequestMove(int map, int x, int y);
         bool RequestPetState(int slot, int state);
         bool RequestPetStorage(Game::PetStorageAction action, int slot = -1, const std::string& uniqueCode = {});
+        bool RequestDiscard(bool pet, int slot, std::uint32_t revision, const std::string& uniqueCode);
         bool RequestFood(int slot, std::uint32_t revision, int petSlot);
         bool RequestItemStorage(Game::ItemStorageAction action, int slot = -1,
             std::uint32_t revision = 0, const std::string& uniqueCode = {});
@@ -47,6 +49,8 @@ namespace Client
         bool encounterRequested_ = false;
         Game::HealingSettings healing_;
         int requestedCharacter_ = -1;
+        bool createRequested_ = false;
+        LoginClient::NewCharacter requestedCreation_;
         int requestedPet_ = -1, requestedPetState_ = 0;
         bool storageRequested_ = false;
         Game::PetStorageAction requestedStorageAction_ = Game::PetStorageAction::List;
@@ -57,6 +61,10 @@ namespace Client
         int requestedItemStorageSlot_ = -1;
         std::uint32_t requestedItemStorageRevision_ = 0;
         std::string requestedItemStorageCode_;
+        int requestedDiscard_ = -1;
+        bool requestedDiscardPet_ = false;
+        std::uint32_t requestedDiscardRevision_ = 0;
+        std::string requestedDiscardCode_;
         int requestedFood_ = -1;
         int requestedFoodPet_ = -1;
         std::uint32_t requestedFoodRevision_ = 0;

@@ -190,6 +190,7 @@ std::vector<LoginClient::Character> LoginClient::GetCharacters(int timeoutMs)
                 if (options.size() < 3)
                     throw std::runtime_error("Incomplete character options");
                 character.level = ParseNumber(options[2]);
+                character.slot = ParseNumber(options[0]);
             }
             characters_.push_back(character);
         }
@@ -199,6 +200,95 @@ std::vector<LoginClient::Character> LoginClient::GetCharacters(int timeoutMs)
     {
         Disconnect();
         throw;
+    }
+}
+
+void LoginClient::ValidateNewCharacter(const NewCharacter& character)
+{
+    if (character.name.empty() || character.name.size() >= 32)
+        throw std::invalid_argument("名字必须为 1～31 个旧编码字节");
+    bool trail = false;
+    for (unsigned char byte : character.name)
+    {
+        if (byte <= 0x20 || byte == 0xff || (byte >= 0x7f && byte <= 0xa0))
+            throw std::invalid_argument("名字包含服务端不允许的字符");
+        if (trail)
+        {
+            if (!((byte >= 0x40 && byte <= 0x7e) || (byte >= 0xa1 && byte <= 0xfe)))
+                throw std::invalid_argument("名字编码无效");
+            trail = false;
+        }
+        else if (byte >= 0xa1) trail = true;
+    }
+    if (trail) throw std::invalid_argument("名字编码不完整");
+    if (character.model < 0 || character.model >= 12 || character.color < 0 || character.color >= 4 ||
+        character.hometown < 0 || character.hometown >= 4)
+        throw std::invalid_argument("外观或出生地无效");
+    int total = 0;
+    for (int point : character.points)
+    {
+        if (point < 0 || point > 20) throw std::invalid_argument("四围点数无效");
+        total += point;
+    }
+    if (total != 20) throw std::invalid_argument("四围合计必须为 20");
+    total = 0;
+    int count = 0;
+    for (int element : character.elements)
+    {
+        if (element < 0 || element > 10) throw std::invalid_argument("元素点数无效");
+        total += element;
+        if (element) ++count;
+    }
+    if (total != 10 || count > 2 || (character.elements[0] && character.elements[2]) ||
+        (character.elements[1] && character.elements[3]))
+        throw std::invalid_argument("元素组合无效");
+}
+
+bool LoginClient::CreateCharacter(const NewCharacter& character, std::string& error, int timeoutMs)
+{
+    ValidateNewCharacter(character);
+    if (!loggedIn_ || inGame_ || timeoutMs <= 0)
+        throw std::logic_error("创建角色需要先登录账号");
+    int slot = -1;
+    for (int candidate = 0; candidate < 2; ++candidate)
+        if (std::none_of(characters_.begin(), characters_.end(),
+            [&](const Character& available) { return available.slot == candidate; }))
+        {
+            slot = candidate;
+            break;
+        }
+    if (characters_.size() >= 2 || slot < 0 || std::any_of(characters_.begin(), characters_.end(),
+        [](const Character& available) { return available.slot < 0 || available.slot > 1; }))
+        throw std::logic_error("没有可确认的空角色槽位");
+    if (std::any_of(characters_.begin(), characters_.end(),
+        [&](const Character& available) { return available.name == character.name; }))
+        throw std::invalid_argument("账号下已有同名角色");
+    try
+    {
+        auto deadline = GetTickCount64() + timeoutMs;
+        std::string packet = "&;73;" + EncodeInteger(slot, sessionKey_) + ";" +
+            Encode64(character.name, sessionKey_, -1) + ";";
+        std::uint32_t checksum = static_cast<std::uint32_t>(slot + character.name.size());
+        int values[] = { 100000 + character.model * 20 + character.color * 5,
+            30000 + character.model * 100 + character.color * 25,
+            character.points[0], character.points[1], character.points[2], character.points[3],
+            character.elements[0], character.elements[1], character.elements[2], character.elements[3],
+            character.hometown };
+        for (int value : values)
+        {
+            packet += EncodeInteger(value, sessionKey_) + ";";
+            checksum += value;
+        }
+        connection_.Send(EncodePacket(packet + EncodeInteger(checksum, sessionKey_) + ";#;"), deadline);
+        auto reply = WaitReply("74", deadline);
+        error = reply[1].empty() ? "服务端拒绝创建角色，请检查名字及服务器配置" : reply[1];
+        return reply[0] == "successful";
+    }
+    catch (const std::exception& exception)
+    {
+        std::string message = "创建结果未确认，请重新登录检查角色列表：" + std::string(exception.what());
+        Disconnect();
+        throw std::runtime_error(message);
     }
 }
 

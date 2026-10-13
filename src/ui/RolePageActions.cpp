@@ -45,12 +45,12 @@ namespace Client
         CMenu menu;
         if (!menu.CreatePopupMenu())
             return;
-        UINT flags = MF_STRING | (enabled ? MF_ENABLED : MF_GRAYED);
         bool idle = !view_.petStoragePending && !view_.itemPending && !view_.player.inBattle &&
             !view_.encounterEnabled && !view_.encounterPending;
         bool canStore = enabled && idle && (pet ? view_.hasPetStorage : view_.hasItemStorage && slot >= 5);
         menu.AppendMenu(MF_STRING | (canStore ? MF_ENABLED : MF_GRAYED), 1, L"存入");
-        menu.AppendMenu(flags, 2, L"丢弃");
+        bool canDiscard = enabled && idle;
+        menu.AppendMenu(MF_STRING | (canDiscard ? MF_ENABLED : MF_GRAYED), 2, L"丢弃");
         CMenu useMenu;
         if (food)
         {
@@ -109,17 +109,17 @@ namespace Client
                 footer_.SetWindowText(L"正在存入宠物…");
             return;
         }
-        if (pet && command == 2)
+        if (command == 2 && canDiscard)
         {
             CString prompt;
-            prompt.Format(L"确定要丢弃宠物“%s”吗？", name.GetString());
+            prompt.Format(L"确定要丢弃%s“%s”吗？", pet ? L"宠物" : L"道具", name.GetString());
             if (MessageBox(prompt, L"确认丢弃", MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2) != IDYES)
                 return;
+            if (session_.RequestDiscard(pet, slot, itemRevision, uniqueCode))
+                footer_.SetWindowText(pet ? L"正在丢弃宠物…" : L"正在丢弃道具…");
+            else
+                footer_.SetWindowText(L"当前状态或数据已变化，请重新选择后丢弃");
         }
-        CString message;
-        message.Format(L"%s%s功能尚未接入，当前仅提供 UI", pet ? L"宠物" : L"道具",
-            command == 1 ? L"存入" : L"丢弃");
-        footer_.SetWindowText(message);
     }
 
     void RolePage::OnListDoubleClick(NMHDR* header, LRESULT* result)

@@ -27,10 +27,21 @@ public:
     LoginResult Login(const std::string& account, const std::string& password,
         int timeoutMs = 10000);
     std::vector<Character> GetCharacters(int timeoutMs = 10000);
+    struct NewCharacter
+    {
+        std::string name;
+        int model = 0, color = 0, hometown = 0;
+        int points[4] = {};
+        int elements[4] = {};
+    };
+    static void ValidateNewCharacter(const NewCharacter& character);
+    bool CreateCharacter(const NewCharacter& character, std::string& error, int timeoutMs = 10000);
     void EnterGame(const Character& character, int timeoutMs = 10000);
     bool PollGame(int timeoutMs = 100);
     bool MoveTo(int map, int x, int y, int timeoutMs = 2000);
     void SetPetState(int slot, PetState state);
+    std::string DropPet(int slot, const std::string& uniqueCode);
+    std::string DropItem(int slot, std::uint32_t revision);
     std::string UseFood(int slot, std::uint32_t revision, int petSlot);
     void RefreshItemStorage();
     void TransferItemStorage(bool put, int slot, std::uint32_t revision, const std::string& uniqueCode);

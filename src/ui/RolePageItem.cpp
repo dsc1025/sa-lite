@@ -49,7 +49,6 @@ namespace Client
         if (available)
         {
             menu.AppendMenu(MF_STRING | (idle ? MF_ENABLED : MF_GRAYED), 1, L"取出");
-            menu.AppendMenu(MF_STRING, 2, L"丢弃");
             menu.AppendMenu(MF_STRING, 3, L"属性");
         }
         menu.AppendMenu(MF_STRING | (idle ? MF_ENABLED : MF_GRAYED), 4, L"刷新");
@@ -63,8 +62,6 @@ namespace Client
             session_.RequestItemStorage(Game::ItemStorageAction::Get, static_cast<int>(slot), 0, code);
         else if (command == 4 && idle)
             session_.RequestItemStorage(Game::ItemStorageAction::List);
-        else if (command == 2 && available)
-            footer_.SetWindowText(L"道具丢弃功能尚未接入，当前仅提供 UI");
     }
 
     void RolePage::RefreshItems()

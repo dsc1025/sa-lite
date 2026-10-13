@@ -6,6 +6,25 @@
 
 using namespace Protocol;
 
+std::string LoginClient::DropPet(int slot, const std::string& uniqueCode)
+{
+    if (!inGame_ || !playerStatus_.received || playerStatus_.inBattle ||
+        IsEncounterEnabled() || IsEncounterStopping())
+        throw std::runtime_error("请先停止遇敌并结束战斗，再丢弃宠物");
+    if (slot < 0 || slot >= static_cast<int>(pets_.size()) || !pets_[slot].received ||
+        !pets_[slot].present || uniqueCode.empty() || pets_[slot].uniqueCode != uniqueCode)
+        throw std::runtime_error("宠物数据已变化或缺少唯一编码，请重新选择");
+    if (!playerStatus_.battleReceived || playerStatus_.battlePet == slot || playerStatus_.ridePet == slot)
+        throw std::runtime_error("请先将宠物设为等待，再丢弃");
+    auto deadline = GetTickCount64() + 2000;
+    SendNumbers("21", { playerStatus_.mapX, playerStatus_.mapY, slot }, deadline);
+    while (pets_[slot].present && pets_[slot].uniqueCode == uniqueCode && GetTickCount64() < deadline)
+        PollGame(100);
+    if (!pets_[slot].present)
+        return "宠物已丢弃";
+    return "服务器未确认宠物丢弃，请检查宠物及当前场景是否允许丢弃，勿连续重复操作";
+}
+
 void LoginClient::SetPetState(int slot, PetState state)
 {
     if (!inGame_ || slot < 0 || slot >= static_cast<int>(pets_.size()) || !pets_[slot].present ||

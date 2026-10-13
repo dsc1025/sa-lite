@@ -5,6 +5,7 @@ namespace Client
 {
     void MainWindow::Refresh()
     {
+        createCharacterWindow_.Update(view_);
         bool login = view_.screen == Screen::Login || view_.screen == Screen::Connecting;
         bool characters = view_.screen == Screen::Characters || view_.screen == Screen::Entering;
         bool game = view_.screen == Screen::Game;
@@ -31,7 +32,9 @@ namespace Client
         login_.ShowWindow(login ? SW_SHOW : SW_HIDE);
         login_.EnableWindow(view_.screen == Screen::Login);
         enter_.ShowWindow(characters ? SW_SHOW : SW_HIDE);
-        enter_.EnableWindow(view_.screen == Screen::Characters);
+        enter_.EnableWindow(view_.screen == Screen::Characters && !view_.characters.empty() && !view_.createPending);
+        createCharacter_.ShowWindow(characters ? SW_SHOW : SW_HIDE);
+        createCharacter_.EnableWindow(view_.screen == Screen::Characters && view_.characters.size() < 2 && !view_.createPending);
         bool role = game && mainTabs_.GetCurSel() == 0;
         mainTabs_.ShowWindow(game ? SW_SHOW : SW_HIDE);
         bool mapPage = game && mainTabs_.GetCurSel() == 1;
@@ -78,7 +81,7 @@ namespace Client
                 summary += position;
             }
         }
-        summary_.SetWindowText(characters ? CString(L"选择角色后进入游戏") : summary);
+        summary_.SetWindowText(characters ? CString(view_.characters.empty() ? L"暂无角色，请创建角色" : L"选择角色后进入游戏") : summary);
         int previous = list_.GetNextItem(-1, LVNI_SELECTED);
         DWORD_PTR previousSlot = previous >= 0 ? list_.GetItemData(previous) : 0;
         list_.DeleteAllItems();
@@ -94,6 +97,10 @@ namespace Client
         int selection = 0;
         for (int i = 0; i < list_.GetItemCount(); ++i)
             if (list_.GetItemData(i) == previousSlot) selection = i;
+        if (!view_.createdCharacter.empty() && selectedCreationRevision_ != view_.createRevision)
+            for (std::size_t i = 0; i < view_.characters.size(); ++i)
+                if (view_.characters[i].name == view_.createdCharacter) selection = static_cast<int>(i);
+        selectedCreationRevision_ = view_.createRevision;
         if (list_.GetItemCount())
             list_.SetItemState(selection, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
         Layout();

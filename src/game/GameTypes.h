@@ -19,6 +19,7 @@ namespace Game
     {
         std::string name;
         int level = -1;
+        int slot = -1;
     };
     struct PlayerStatus
     {

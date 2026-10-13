@@ -31,5 +31,8 @@ namespace Client
         bool encounterPending = false;
         std::wstring encounterMessage = L"遇敌未开始";
         bool failed = false;
+        bool createPending = false;
+        unsigned int createRevision = 0;
+        std::string createdCharacter;
     };
 }

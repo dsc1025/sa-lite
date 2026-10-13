@@ -19,6 +19,7 @@ namespace Client
         ON_WM_CLOSE()
         ON_BN_CLICKED(LoginButton, &MainWindow::OnLogin)
         ON_BN_CLICKED(EnterButton, &MainWindow::OnEnter)
+        ON_BN_CLICKED(105, &MainWindow::OnCreateCharacter)
         ON_BN_CLICKED(ExitButton, &MainWindow::OnExit)
         ON_MESSAGE(SessionMessage, &MainWindow::OnSession)
         ON_NOTIFY(TCN_SELCHANGE, MainTabs, &MainWindow::OnMainTab)
@@ -61,6 +62,7 @@ namespace Client
         password_.SetLimitText(15);
         login_.Create(L"登录", WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, empty, this, LoginButton);
         enter_.Create(L"进入游戏", WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, empty, this, EnterButton);
+        createCharacter_.Create(L"创建角色", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, empty, this, 105);
         exit_.Create(L"退出", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, empty, this, ExitButton);
         mainTabs_.Create(WS_CHILD | WS_TABSTOP | WS_CLIPSIBLINGS | TCS_VERTICAL | TCS_MULTILINE,
             empty, this, MainTabs);
@@ -137,6 +139,7 @@ namespace Client
         login_.MoveWindow(left + 88, 208, 100, 30);
         exit_.MoveWindow(login ? left + 200 : width - 116, login ? 208 : 12, 100, 30);
         enter_.MoveWindow(width - 146, height - 76, 130, 30);
+        createCharacter_.MoveWindow(16, height - 76, 130, 30);
         mainTabs_.MoveWindow(16, 54, width - 32, height - 92);
         CRect mainPage(16, 54, width - 16, height - 38);
         CRect tabItem;
@@ -204,6 +207,7 @@ namespace Client
             if (address.empty() || account.empty() || password.empty() || port == 0 || port > 65535)
                 throw std::invalid_argument("请填写服务器、端口、账号和密码");
             SaveLogin();
+            creationOffered_ = false;
             view_ = {};
             view_.screen = Screen::Connecting;
             view_.message = L"正在连接并登录…";
@@ -223,11 +227,19 @@ namespace Client
     void MainWindow::OnEnter()
     {
         int selected = list_.GetNextItem(-1, LVNI_SELECTED);
-        if (view_.screen != Screen::Characters || selected < 0) return;
+        if (view_.screen != Screen::Characters || view_.createPending || selected < 0 ||
+            (createCharacterWindow_.GetSafeHwnd() && createCharacterWindow_.IsWindowVisible())) return;
         session_.SelectCharacter(static_cast<int>(list_.GetItemData(selected)));
         view_.screen = Screen::Entering;
         view_.message = L"正在进入游戏…";
         Refresh();
+    }
+
+    void MainWindow::OnCreateCharacter()
+    {
+        if (view_.screen != Screen::Characters || view_.createPending || view_.characters.size() >= 2) return;
+        createCharacterWindow_.Show(this, &session_);
+        createCharacterWindow_.Update(view_);
     }
 
     void MainWindow::OnExit()
@@ -313,6 +325,7 @@ namespace Client
     LRESULT MainWindow::OnSession(WPARAM, LPARAM)
     {
         bool done, stopped;
+        bool firstCharacters = !creationOffered_;
         view_ = session_.Snapshot(done, stopped);
         if (done) session_.Join();
         if (closeWindow_)
@@ -334,6 +347,13 @@ namespace Client
             view_.message = L"正在退出并返回账号登录…";
         }
         Refresh();
+        createCharacterWindow_.Update(view_);
+        if (view_.screen == Screen::Login) creationOffered_ = false;
+        if (view_.screen == Screen::Characters && firstCharacters)
+        {
+            creationOffered_ = true;
+            if (view_.characters.empty()) OnCreateCharacter();
+        }
         return 0;
     }
 

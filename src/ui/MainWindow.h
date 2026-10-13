@@ -5,6 +5,7 @@
 #include "MiniMap.h"
 #include "BattleUi.h"
 #include "RolePage.h"
+#include "CreateCharacterWindow.h"
 #include "../map/MapData.h"
 #include "../session/GameSession.h"
 #include <unordered_map>
@@ -35,6 +36,7 @@ namespace Client
         afx_msg HBRUSH OnCtlColor(CDC* dc, CWnd* window, UINT type);
         afx_msg void OnLogin();
         afx_msg void OnEnter();
+        afx_msg void OnCreateCharacter();
         afx_msg void OnExit();
         afx_msg void OnClose();
         afx_msg LRESULT OnSession(WPARAM, LPARAM);
@@ -68,6 +70,10 @@ namespace Client
         MiniMap miniMap_;
         CEdit address_, port_, account_, password_;
         CButton login_, enter_, exit_;
+        CButton createCharacter_;
+        CreateCharacterWindow createCharacterWindow_;
+        bool creationOffered_ = false;
+        unsigned int selectedCreationRevision_ = 0;
         CTabCtrl mainTabs_, shopTabs_, battleTabs_;
         BattleGroup battleSides_[2];
         CButton battleStart_, battleStop_, battleSettings_;
