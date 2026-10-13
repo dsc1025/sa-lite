@@ -41,6 +41,7 @@ public:
     const std::vector<ItemStatus>& GetItems() const noexcept;
     bool HasItems() const noexcept;
     const Game::BattleState& GetBattle() const noexcept { return battle_; }
+    const Game::BattleResult& GetBattleResult() const noexcept { return battleResult_; }
     void Disconnect() noexcept;
     bool IsConnected() const noexcept;
 
@@ -49,6 +50,7 @@ private:
     std::vector<std::string> WaitReply(const std::string& function, ULONGLONG deadline);
     bool HandleGamePacket(const std::vector<std::string>& fields);
     bool HandleBattlePacket(const std::vector<std::string>& fields);
+    bool HandleBattleResult(const std::vector<std::string>& fields);
     bool PollBattle();
     void FinishBattle();
     bool HandlePositionPacket(const std::vector<std::string>& fields);
@@ -70,6 +72,7 @@ private:
     PlayerStatus playerStatus_;
     Game::EncounterState encounter_;
     Game::BattleState battle_;
+    Game::BattleResult battleResult_;
     std::vector<PetStatus> pets_ = std::vector<PetStatus>(5);
     std::vector<ItemStatus> items_ = std::vector<ItemStatus>(20);
     bool itemsReceived_ = false;

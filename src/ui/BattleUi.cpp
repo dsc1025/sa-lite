@@ -5,6 +5,15 @@
 
 namespace Client
 {
+    void BattleGroup::Update(const Game::BattleState& battle, int offset, bool received)
+    {
+        for (int i = 0; i < 10; ++i)
+            members_[i] = battle.members[offset + i];
+        offset_ = offset;
+        received_ = received;
+        Invalidate(FALSE);
+    }
+
     void BattleGroup::DrawItem(LPDRAWITEMSTRUCT item)
     {
         CDC* dc = CDC::FromHandle(item->hDC);
@@ -24,6 +33,39 @@ namespace Client
         dc->SetTextColor(GetSysColor(COLOR_BTNTEXT));
         dc->SetBkMode(TRANSPARENT);
         dc->DrawText(caption, title, DT_CENTER | DT_SINGLELINE | DT_NOPREFIX);
+        CRect content(area.left + 12, area.top + size.cy + 8, area.right - 10, area.bottom - 10);
+        if (!received_)
+            dc->DrawText(L"等待战斗队员数据", content, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+        else
+        {
+            int lineHeight = size.cy + 4;
+            int spacing = std::max(1, std::min(lineHeight, content.Height() / 10));
+            int top = content.top + (content.Height() - spacing * 10) / 2;
+            // Each of the five fixed positions keeps its pet above its character.
+            const int order[] = { 9, 4, 7, 2, 5, 0, 6, 1, 8, 3 };
+            for (int rowIndex = 0; rowIndex < 10; ++rowIndex)
+            {
+                int slot = order[rowIndex];
+                const auto& member = members_[slot];
+                if (!member.present)
+                    continue;
+                CString text;
+                text.Format(L"* [%X] %s  Lv:%d (%d/%d)", offset_ + slot,
+                    LegacyText(member.name).GetString(), member.level, member.hp, member.maxHp);
+                if (!member.rideName.empty())
+                {
+                    CString ride;
+                    ride.Format(L" [骑] %s  Lv:%d (%d/%d)", LegacyText(member.rideName).GetString(),
+                        member.rideLevel, member.rideHp, member.rideMaxHp);
+                    text += ride;
+                }
+                int rowTop = top + rowIndex * spacing;
+                CRect row(content.left, rowTop, content.right,
+                    std::min<LONG>(rowTop + spacing, content.bottom));
+                if (row.bottom > row.top)
+                    dc->DrawText(text, row, DT_LEFT | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
+            }
+        }
         dc->RestoreDC(saved);
     }
 
@@ -31,30 +73,19 @@ namespace Client
     {
         CRect empty(0, 0, 0, 0);
         battleTabs_.Create(WS_CHILD | WS_TABSTOP | WS_CLIPSIBLINGS, empty, this, IDC_BATTLE_TABS);
-        battleTabs_.InsertItem(0, L"升级");
+        battleTabs_.InsertItem(0, L"练级");
         battleTabs_.InsertItem(1, L"抓宠");
         battleStart_.Create(L"开始", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, empty, this, IDC_BATTLE_START);
         battleStop_.Create(L"停止", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, empty, this, IDC_BATTLE_STOP);
+        battleSettings_.Create(L"设置", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, empty, this, IDC_BATTLE_SETTINGS);
         battleRound_.Create(L"回合：—", WS_CHILD | SS_RIGHT, empty, this);
         const wchar_t* sides[] = { L"上方队员", L"下方队员" };
         for (int i = 0; i < 2; ++i)
-        {
-            battleSides_[i].Create(sides[i], WS_CHILD | WS_CLIPSIBLINGS | BS_OWNERDRAW, empty, this, IDC_BATTLE_UPPER + i);
-            battleWaiting_[i].Create(L"等待战斗队员数据", WS_CHILD | SS_CENTER | SS_CENTERIMAGE, empty, this);
-            battleMembers_[i].Create(WS_CHILD | WS_TABSTOP | WS_BORDER | WS_CLIPSIBLINGS |
-                LVS_REPORT | LVS_SINGLESEL, empty, this, IDC_BATTLE_UPPER_MEMBERS + i);
-            battleMembers_[i].SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
-            battleMembers_[i].InsertColumn(0, L"位置", LVCFMT_LEFT, 40);
-            battleMembers_[i].InsertColumn(1, L"名称", LVCFMT_LEFT, 110);
-            battleMembers_[i].InsertColumn(2, L"等级", LVCFMT_RIGHT, 40);
-            battleMembers_[i].InsertColumn(3, L"HP", LVCFMT_RIGHT, 95);
-            battleSides_[i].SetWindowPos(&CWnd::wndBottom, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-        }
-        battleInfoLabel_.Create(L"信息提示", WS_CHILD, empty, this);
-        battleInfo_.Create(WS_CHILD | WS_TABSTOP | WS_BORDER | WS_VSCROLL |
-            ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY, empty, this, IDC_BATTLE_INFO);
-        battleInfo_.SetWindowText(L"等待战斗信息。");
-        battleExperience_.Create(L"经验获得：本场 —    累计 —", WS_CHILD, empty, this);
+            battleSides_[i].Create(sides[i], WS_CHILD | WS_CLIPSIBLINGS | BS_OWNERDRAW,
+                empty, this, IDC_BATTLE_UPPER + i);
+        battleInfo_.Create(L"战斗提示：等待战斗", WS_CHILD | SS_LEFT | SS_NOPREFIX,
+            empty, this, IDC_BATTLE_INFO);
+        battleExperience_.Create(L"经验获得：本场 —    累计 0", WS_CHILD, empty, this);
     }
 
     void MainWindow::LayoutBattle(const CRect& mainPage)
@@ -66,26 +97,22 @@ namespace Client
         if (mainTabs_.GetCurSel() == 2)
             developing_.MoveWindow(battlePage);
         int battleWidth = std::max(0, battlePage.Width());
-        battleStart_.MoveWindow(battlePage.right - 280, battlePage.top, 70, 26);
-        battleStop_.MoveWindow(battlePage.right - 202, battlePage.top, 70, 26);
-        battleRound_.MoveWindow(battlePage.right - 120, battlePage.top + 3, 120, 22);
+        battleStart_.MoveWindow(battlePage.left, battlePage.top, 70, 26);
+        battleStop_.MoveWindow(battlePage.left + 78, battlePage.top, 70, 26);
+        battleSettings_.MoveWindow(battlePage.left + 156, battlePage.top, 70, 26);
         int sideTop = battlePage.top + 34;
-        int sideHeight = std::max(0, battlePage.Height() - 140);
+        int sideBottom = std::max<LONG>(sideTop + 24, battlePage.bottom - 30);
         int sideWidth = std::max(0, (battleWidth - 12) / 2);
-        for (int i = 0; i < 2; ++i)
-        {
-            int sideLeft = battlePage.left + i * (sideWidth + 12);
-            int memberWidth = i == 0 ? sideWidth : std::max(0, battleWidth - sideWidth - 12);
-            battleSides_[i].MoveWindow(sideLeft, sideTop, memberWidth, sideHeight);
-            battleWaiting_[i].MoveWindow(sideLeft + 8, sideTop + 20,
-                std::max(0, memberWidth - 16), std::max(0, sideHeight - 28));
-            battleMembers_[i].MoveWindow(sideLeft + 8, sideTop + 20,
-                std::max(0, memberWidth - 16), std::max(0, sideHeight - 28));
-        }
-        int infoTop = sideTop + sideHeight + 8;
-        battleInfoLabel_.MoveWindow(battlePage.left, infoTop, battleWidth, 20);
-        battleInfo_.MoveWindow(battlePage.left, infoTop + 22, battleWidth, 46);
-        battleExperience_.MoveWindow(battlePage.left, infoTop + 74, battleWidth, 22);
+        int rightLeft = battlePage.left + sideWidth + 12;
+        battleSides_[0].MoveWindow(battlePage.left, sideTop, sideWidth,
+            std::max(0, sideBottom - sideTop - 24));
+        battleSides_[1].MoveWindow(rightLeft, sideTop + 24,
+            std::max<LONG>(0, battlePage.right - rightLeft), std::max(0, sideBottom - sideTop - 24));
+        battleRound_.MoveWindow(rightLeft, sideTop,
+            std::max<LONG>(0, battlePage.right - rightLeft - 8), 22);
+        battleInfo_.MoveWindow(battlePage.left + 8, sideBottom - 22,
+            std::max(0, sideWidth - 16), 22);
+        battleExperience_.MoveWindow(battlePage.left, sideBottom + 8, battleWidth, 22);
     }
 
     void MainWindow::RefreshBattle(bool visible)
@@ -93,56 +120,39 @@ namespace Client
         bool leveling = visible && battleTabs_.GetCurSel() == 0;
         if (visible)
             developing_.ShowWindow(leveling ? SW_HIDE : SW_SHOW);
-        CWnd* battleControls[] = { &battleStart_, &battleStop_, &battleRound_,
-            &battleSides_[0], &battleSides_[1],
-            &battleInfoLabel_, &battleInfo_, &battleExperience_ };
+        CWnd* battleControls[] = { &battleStart_, &battleStop_, &battleSettings_, &battleRound_,
+            &battleSides_[0], &battleSides_[1], &battleInfo_, &battleExperience_ };
         for (auto control : battleControls)
             control->ShowWindow(leveling ? SW_SHOW : SW_HIDE);
         bool received = view_.player.inBattle && view_.battle.received;
         int playerSide = view_.battle.playerSlot >= 10 && view_.battle.playerSlot < 20 ? 1 : 0;
         for (int side = 0; side < 2; ++side)
         {
-            battleWaiting_[side].ShowWindow(leveling && !received ? SW_SHOW : SW_HIDE);
-            battleMembers_[side].ShowWindow(leveling && received ? SW_SHOW : SW_HIDE);
             bool playerSideKnown = view_.battle.playerSlot >= 0 && view_.battle.playerSlot < 20;
             battleSides_[side].SetWindowText(playerSideKnown ?
                 (side == 0 ? L"上方队员（敌方）" : L"下方队员（我方）") :
                 (side == 0 ? L"上方队员" : L"下方队员"));
-            auto& list = battleMembers_[side];
-            list.SetRedraw(FALSE);
-            int row = 0;
             int offset = (side == 0 ? 1 - playerSide : playerSide) * 10;
-            if (received)
-                for (int slot = offset; slot < offset + 10; ++slot)
-                {
-                    const auto& member = view_.battle.members[slot];
-                    if (!member.present)
-                        continue;
-                    CString position;
-                    position.Format(L"%X", slot);
-                    if (row >= list.GetItemCount())
-                        list.InsertItem(row, position);
-                    CString cells[] = { position, LegacyText(member.name), Number(member.level),
-                        Ratio(member.hp, member.maxHp) };
-                    for (int column = 0; column < 4; ++column)
-                        if (list.GetItemText(row, column) != cells[column])
-                            list.SetItemText(row, column, cells[column]);
-                    ++row;
-                }
-            while (list.GetItemCount() > row)
-                list.DeleteItem(row);
-            list.SetRedraw(TRUE);
-            list.Invalidate(FALSE);
-            list.ShowWindow(leveling && received ? SW_SHOW : SW_HIDE);
+            battleSides_[side].Update(view_.battle, offset, received);
         }
         CString round = L"回合：—";
         if (view_.player.inBattle && view_.battle.round >= 0)
-            round.Format(L"回合：%d", view_.battle.round);
+            round.Format(L"第%d回合", view_.battle.round);
         battleRound_.SetWindowText(round);
         battleTabs_.ShowWindow(visible ? SW_SHOW : SW_HIDE);
         battleStart_.EnableWindow(leveling && !view_.encounterEnabled && !view_.encounterPending);
         battleStop_.EnableWindow(leveling && (view_.encounterEnabled || view_.encounterPending));
-        battleInfo_.SetWindowText(view_.encounterMessage.c_str());
+        CString message = L"战斗提示：";
+        message += view_.battleResult.message.empty() ? L"等待战斗" : view_.battleResult.message.c_str();
+        battleInfo_.SetWindowText(message);
+        CString experience;
+        if (view_.battleResult.received)
+            experience.Format(L"经验获得：本场 %u    累计 %llu",
+                view_.battleResult.experience, static_cast<unsigned long long>(view_.battleResult.totalExperience));
+        else
+            experience.Format(L"经验获得：本场 —    累计 %llu",
+                static_cast<unsigned long long>(view_.battleResult.totalExperience));
+        battleExperience_.SetWindowText(experience);
     }
 
     void MainWindow::OnBattleStart()

@@ -16,6 +16,7 @@ namespace Client
         std::vector<Game::Character> characters;
         Game::PlayerStatus player;
         Game::BattleState battle;
+        Game::BattleResult battleResult;
         std::vector<Game::PetStatus> pets;
         std::vector<Game::ItemStatus> items;
         bool hasItems = false;

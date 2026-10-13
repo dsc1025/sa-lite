@@ -116,6 +116,7 @@ namespace Client
             {
                 shared_.player = client->GetPlayerStatus();
                 shared_.battle = client->GetBattle();
+                shared_.battleResult = client->GetBattleResult();
                 shared_.pets = client->GetPets();
                 shared_.items = client->GetItems();
                 shared_.hasItems = client->HasItems();

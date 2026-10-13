@@ -74,6 +74,15 @@ bool LoginClient::HandleBattlePacket(const std::vector<std::string>& fields)
         member.hp = static_cast<int>(BattleNumber(values[i + 5]));
         member.maxHp = static_cast<int>(BattleNumber(values[i + 6]));
         member.flags = BattleNumber(values[i + 7]);
+        if (BattleNumber(values[i + 8]) == 1)
+        {
+            member.rideName = UnescapeLegacy(values[i + 9]);
+            member.rideLevel = static_cast<int>(BattleNumber(values[i + 10]));
+            member.rideHp = static_cast<int>(BattleNumber(values[i + 11]));
+            member.rideMaxHp = static_cast<int>(BattleNumber(values[i + 12]));
+            if (member.rideLevel < 0 || member.rideHp < 0 || member.rideMaxHp < 0)
+                throw std::runtime_error("Invalid battle ride status");
+        }
         if (member.level < 0 || member.hp < 0 || member.maxHp < 0)
             throw std::runtime_error("Invalid battle member status");
         member.present = true;
@@ -83,6 +92,28 @@ bool LoginClient::HandleBattlePacket(const std::vector<std::string>& fields)
     updated.roundReceived = false;
     updated.nextAction = GetTickCount64() + BATTLE_DELAY_MS;
     battle_ = updated;
+    battleResult_.message = L"等待本回合指令";
+    return true;
+}
+
+bool LoginClient::HandleBattleResult(const std::vector<std::string>& fields)
+{
+    auto strings = ReceiveStrings(fields);
+    if (strings.size() != 1)
+        throw std::runtime_error("Invalid battle result");
+    // RS starts with the character's slot (-2), level-up flag and base-62 experience.
+    auto end = strings[0].find(',');
+    if (end == std::string::npos)
+        throw std::runtime_error("Incomplete battle result");
+    auto values = SplitLegacy(strings[0].substr(0, end));
+    if (values.size() != 3 || values[0] != "-2" ||
+        (values[1] != "0" && values[1] != "1"))
+        throw std::runtime_error("Invalid character battle result");
+    auto experience = ParseMask(values[2]);
+    battleResult_.received = true;
+    battleResult_.experience = experience;
+    battleResult_.totalExperience += experience;
+    battleResult_.message = L"战斗结束";
     return true;
 }
 
@@ -158,9 +189,10 @@ bool LoginClient::PollBattle()
     }
     if (!packets.empty())
         connection_.Send(packets, GetTickCount64() + BATTLE_DELAY_MS);
+    battleResult_.message = packets.empty() ? L"等待回合结束" : L"已提交本回合指令";
     battle_.sentRound = battle_.round;
     battle_.commandsPending = false;
-    return false;
+    return true;
 }
 
 void LoginClient::SendEncounterWalk(const std::string& directions, int x, int y)

@@ -75,11 +75,8 @@ namespace Client
         CButton login_, enter_, exit_;
         CTabCtrl mainTabs_, tabs_, shopTabs_, battleTabs_;
         BattleGroup battleSides_[2];
-        CButton battleStart_, battleStop_;
-        CStatic battleRound_, battleWaiting_[2];
-        CListCtrl battleMembers_[2];
-        CStatic battleInfoLabel_, battleExperience_;
-        CEdit battleInfo_;
+        CButton battleStart_, battleStop_, battleSettings_;
+        CStatic battleRound_, battleInfo_, battleExperience_;
         CListCtrl list_, detail_;
         CComboBox petState_;
         int editingPet_ = -1;

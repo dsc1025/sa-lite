@@ -53,6 +53,8 @@ namespace
 
 bool LoginClient::HandleGamePacket(const std::vector<std::string>& fields)
 {
+    if (fields[1] == "12")
+        return HandleBattleResult(fields);
     if (fields[1] == "15")
         return HandleBattlePacket(fields);
     if (fields[1] == "2" || fields[1] == "7")
@@ -106,6 +108,12 @@ bool LoginClient::HandlePositionPacket(const std::vector<std::string>& fields)
         bool inBattle = numbers[0] != 0;
         if (!inBattle || !playerStatus_.inBattle)
             battle_ = {};
+        if (inBattle && !playerStatus_.inBattle)
+        {
+            battleResult_.received = false;
+            battleResult_.experience = 0;
+            battleResult_.message = L"等待战斗队员数据";
+        }
         playerStatus_.inBattle = inBattle;
     }
     return true;

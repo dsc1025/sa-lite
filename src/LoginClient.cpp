@@ -37,6 +37,7 @@ void LoginClient::Disconnect() noexcept
     playerStatus_ = {};
     encounter_ = {};
     battle_ = {};
+    battleResult_ = {};
     positionSerial_ = 0;
     eventSequence_ = 0;
     pets_.assign(5, {});
