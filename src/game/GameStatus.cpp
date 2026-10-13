@@ -84,6 +84,8 @@ bool LoginClient::HandleGamePacket(const std::vector<std::string>& fields)
         return ApplyMapStatus(values);
     if (data[0] == 'P')
         return ApplyPlayerStatus(values);
+    if (data[0] == 'J')
+        return ApplyMagicStatus(values);
     if (data[0] == 'K')
         return ApplyPetStatus(values);
     return false;
@@ -199,6 +201,32 @@ bool LoginClient::ApplyItemStatus(const std::string& data, bool partial)
     items_ = updated;
     if (!partial)
         itemsReceived_ = true;
+    return true;
+}
+
+bool LoginClient::ApplyMagicStatus(const std::vector<std::string>& values)
+{
+    if (values.size() < 2)
+        throw std::runtime_error("Incomplete magic status");
+    int slot = ParseNumber(values[0].substr(1));
+    if (slot < 0 || static_cast<std::size_t>(slot) >= magic_.size())
+        throw std::runtime_error("Invalid magic slot");
+    Game::MagicStatus magic;
+    magic.received = true;
+    if (values[1] == "1")
+    {
+        if (values.size() != 8 || !values.back().empty())
+            throw std::runtime_error("Incomplete magic status");
+        magic.present = true;
+        magic.mp = ParseNumber(values[2]);
+        magic.useField = ParseNumber(values[3]);
+        magic.target = ParseNumber(values[4]);
+        magic.name = UnescapeLegacy(values[5]);
+        magic.description = UnescapeLegacy(values[6]);
+    }
+    else if (values[1] != "0" || values.size() != 3 || !values.back().empty())
+        throw std::runtime_error("Invalid magic status");
+    magic_[slot] = magic;
     return true;
 }
 

@@ -1,6 +1,7 @@
 #include "../LoginClient.h"
 #include "../protocol/ProtocolCodec.h"
 #include "../protocol/LegacyFields.h"
+#include "../text/TextEncoding.h"
 #include <cstdio>
 #include <stdexcept>
 
@@ -161,14 +162,88 @@ bool LoginClient::PollBattle()
             EncodeInteger(static_cast<std::uint32_t>(command.size()), sessionKey_) + ";#;");
     };
     char command[32];
+    auto healingTarget = [&](int percent, int targetType)
+    {
+        for (int slot : { player, player + 5 })
+        {
+            const auto& member = battle_.members[slot];
+            if (!member.present || member.hp <= 0 || member.maxHp <= 0 ||
+                (member.flags & (BATTLE_MEMBER_DEAD | BATTLE_MEMBER_HIDDEN)) ||
+                static_cast<std::int64_t>(member.hp) * 100 >=
+                    static_cast<std::int64_t>(member.maxHp) * percent)
+                continue;
+            if (targetType == 0 && slot != player)
+                continue;
+            if (targetType == 6 && slot == player)
+                continue;
+            if (targetType == 0 || targetType == 1 || targetType == 2 || targetType == 6)
+                return slot;
+            if (targetType == 8)
+                return player < 10 ? 20 : 21;
+        }
+        return -1;
+    };
+    auto heal = [&]()
+    {
+        if (healing_.useItems && itemsReceived_)
+        {
+            for (std::size_t slot = 5; slot < items_.size(); ++slot)
+            {
+                const auto& item = items_[slot];
+                if (!item.present || item.useField == 2 || item.target < 0 || item.target > 2)
+                    continue;
+                auto description = TextEncoding::LegacyText(item.description);
+                auto hp = description.find(L"耐久力");
+                if (hp == std::wstring::npos || description.find(L'-', hp) != std::wstring::npos)
+                    continue;
+                int healTarget = healingTarget(healing_.itemPercent, item.target);
+                if (healTarget < 0)
+                    continue;
+                std::snprintf(command, sizeof(command), "I|%X|%X", static_cast<unsigned>(slot), healTarget);
+                append(command);
+                return true;
+            }
+        }
+        if (healing_.useMagic)
+        {
+            int slot = healing_.magicSlot;
+            if (slot < 0 || slot >= static_cast<int>(magic_.size()) ||
+                !magic_[slot].present || magic_[slot].name != healing_.magicName)
+            {
+                slot = -1;
+                for (std::size_t i = 0; i < magic_.size(); ++i)
+                    if (magic_[i].present && magic_[i].name == healing_.magicName)
+                    {
+                        slot = static_cast<int>(i);
+                        break;
+                    }
+            }
+            if (slot >= 0)
+            {
+                const auto& magic = magic_[slot];
+                int healTarget = healingTarget(healing_.magicPercent, magic.target);
+                if (magic.received && magic.present && magic.useField != 2 &&
+                    magic.mp >= 0 && playerStatus_.mp >= magic.mp && healTarget >= 0)
+                {
+                    std::snprintf(command, sizeof(command), "J|%X|%X", slot, healTarget);
+                    append(command);
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
     const auto& character = battle_.members[player];
     if (!(battle_.readyMask & (std::uint32_t{1} << player)))
     {
         if (target >= 0 && character.present && character.hp > 0 &&
             !(battle_.menuFlags & BATTLE_PLAYER_MENU_OFF))
         {
-            std::snprintf(command, sizeof(command), "H|%X", target);
-            append(command);
+            if (!heal())
+            {
+                std::snprintf(command, sizeof(command), "H|%X", target);
+                append(command);
+            }
         }
         else
             append("G");

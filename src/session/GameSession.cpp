@@ -203,6 +203,7 @@ namespace Client
                 shared_.battleResult = client->GetBattleResult();
                 shared_.pets = client->GetPets();
                 shared_.items = client->GetItems();
+                shared_.magic = client->GetMagic();
                 shared_.hasItems = client->HasItems();
                 shared_.itemStorage = client->GetItemStorage();
                 shared_.hasItemStorage = client->HasItemStorage();
@@ -371,6 +372,10 @@ namespace Client
                             throw std::runtime_error(failure);
                         movementMessage = message;
                         Publish(Screen::Game, message, &client);
+                    }
+                    {
+                        std::lock_guard<std::mutex> lock(mutex_);
+                        client.SetHealingSettings(healing_);
                     }
                     if (client.PollGame(pollTimeout))
                         Publish(Screen::Game, movementMessage, &client);

@@ -42,6 +42,7 @@ void LoginClient::Disconnect() noexcept
     eventSequence_ = 0;
     pets_.assign(5, {});
     items_.assign(20, {});
+    magic_.assign(5, {});
     itemsReceived_ = false;
     itemRevision_ = 0;
     itemStorage_.clear();

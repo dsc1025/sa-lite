@@ -30,6 +30,7 @@ namespace Client
         bool RequestItemStorage(Game::ItemStorageAction action, int slot = -1,
             std::uint32_t revision = 0, const std::string& uniqueCode = {});
         void SetEncounterEnabled(bool enabled);
+        void SetHealingSettings(const Game::HealingSettings& settings);
 
     private:
         void UpdateEncounter(LoginClient& client);
@@ -44,6 +45,7 @@ namespace Client
         std::thread worker_;
         bool stop_ = false, done_ = true;
         bool encounterRequested_ = false;
+        Game::HealingSettings healing_;
         int requestedCharacter_ = -1;
         int requestedPet_ = -1, requestedPetState_ = 0;
         bool storageRequested_ = false;

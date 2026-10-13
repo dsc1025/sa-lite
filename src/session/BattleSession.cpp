@@ -4,6 +4,12 @@
 
 namespace Client
 {
+    void GameSession::SetHealingSettings(const Game::HealingSettings& settings)
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        healing_ = settings;
+    }
+
     void GameSession::SetEncounterEnabled(bool enabled)
     {
         {

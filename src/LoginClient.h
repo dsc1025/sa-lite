@@ -42,6 +42,7 @@ public:
     bool HasPetStorage() const noexcept { return petStorageReceived_; }
     void SetEncounterEnabled(bool enabled);
     void PollEncounter();
+    void SetHealingSettings(const Game::HealingSettings& settings) { healing_ = settings; }
     bool IsEncounterEnabled() const noexcept { return encounter_.enabled; }
     bool IsEncounterStopping() const noexcept { return encounter_.stopPending; }
     void LeaveGame(int timeoutMs = 10000);
@@ -49,6 +50,7 @@ public:
     const std::vector<PetStatus>& GetPets() const noexcept;
     const std::vector<ItemStatus>& GetItems() const noexcept;
     bool HasItems() const noexcept;
+    const std::vector<Game::MagicStatus>& GetMagic() const noexcept { return magic_; }
     const Game::BattleState& GetBattle() const noexcept { return battle_; }
     const Game::BattleResult& GetBattleResult() const noexcept { return battleResult_; }
     void Disconnect() noexcept;
@@ -69,6 +71,7 @@ private:
     std::string ItemStorageRequest(const std::string& action, int slot, const std::string& uniqueCode,
         std::uint32_t revision = 0);
     bool ApplyItemStatus(const std::string& data, bool partial);
+    bool ApplyMagicStatus(const std::vector<std::string>& values);
     bool ApplyMapStatus(const std::vector<std::string>& values);
     bool ApplyPlayerStatus(const std::vector<std::string>& values);
     bool ApplyPetStatus(const std::vector<std::string>& values);
@@ -83,10 +86,12 @@ private:
     std::vector<Character> characters_;
     PlayerStatus playerStatus_;
     Game::EncounterState encounter_;
+    Game::HealingSettings healing_;
     Game::BattleState battle_;
     Game::BattleResult battleResult_;
     std::vector<PetStatus> pets_ = std::vector<PetStatus>(5);
     std::vector<ItemStatus> items_ = std::vector<ItemStatus>(20);
+    std::vector<Game::MagicStatus> magic_ = std::vector<Game::MagicStatus>(5);
     bool itemsReceived_ = false;
     std::uint32_t itemRevision_ = 0;
     std::vector<ItemStatus> itemStorage_;

@@ -25,6 +25,7 @@ namespace Client
         ON_NOTIFY(TCN_SELCHANGE, IDC_BATTLE_TABS, &MainWindow::OnMainTab)
         ON_BN_CLICKED(IDC_BATTLE_START, &MainWindow::OnBattleStart)
         ON_BN_CLICKED(IDC_BATTLE_STOP, &MainWindow::OnBattleStop)
+        ON_BN_CLICKED(IDC_BATTLE_SETTINGS, &MainWindow::OnBattleSettings)
         ON_CBN_SELENDOK(MapPositionCombo, &MainWindow::OnMapPosition)
         ON_CBN_SELENDOK(MapRegionCombo, &MainWindow::OnMapRegion)
     END_MESSAGE_MAP()

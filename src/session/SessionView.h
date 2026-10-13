@@ -19,6 +19,7 @@ namespace Client
         Game::BattleResult battleResult;
         std::vector<Game::PetStatus> pets;
         std::vector<Game::ItemStatus> items;
+        std::vector<Game::MagicStatus> magic;
         bool hasItems = false;
         bool itemPending = false;
         std::vector<Game::ItemStatus> itemStorage;

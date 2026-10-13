@@ -5,6 +5,168 @@
 
 namespace Client
 {
+    BEGIN_MESSAGE_MAP(BattleSettingsWindow, CWnd)
+        ON_WM_CREATE()
+        ON_WM_CLOSE()
+        ON_BN_CLICKED(1, &BattleSettingsWindow::OnSave)
+    END_MESSAGE_MAP()
+
+    void BattleSettingsWindow::Show(CWnd* owner, const std::vector<Game::MagicStatus>& magic, GameSession& session)
+    {
+        if (!GetSafeHwnd())
+        {
+            if (!CreateEx(WS_EX_DLGMODALFRAME, AfxRegisterWndClass(CS_DBLCLKS,
+                LoadCursor(nullptr, IDC_ARROW), reinterpret_cast<HBRUSH>(COLOR_BTNFACE + 1)),
+                L"练级设置", WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_CLIPCHILDREN,
+                CRect(0, 0, 484, 172), owner, 0))
+                return;
+            CenterWindow(owner);
+        }
+        session_ = &session;
+        currentMagic_ = magic;
+        items_.SetCheck(useItems_ ? BST_CHECKED : BST_UNCHECKED);
+        magic_.SetCheck(useMagic_ ? BST_CHECKED : BST_UNCHECKED);
+        itemHp_.SetWindowText(Number(itemPercent_));
+        magicHp_.SetWindowText(Number(magicPercent_));
+        skills_.ResetContent();
+        skills_.AddString(L"请选择技能");
+        skills_.SetItemData(0, static_cast<DWORD_PTR>(-1));
+        int selected = 0;
+        for (std::size_t slot = 0; slot < magic.size(); ++slot)
+        {
+            const auto& skill = magic[slot];
+            if (!skill.received || !skill.present || skill.name.empty())
+                continue;
+            int row = skills_.AddString(LegacyText(skill.name));
+            skills_.SetItemData(row, slot);
+            if (static_cast<int>(slot) == magicSlot_ && skill.name == magicName_)
+                selected = row;
+        }
+        skills_.SetCurSel(selected);
+        skills_.EnableWindow(skills_.GetCount() > 1);
+        ShowWindow(SW_SHOW);
+        SetForegroundWindow();
+    }
+
+    int BattleSettingsWindow::OnCreate(LPCREATESTRUCT create)
+    {
+        if (CWnd::OnCreate(create) == -1)
+            return -1;
+        font_.CreatePointFont(90, L"Microsoft YaHei UI");
+
+        DWORD buttonStyle = WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_AUTOCHECKBOX;
+        items_.Create(L"食物补血", buttonStyle, CRect(10, 10, 164, 32), this, 2);
+        magic_.Create(L"补血", buttonStyle, CRect(10, 36, 102, 58), this, 3);
+        skills_.Create(WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_VSCROLL | CBS_DROPDOWNLIST,
+            CRect(108, 36, 280, 200), this, 4);
+        DWORD editStyle = WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_BORDER | ES_NUMBER;
+        itemHp_.Create(editStyle, CRect(202, 10, 244, 32), this, 5);
+        magicHp_.Create(editStyle, CRect(322, 36, 364, 58), this, 6);
+        itemHp_.SetLimitText(3);
+        magicHp_.SetLimitText(3);
+        labels_[0].Create(L"HP：", WS_CHILD | WS_VISIBLE, CRect(170, 13, 202, 32), this);
+        labels_[1].Create(L"%", WS_CHILD | WS_VISIBLE, CRect(250, 13, 266, 32), this);
+        labels_[2].Create(L"HP：", WS_CHILD | WS_VISIBLE, CRect(286, 39, 318, 58), this);
+        labels_[3].Create(L"%", WS_CHILD | WS_VISIBLE, CRect(370, 39, 382, 58), this);
+        save_.Create(L"确认", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON,
+            CRect(312, 70, 382, 94), this, 1);
+        CWnd* controls[] = { &items_, &magic_, &skills_, &itemHp_, &magicHp_, &save_ };
+        for (auto control : controls)
+            control->SetFont(&font_);
+        for (auto& label : labels_)
+            label.SetFont(&font_);
+        CClientDC dc(this);
+        CFont* previousFont = dc.SelectObject(&font_);
+        const int margin = 10, gap = 4, height = 22;
+        auto captionWidth = [&](CWnd& control)
+        {
+            CString caption;
+            control.GetWindowText(caption);
+            return dc.GetTextExtent(caption).cx;
+        };
+        int contentRight = 0;
+        for (int row = 0; row < 2; ++row)
+        {
+            int x = margin, y = margin + row * (height + gap);
+            CButton& option = row == 0 ? items_ : magic_;
+            int width = captionWidth(option) + GetSystemMetrics(SM_CXMENUCHECK) + gap;
+            option.MoveWindow(x, y, width, height);
+            x += width + gap;
+            if (row == 1)
+            {
+                skills_.MoveWindow(x, y, 138, 164);
+                x += 138 + gap;
+            }
+            CStatic& hp = labels_[row * 2];
+            width = captionWidth(hp);
+            hp.MoveWindow(x, y + 3, width, height - 3);
+            x += width + gap;
+            CEdit& input = row == 0 ? itemHp_ : magicHp_;
+            input.MoveWindow(x, y, 42, height);
+            x += 42 + gap;
+            CStatic& percent = labels_[row * 2 + 1];
+            width = captionWidth(percent);
+            percent.MoveWindow(x, y + 3, width, height - 3);
+            contentRight = std::max(contentRight, x + width);
+        }
+        dc.SelectObject(previousFont);
+        save_.MoveWindow(contentRight - 70, 70, 70, 24);
+        CRect area, window;
+        GetClientRect(&area);
+        GetWindowRect(&window);
+        SetWindowPos(nullptr, 0, 0, window.Width() + contentRight + margin - area.Width(),
+            window.Height() + 104 - area.Height(), SWP_NOMOVE | SWP_NOZORDER);
+        return 0;
+    }
+
+    void BattleSettingsWindow::OnSave()
+    {
+        auto readPercent = [](CEdit& edit, int& value)
+        {
+            CString text;
+            edit.GetWindowText(text);
+            if (text.IsEmpty() || text.SpanIncluding(L"0123456789") != text)
+                return false;
+            value = _wtoi(text);
+            return value >= 0 && value <= 100;
+        };
+        int itemPercent, magicPercent;
+        if (!readPercent(itemHp_, itemPercent) || !readPercent(magicHp_, magicPercent))
+        {
+            MessageBox(L"HP 血量百分比请输入 0 到 100。", L"练级设置", MB_OK | MB_ICONWARNING);
+            return;
+        }
+        int row = skills_.GetCurSel();
+        int slot = row > 0 ? static_cast<int>(skills_.GetItemData(row)) : -1;
+        bool useMagic = magic_.GetCheck() == BST_CHECKED;
+        if (useMagic && (slot < 0 || slot >= static_cast<int>(currentMagic_.size())))
+        {
+            MessageBox(L"请选择补血技能。", L"练级设置", MB_OK | MB_ICONWARNING);
+            return;
+        }
+        useItems_ = items_.GetCheck() == BST_CHECKED;
+        useMagic_ = useMagic;
+        itemPercent_ = itemPercent;
+        magicPercent_ = magicPercent;
+        magicSlot_ = slot;
+        magicName_ = slot >= 0 ? currentMagic_[slot].name : std::string();
+        Game::HealingSettings settings;
+        settings.useItems = useItems_;
+        settings.useMagic = useMagic_;
+        settings.itemPercent = itemPercent_;
+        settings.magicPercent = magicPercent_;
+        settings.magicSlot = magicSlot_;
+        settings.magicName = magicName_;
+        if (session_)
+            session_->SetHealingSettings(settings);
+        ShowWindow(SW_HIDE);
+    }
+
+    void BattleSettingsWindow::OnClose()
+    {
+        ShowWindow(SW_HIDE);
+    }
+
     void BattleGroup::Update(const Game::BattleState& battle, int offset, bool received)
     {
         for (int i = 0; i < 10; ++i)
@@ -153,6 +315,13 @@ namespace Client
             experience.Format(L"经验获得：本场 —    累计 %llu",
                 static_cast<unsigned long long>(view_.battleResult.totalExperience));
         battleExperience_.SetWindowText(experience);
+    }
+
+    void MainWindow::OnBattleSettings()
+    {
+        if (view_.screen != Screen::Game)
+            return;
+        battleSettingsWindow_.Show(this, view_.magic, session_);
     }
 
     void MainWindow::OnBattleStart()

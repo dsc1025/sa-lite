@@ -3,6 +3,8 @@
 #include <afxwin.h>
 
 #include "../game/Battle.h"
+#include "../game/GameTypes.h"
+#include <vector>
 
 #define IDC_BATTLE_TABS 124
 #define IDC_BATTLE_UPPER 126
@@ -14,6 +16,32 @@
 
 namespace Client
 {
+    class GameSession;
+
+    class BattleSettingsWindow : public CWnd
+    {
+    public:
+        void Show(CWnd* owner, const std::vector<Game::MagicStatus>& magic, GameSession& session);
+
+    protected:
+        afx_msg int OnCreate(LPCREATESTRUCT create);
+        afx_msg void OnSave();
+        afx_msg void OnClose();
+        DECLARE_MESSAGE_MAP()
+
+    private:
+        CFont font_;
+        CButton items_, magic_, save_;
+        CComboBox skills_;
+        CEdit itemHp_, magicHp_;
+        CStatic labels_[4];
+        GameSession* session_ = nullptr;
+        bool useItems_ = false, useMagic_ = false;
+        int itemPercent_ = 60, magicPercent_ = 60, magicSlot_ = -1;
+        std::string magicName_;
+        std::vector<Game::MagicStatus> currentMagic_;
+    };
+
     class BattleGroup : public CButton
     {
     public:

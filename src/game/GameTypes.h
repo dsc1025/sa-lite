@@ -52,6 +52,18 @@ namespace Game
         int earth = 0, water = 0, fire = 0, wind = 0;
         int skillSlots = 0, canRename = 0, perception = 0, rebirth = 0;
     };
+    struct HealingSettings
+    {
+        bool useItems = false, useMagic = false;
+        int itemPercent = 60, magicPercent = 60, magicSlot = -1;
+        std::string magicName;
+    };
+    struct MagicStatus
+    {
+        bool received = false, present = false;
+        std::string name, description;
+        int mp = 0, useField = 0, target = 0;
+    };
     struct ItemStatus
     {
         bool present = false;

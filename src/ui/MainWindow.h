@@ -43,6 +43,7 @@ namespace Client
         afx_msg void OnMapRegion();
         afx_msg void OnBattleStart();
         afx_msg void OnBattleStop();
+        afx_msg void OnBattleSettings();
         DECLARE_MESSAGE_MAP()
 
     private:
@@ -70,6 +71,7 @@ namespace Client
         CTabCtrl mainTabs_, shopTabs_, battleTabs_;
         BattleGroup battleSides_[2];
         CButton battleStart_, battleStop_, battleSettings_;
+        BattleSettingsWindow battleSettingsWindow_;
         CStatic battleRound_, battleInfo_, battleExperience_;
         CListCtrl list_;
         SessionView view_;
