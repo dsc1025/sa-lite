@@ -12,89 +12,25 @@ namespace Client
     void MainWindow::RefreshDetail()
     {
         detail_.DeleteAllItems();
-        if (mainTabs_.GetCurSel() != 0 || tabs_.GetCurSel() == 2) return;
-        int tab = tabs_.GetCurSel();
-        if (tab == 0)
+        if (mainTabs_.GetCurSel() != 0 || tabs_.GetCurSel() != 0) return;
+        const auto& p = view_.player;
+        if (!p.received)
         {
-            const auto& p = view_.player;
-            if (!p.received)
-            {
-                AddRow(L"状态", L"正在等待人物数据…");
-                return;
-            }
-            AddRow(L"等级 / 转生", Ratio(p.level, p.rebirth));
-            AddRow(L"生命", Ratio(p.hp, p.maxHp));
-            AddRow(L"魔力", Ratio(p.mp, p.maxMp));
-            AddRow(L"体力", Number(p.vital)); AddRow(L"腕力", Number(p.strength));
-            AddRow(L"耐力", Number(p.toughness)); AddRow(L"速度", Number(p.dexterity));
-            AddRow(L"攻击", Number(p.attack)); AddRow(L"防御", Number(p.defence));
-            AddRow(L"敏捷", Number(p.quick)); AddRow(L"魅力", Number(p.charm));
-            AddRow(L"运气", Number(p.luck)); AddRow(L"感知", Number(p.perception));
-            CString elements;
-            elements.Format(L"地 %d   水 %d   火 %d   风 %d", p.earth, p.water, p.fire, p.wind);
-            AddRow(L"元素", elements); AddRow(L"经验 / 下级经验", Ratio(p.experience, p.nextExperience));
-            AddRow(L"金币", Number(p.gold)); AddRow(L"决斗积分", Number(p.duelPoints));
+            AddRow(L"状态", L"正在等待人物数据…");
+            return;
         }
-        else
-        {
-            if (tab == 2 && !view_.hasItems)
-            {
-                AddRow(L"状态", L"正在等待道具数据…");
-                return;
-            }
-            if (tab == 1 && storageSelected_)
-            {
-                if (!view_.hasPetStorage)
-                {
-                    AddRow(L"状态", view_.petStoragePending ? L"正在加载宠物仓库…" : L"仓库未加载，请右键刷新");
-                    return;
-                }
-                int selected = petStorage_.GetNextItem(-1, LVNI_SELECTED);
-                auto slot = selected < 0 ? view_.petStorage.size() :
-                    static_cast<std::size_t>(petStorage_.GetItemData(selected));
-                if (slot >= view_.petStorage.size() || !view_.petStorage[slot].present)
-                {
-                    AddRow(L"状态", L"这个仓库栏位为空");
-                    return;
-                }
-                const auto& pet = view_.petStorage[slot];
-                AddRow(L"名称", LegacyText(pet.name));
-                AddRow(L"昵称", LegacyText(pet.nickname));
-                AddRow(L"等级", Number(pet.level));
-                return;
-            }
-            int selected = list_.GetNextItem(-1, LVNI_SELECTED);
-            if (selected < 0)
-            {
-                AddRow(L"状态", tab == 2 ? L"背包与装备为空" : L"选择一个宠物查看属性");
-                return;
-            }
-            auto slot = static_cast<std::size_t>(list_.GetItemData(selected));
-            if (tab == 1 && slot < view_.pets.size())
-            {
-                const auto& p = view_.pets[slot];
-                if (!p.received || !p.present)
-                {
-                    AddRow(L"状态", p.received ? L"这个宠物栏位为空" : L"正在等待宠物数据…");
-                    return;
-                }
-                AddRow(L"名称", LegacyText(p.name)); AddRow(L"昵称", LegacyText(p.nickname));
-                AddRow(L"等级 / 转生", Ratio(p.level, p.rebirth));
-                AddRow(L"生命", Ratio(p.hp, p.maxHp)); AddRow(L"魔力", Ratio(p.mp, p.maxMp));
-                AddRow(L"攻击", Number(p.attack)); AddRow(L"防御", Number(p.defence));
-                AddRow(L"敏捷", Number(p.quick)); AddRow(L"忠诚", Number(p.loyalty));
-                AddRow(L"感知", Number(p.perception)); AddRow(L"技能栏", Number(p.skillSlots));
-                CString elements;
-                elements.Format(L"地 %d   水 %d   火 %d   风 %d", p.earth, p.water, p.fire, p.wind);
-                AddRow(L"元素", elements); AddRow(L"经验 / 下级经验", Ratio(p.experience, p.nextExperience));
-            }
-            else if (tab == 2 && slot < view_.items.size())
-            {
-                const auto& item = view_.items[slot];
-                AddRow(L"名称", LegacyText(item.name)); AddRow(L"使用等级", Number(item.level));
-                AddRow(L"说明", LegacyText(item.description));
-            }
-        }
+        AddRow(L"等级 / 转生", Ratio(p.level, p.rebirth));
+        AddRow(L"生命", Ratio(p.hp, p.maxHp));
+        AddRow(L"魔力", Ratio(p.mp, p.maxMp));
+        AddRow(L"体力", Number(p.vital)); AddRow(L"腕力", Number(p.strength));
+        AddRow(L"耐力", Number(p.toughness)); AddRow(L"速度", Number(p.dexterity));
+        AddRow(L"攻击", Number(p.attack)); AddRow(L"防御", Number(p.defence));
+        AddRow(L"敏捷", Number(p.quick)); AddRow(L"魅力", Number(p.charm));
+        AddRow(L"运气", Number(p.luck)); AddRow(L"感知", Number(p.perception));
+        CString elements;
+        elements.Format(L"地 %d   水 %d   火 %d   风 %d", p.earth, p.water, p.fire, p.wind);
+        AddRow(L"元素", elements); AddRow(L"经验 / 下级经验", Ratio(p.experience, p.nextExperience));
+        AddRow(L"金币", Number(p.gold)); AddRow(L"决斗积分", Number(p.duelPoints));
     }
 
     void MainWindow::RefreshMapPositions()
@@ -168,7 +104,7 @@ namespace Client
         shopTabs_.ShowWindow(shop ? SW_SHOW : SW_HIDE);
         list_.ShowWindow(characters || (role && tabs_.GetCurSel() != 0) ? SW_SHOW : SW_HIDE);
         bool items = role && tabs_.GetCurSel() == 2;
-        detail_.ShowWindow(role && !items ? SW_SHOW : SW_HIDE);
+        detail_.ShowWindow(role && tabs_.GetCurSel() == 0 ? SW_SHOW : SW_HIDE);
         itemStorage_.ShowWindow(items ? SW_SHOW : SW_HIDE);
         bool pets = role && tabs_.GetCurSel() == 1;
         petStorage_.ShowWindow(pets ? SW_SHOW : SW_HIDE);

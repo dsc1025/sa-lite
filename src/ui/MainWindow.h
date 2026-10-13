@@ -13,7 +13,7 @@ namespace Client
     class ItemPropertiesWindow : public CWnd
     {
     public:
-        void Show(CWnd* owner, const CString& text);
+        void Show(CWnd* owner, const CString& text, const wchar_t* title = L"道具属性");
 
     protected:
         BOOL PreTranslateMessage(MSG* message) override;
@@ -59,8 +59,7 @@ namespace Client
         afx_msg void OnPetClick(NMHDR* header, LRESULT* result);
         afx_msg void OnListRightClick(NMHDR* header, LRESULT* result);
         afx_msg void OnPetStorageRightClick(NMHDR* header, LRESULT* result);
-        afx_msg void OnPetStorageSelect(NMHDR* header, LRESULT* result);
-        afx_msg void OnItemDoubleClick(NMHDR* header, LRESULT* result);
+        afx_msg void OnListDoubleClick(NMHDR* header, LRESULT* result);
         afx_msg void OnItemStorageRightClick(NMHDR* header, LRESULT* result);
         afx_msg void OnPetState();
         afx_msg void OnPetStateClose();
@@ -80,6 +79,7 @@ namespace Client
         void RefreshMapPositions();
         void AddRow(const wchar_t* name, const CString& value);
         void ShowItemProperties(CListCtrl& list, int row);
+        void ShowPetProperties(CListCtrl& list, int row);
         void LoadLogin();
         void SaveLogin();
 
@@ -101,10 +101,9 @@ namespace Client
         CStatic battleRound_, battleInfo_, battleExperience_;
         CListCtrl list_, detail_, petStorage_, itemStorage_;
         std::vector<Game::ItemStatus> itemStorageItems_;
-        ItemPropertiesWindow itemProperties_;
+        ItemPropertiesWindow itemProperties_, petProperties_;
         CComboBox petState_;
         int editingPet_ = -1;
-        bool storageSelected_ = false;
         SessionView view_;
         GameSession session_;
         bool closeWindow_ = false;

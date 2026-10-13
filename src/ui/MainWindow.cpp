@@ -12,17 +12,18 @@ namespace Client
         ON_WM_SIZE()
     END_MESSAGE_MAP()
 
-    void ItemPropertiesWindow::Show(CWnd* owner, const CString& text)
+    void ItemPropertiesWindow::Show(CWnd* owner, const CString& text, const wchar_t* title)
     {
         if (!GetSafeHwnd())
         {
             if (!CreateEx(WS_EX_DLGMODALFRAME, AfxRegisterWndClass(CS_DBLCLKS,
                 LoadCursor(nullptr, IDC_ARROW), reinterpret_cast<HBRUSH>(COLOR_BTNFACE + 1)),
-                L"道具属性", WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_CLIPCHILDREN,
+                title, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_CLIPCHILDREN,
                 CRect(0, 0, 460, 320), owner, 0))
                 return;
             CenterWindow(owner);
         }
+        SetWindowText(title);
         text_.SetWindowText(text);
         text_.SetSel(0, 0);
         ShowWindow(SW_SHOW);
@@ -90,9 +91,9 @@ namespace Client
         ON_NOTIFY(NM_CLICK, List, &MainWindow::OnPetClick)
         ON_NOTIFY(NM_RCLICK, List, &MainWindow::OnListRightClick)
         ON_NOTIFY(NM_RCLICK, PetStorageList, &MainWindow::OnPetStorageRightClick)
-        ON_NOTIFY(LVN_ITEMCHANGED, PetStorageList, &MainWindow::OnPetStorageSelect)
-        ON_NOTIFY(NM_DBLCLK, List, &MainWindow::OnItemDoubleClick)
-        ON_NOTIFY(NM_DBLCLK, ItemStorageList, &MainWindow::OnItemDoubleClick)
+        ON_NOTIFY(NM_DBLCLK, PetStorageList, &MainWindow::OnListDoubleClick)
+        ON_NOTIFY(NM_DBLCLK, List, &MainWindow::OnListDoubleClick)
+        ON_NOTIFY(NM_DBLCLK, ItemStorageList, &MainWindow::OnListDoubleClick)
         ON_NOTIFY(NM_RCLICK, ItemStorageList, &MainWindow::OnItemStorageRightClick)
         ON_CBN_SELENDOK(PetStateCombo, &MainWindow::OnPetState)
         ON_CBN_SELENDCANCEL(PetStateCombo, &MainWindow::OnPetStateClose)
@@ -277,23 +278,11 @@ namespace Client
         bool pets = view_.screen == Screen::Game && mainTabs_.GetCurSel() == 0 && tabs_.GetCurSel() == 1;
         bool items = view_.screen == Screen::Game && mainTabs_.GetCurSel() == 0 && tabs_.GetCurSel() == 2;
         int itemWidth = (page.Width() - 16) / 2;
-        int listHeight = page.Height();
-        if (pets)
-        {
-            CRect headerRect, rowRect;
-            list_.GetHeaderCtrl()->GetWindowRect(&headerRect);
-            if (list_.GetItemRect(0, &rowRect, LVIR_BOUNDS))
-                listHeight = headerRect.Height() + rowRect.Height() * 5 + GetSystemMetrics(SM_CYEDGE) * 2;
-            else
-                listHeight = page.Height() / 2;
-        }
         list_.MoveWindow(characters ? 16 : page.left, characters ? 54 : page.top,
-            characters ? width - 32 : items ? itemWidth : 220, characters ? height - 146 : listHeight);
+            characters ? width - 32 : pets || items ? itemWidth : 220, characters ? height - 146 : page.Height());
         if (pets)
-        {
-            int storageTop = page.top + listHeight + 6;
-            petStorage_.MoveWindow(page.left, storageTop, 220, page.bottom - storageTop);
-        }
+            petStorage_.MoveWindow(page.left + itemWidth + 16, page.top,
+                page.Width() - itemWidth - 16, page.Height());
         if (items)
             itemStorage_.MoveWindow(page.left + itemWidth + 16, page.top,
                 page.Width() - itemWidth - 16, page.Height());
@@ -512,7 +501,6 @@ namespace Client
 
     void MainWindow::OnTab(NMHDR*, LRESULT* result)
     {
-        storageSelected_ = false;
         list_.DeleteAllItems();
         Refresh();
         if (view_.screen == Screen::Game && mainTabs_.GetCurSel() == 0 && tabs_.GetCurSel() == 1)
@@ -520,27 +508,10 @@ namespace Client
         *result = 0;
     }
 
-    void MainWindow::OnSelect(NMHDR* header, LRESULT* result)
+    void MainWindow::OnSelect(NMHDR*, LRESULT* result)
     {
-        auto change = reinterpret_cast<NMLISTVIEW*>(header);
         if (!refreshing_ && view_.screen == Screen::Game)
-        {
-            if ((change->uChanged & LVIF_STATE) && (change->uNewState & LVIS_SELECTED))
-                storageSelected_ = false;
             RefreshDetail();
-        }
-        *result = 0;
-    }
-
-    void MainWindow::OnPetStorageSelect(NMHDR* header, LRESULT* result)
-    {
-        auto change = reinterpret_cast<NMLISTVIEW*>(header);
-        if (!refreshing_ && view_.screen == Screen::Game &&
-            (change->uChanged & LVIF_STATE) && (change->uNewState & LVIS_SELECTED))
-        {
-            storageSelected_ = true;
-            RefreshDetail();
-        }
         *result = 0;
     }
 
@@ -551,7 +522,6 @@ namespace Client
         auto click = reinterpret_cast<NMITEMACTIVATE*>(header);
         if (view_.screen != Screen::Game || mainTabs_.GetCurSel() != 0 || tabs_.GetCurSel() != 1 || click->iItem < 0)
             return;
-        storageSelected_ = false;
         RefreshDetail();
         if (click->iSubItem != 2 || !view_.player.received || !view_.player.battleReceived || view_.petStoragePending)
             return;
@@ -605,7 +575,6 @@ namespace Client
             name = LegacyText(view_.items[slot].name);
         }
         list_.SetItemState(click->iItem, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
-        storageSelected_ = false;
         RefreshDetail();
         list_.SetFocus();
         CMenu menu;
@@ -616,15 +585,15 @@ namespace Client
             !view_.player.inBattle && !view_.encounterEnabled && !view_.encounterPending));
         menu.AppendMenu(MF_STRING | (canStore ? MF_ENABLED : MF_GRAYED), 1, L"存入");
         menu.AppendMenu(flags, 2, L"丢弃");
-        if (!pet)
-            menu.AppendMenu(MF_STRING, 3, L"属性");
+        menu.AppendMenu(MF_STRING, 3, L"属性");
         CPoint point = click->ptAction;
         list_.ClientToScreen(&point);
         UINT command = menu.TrackPopupMenu(TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON,
             point.x, point.y, this);
-        if (!pet && command == 3)
+        if (command == 3)
         {
-            ShowItemProperties(list_, click->iItem);
+            if (pet) ShowPetProperties(list_, click->iItem);
+            else ShowItemProperties(list_, click->iItem);
             return;
         }
         if (!enabled || (command != 1 && command != 2))
@@ -671,11 +640,49 @@ namespace Client
         itemProperties_.Show(this, text);
     }
 
-    void MainWindow::OnItemDoubleClick(NMHDR* header, LRESULT* result)
+    void MainWindow::ShowPetProperties(CListCtrl& list, int row)
+    {
+        if (view_.screen != Screen::Game || mainTabs_.GetCurSel() != 0 || tabs_.GetCurSel() != 1 ||
+            row < 0 || row >= list.GetItemCount())
+            return;
+        auto slot = static_cast<std::size_t>(list.GetItemData(row));
+        CString text;
+        if (&list == &petStorage_)
+        {
+            if (!view_.hasPetStorage || slot >= view_.petStorage.size() || !view_.petStorage[slot].present)
+                return;
+            const auto& pet = view_.petStorage[slot];
+            text.Format(L"名称：%s\r\n昵称：%s\r\n等级：%d",
+                LegacyText(pet.name).GetString(), LegacyText(pet.nickname).GetString(), pet.level);
+        }
+        else
+        {
+            if (slot >= view_.pets.size() || !view_.pets[slot].received || !view_.pets[slot].present)
+                return;
+            const auto& pet = view_.pets[slot];
+            text.Format(L"名称：%s\r\n昵称：%s\r\n等级 / 转生：%d / %d\r\n"
+                L"生命：%d / %d\r\n魔力：%d / %d\r\n攻击：%d\r\n防御：%d\r\n敏捷：%d\r\n"
+                L"感知：%d\r\n忠诚：%d\r\n技能栏：%d\r\n元素：地 %d  水 %d  火 %d  风 %d\r\n"
+                L"经验 / 下级经验：%d / %d",
+                LegacyText(pet.name).GetString(), LegacyText(pet.nickname).GetString(), pet.level, pet.rebirth,
+                pet.hp, pet.maxHp, pet.mp, pet.maxMp, pet.attack, pet.defence, pet.quick,
+                pet.perception, pet.loyalty, pet.skillSlots, pet.earth, pet.water, pet.fire, pet.wind,
+                pet.experience, pet.nextExperience);
+        }
+        petProperties_.Show(this, text, L"宠物属性");
+    }
+
+    void MainWindow::OnListDoubleClick(NMHDR* header, LRESULT* result)
     {
         *result = 0;
         auto click = reinterpret_cast<NMITEMACTIVATE*>(header);
-        ShowItemProperties(header->idFrom == ItemStorageList ? itemStorage_ : list_, click->iItem);
+        if (tabs_.GetCurSel() == 1)
+        {
+            OnPetStateClose();
+            ShowPetProperties(header->idFrom == PetStorageList ? petStorage_ : list_, click->iItem);
+        }
+        else
+            ShowItemProperties(header->idFrom == ItemStorageList ? itemStorage_ : list_, click->iItem);
     }
 
     void MainWindow::OnItemStorageRightClick(NMHDR* header, LRESULT* result)
@@ -721,7 +728,6 @@ namespace Client
         if (click->iItem >= 0)
         {
             petStorage_.SetItemState(click->iItem, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
-            storageSelected_ = true;
             RefreshDetail();
         }
         petStorage_.SetFocus();
@@ -732,10 +738,17 @@ namespace Client
         if (available)
             menu.AppendMenu(MF_STRING | (idle ? MF_ENABLED : MF_GRAYED), 1, L"取出");
         menu.AppendMenu(MF_STRING | (idle ? MF_ENABLED : MF_GRAYED), 2, L"刷新");
+        if (available)
+            menu.AppendMenu(MF_STRING, 3, L"属性");
         CPoint point = click->ptAction;
         petStorage_.ClientToScreen(&point);
         UINT command = menu.TrackPopupMenu(TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON,
             point.x, point.y, this);
+        if (command == 3 && available)
+        {
+            ShowPetProperties(petStorage_, click->iItem);
+            return;
+        }
         if (!idle) return;
         if (command == 1 && available)
         {
