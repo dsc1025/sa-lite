@@ -22,6 +22,8 @@ namespace Client
                 std::lock_guard<std::mutex> lock(mutex_);
                 stop_ = false; done_ = false; requestedCharacter_ = -1;
                 requestedPet_ = -1;
+                storageRequested_ = false;
+                requestedStorageCode_.clear();
                 requestedMap_ = -1;
                 encounterRequested_ = false;
                 shared_ = {};
@@ -82,10 +84,32 @@ namespace Client
     bool GameSession::RequestPetState(int slot, int state)
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (stop_ || done_ || requestedPet_ >= 0)
+        if (stop_ || done_ || requestedPet_ >= 0 || shared_.petStoragePending)
             return false;
         requestedPet_ = slot;
         requestedPetState_ = state;
+        return true;
+    }
+
+    bool GameSession::RequestPetStorage(Game::PetStorageAction action, int slot, const std::string& uniqueCode)
+    {
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            if (stop_ || done_ || shared_.screen != Screen::Game || shared_.petStoragePending ||
+                requestedPet_ >= 0 || encounterRequested_ || shared_.encounterPending || shared_.player.inBattle)
+                return false;
+            if (action != Game::PetStorageAction::List &&
+                (!shared_.hasPetStorage || slot < 0 || uniqueCode.empty()))
+                return false;
+            storageRequested_ = true;
+            requestedStorageAction_ = action;
+            requestedStorageSlot_ = slot;
+            requestedStorageCode_ = uniqueCode;
+            shared_.petStoragePending = true;
+            shared_.message = action == Game::PetStorageAction::List ? L"正在加载宠物仓库…" :
+                action == Game::PetStorageAction::Put ? L"正在存入宠物…" : L"正在取出宠物…";
+        }
+        ::PostMessage(window_, message_, 0, 0);
         return true;
     }
 
@@ -110,6 +134,7 @@ namespace Client
                 shared_.encounterEnabled = false;
                 shared_.encounterPending = false;
                 shared_.encounterMessage = L"遇敌未开始";
+                shared_.petStoragePending = false;
             }
             shared_.message = message;
             if (client)
@@ -120,6 +145,8 @@ namespace Client
                 shared_.pets = client->GetPets();
                 shared_.items = client->GetItems();
                 shared_.hasItems = client->HasItems();
+                shared_.petStorage = client->GetPetStorage();
+                shared_.hasPetStorage = client->HasPetStorage();
             }
         }
         ::PostMessage(window_, message_, 0, 0);
@@ -160,12 +187,20 @@ namespace Client
                     std::lock_guard<std::mutex> lock(mutex_);
                     shared_.characterName = TextEncoding::LegacyText(characters[selection].name);
                 }
-                Publish(Screen::Game, L"已连接", &client);
+                std::wstring storageMessage = L"已连接";
+                try { client.RefreshPetStorage(); }
+                catch (const std::exception& error) { storageMessage = TextEncoding::ErrorText(error.what()); }
+                if (!client.IsConnected())
+                    throw std::runtime_error("宠物仓库加载失败，连接已关闭，请检查服务器版本后重新登录");
+                Publish(Screen::Game, storageMessage, &client);
                 int targetMap = -1, targetX = -1, targetY = -1;
-                std::wstring movementMessage = L"已连接";
+                std::wstring movementMessage = storageMessage;
                 for (;;)
                 {
-                    int pet, state, pollTimeout;
+                    int pet, state, pollTimeout, storageSlot;
+                    bool storage;
+                    Game::PetStorageAction storageAction;
+                    std::string storageCode;
                     {
                         std::lock_guard<std::mutex> lock(mutex_);
                         if (stop_) break;
@@ -173,6 +208,11 @@ namespace Client
                         pet = requestedPet_;
                         state = requestedPetState_;
                         requestedPet_ = -1;
+                        storage = storageRequested_;
+                        storageAction = requestedStorageAction_;
+                        storageSlot = requestedStorageSlot_;
+                        storageCode = requestedStorageCode_;
+                        storageRequested_ = false;
                         if (requestedMap_ >= 0)
                         {
                             targetMap = requestedMap_;
@@ -181,6 +221,33 @@ namespace Client
                             requestedMap_ = -1;
                             movementMessage = L"已连接";
                         }
+                    }
+                    if (storage)
+                    {
+                        std::wstring message;
+                        std::string failure;
+                        try
+                        {
+                            if (storageAction == Game::PetStorageAction::List)
+                                client.RefreshPetStorage();
+                            else
+                                client.TransferPetStorage(storageAction == Game::PetStorageAction::Put, storageSlot, storageCode);
+                            message = storageAction == Game::PetStorageAction::List ? L"宠物仓库已刷新" :
+                                storageAction == Game::PetStorageAction::Put ? L"宠物已存入" : L"宠物已取出";
+                        }
+                        catch (const std::exception& error)
+                        {
+                            failure = error.what();
+                            message = TextEncoding::ErrorText(error.what());
+                        }
+                        {
+                            std::lock_guard<std::mutex> lock(mutex_);
+                            shared_.petStoragePending = false;
+                        }
+                        if (!client.IsConnected())
+                            throw std::runtime_error(failure);
+                        movementMessage = message;
+                        Publish(Screen::Game, message, &client);
                     }
                     if (client.PollGame(pollTimeout))
                         Publish(Screen::Game, movementMessage, &client);

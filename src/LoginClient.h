@@ -31,6 +31,10 @@ public:
     bool PollGame(int timeoutMs = 100);
     bool MoveTo(int map, int x, int y, int timeoutMs = 2000);
     void SetPetState(int slot, PetState state);
+    void RefreshPetStorage();
+    void TransferPetStorage(bool put, int slot, const std::string& uniqueCode);
+    const std::vector<Game::StoredPet>& GetPetStorage() const noexcept { return petStorage_; }
+    bool HasPetStorage() const noexcept { return petStorageReceived_; }
     void SetEncounterEnabled(bool enabled);
     void PollEncounter();
     bool IsEncounterEnabled() const noexcept { return encounter_.enabled; }
@@ -56,6 +60,7 @@ private:
     bool HandlePositionPacket(const std::vector<std::string>& fields);
     bool HandleServerMessage(const std::vector<std::string>& fields);
     bool HandlePetStateReply(const std::vector<std::string>& fields);
+    std::string PetStorageRequest(const std::string& action, int slot, const std::string& uniqueCode);
     bool ApplyItemStatus(const std::string& data, bool partial);
     bool ApplyMapStatus(const std::vector<std::string>& values);
     bool ApplyPlayerStatus(const std::vector<std::string>& values);
@@ -76,6 +81,8 @@ private:
     std::vector<PetStatus> pets_ = std::vector<PetStatus>(5);
     std::vector<ItemStatus> items_ = std::vector<ItemStatus>(20);
     bool itemsReceived_ = false;
+    std::vector<Game::StoredPet> petStorage_;
+    bool petStorageReceived_ = false;
     std::uint32_t battleReplySerial_ = 0;
     bool battleReplyAccepted_ = false;
     bool waitingRide_ = false;

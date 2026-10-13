@@ -12,7 +12,7 @@ namespace Client
     void MainWindow::RefreshDetail()
     {
         detail_.DeleteAllItems();
-        if (mainTabs_.GetCurSel() != 0) return;
+        if (mainTabs_.GetCurSel() != 0 || tabs_.GetCurSel() == 2) return;
         int tab = tabs_.GetCurSel();
         if (tab == 0)
         {
@@ -40,6 +40,27 @@ namespace Client
             if (tab == 2 && !view_.hasItems)
             {
                 AddRow(L"状态", L"正在等待道具数据…");
+                return;
+            }
+            if (tab == 1 && storageSelected_)
+            {
+                if (!view_.hasPetStorage)
+                {
+                    AddRow(L"状态", view_.petStoragePending ? L"正在加载宠物仓库…" : L"仓库未加载，请右键刷新");
+                    return;
+                }
+                int selected = petStorage_.GetNextItem(-1, LVNI_SELECTED);
+                auto slot = selected < 0 ? view_.petStorage.size() :
+                    static_cast<std::size_t>(petStorage_.GetItemData(selected));
+                if (slot >= view_.petStorage.size() || !view_.petStorage[slot].present)
+                {
+                    AddRow(L"状态", L"这个仓库栏位为空");
+                    return;
+                }
+                const auto& pet = view_.petStorage[slot];
+                AddRow(L"名称", LegacyText(pet.name));
+                AddRow(L"昵称", LegacyText(pet.nickname));
+                AddRow(L"等级", Number(pet.level));
                 return;
             }
             int selected = list_.GetNextItem(-1, LVNI_SELECTED);
@@ -146,7 +167,11 @@ namespace Client
         tabs_.ShowWindow(role ? SW_SHOW : SW_HIDE);
         shopTabs_.ShowWindow(shop ? SW_SHOW : SW_HIDE);
         list_.ShowWindow(characters || (role && tabs_.GetCurSel() != 0) ? SW_SHOW : SW_HIDE);
-        detail_.ShowWindow(role ? SW_SHOW : SW_HIDE);
+        bool items = role && tabs_.GetCurSel() == 2;
+        detail_.ShowWindow(role && !items ? SW_SHOW : SW_HIDE);
+        itemStorage_.ShowWindow(items ? SW_SHOW : SW_HIDE);
+        bool pets = role && tabs_.GetCurSel() == 1;
+        petStorage_.ShowWindow(pets ? SW_SHOW : SW_HIDE);
         exit_.EnableWindow(view_.screen != Screen::Closing);
         exit_.SetWindowText(game ? L"退出登录" : L"退出");
         SetWindowText(login ? L"登录" : characters ? L"选择角色" : L"SA25_#1");
@@ -228,6 +253,48 @@ namespace Client
             if (list_.GetItemData(i) == previousSlot) selection = i;
         if (list_.GetItemCount())
             list_.SetItemState(selection, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+        int previousStorage = itemStorage_.GetNextItem(-1, LVNI_SELECTED);
+        DWORD_PTR previousStorageSlot = previousStorage >= 0 ? itemStorage_.GetItemData(previousStorage) : 0;
+        itemStorage_.DeleteAllItems();
+        if (items)
+        {
+            for (std::size_t i = 0; i < itemStorageItems_.size(); ++i)
+            {
+                const auto& item = itemStorageItems_[i];
+                if (!item.present) continue;
+                int row = itemStorage_.InsertItem(itemStorage_.GetItemCount(), LegacyText(item.name));
+                itemStorage_.SetItemText(row, 1, Number(item.level));
+                itemStorage_.SetItemData(row, i);
+                if (i == previousStorageSlot)
+                    itemStorage_.SetItemState(row, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+            }
+        }
+        int storageSelection = petStorage_.GetNextItem(-1, LVNI_SELECTED);
+        DWORD_PTR storageSlot = storageSelection >= 0 ? petStorage_.GetItemData(storageSelection) : 0;
+        petStorage_.DeleteAllItems();
+        if (pets)
+        {
+            if (!view_.hasPetStorage)
+            {
+                int row = petStorage_.InsertItem(0, view_.petStoragePending ? L"正在加载…" : L"未加载，右键刷新");
+                petStorage_.SetItemData(row, static_cast<DWORD_PTR>(-1));
+            }
+            else
+            {
+                for (std::size_t i = 0; i < view_.petStorage.size(); ++i)
+                {
+                    const auto& pet = view_.petStorage[i];
+                    CString name;
+                    name.Format(L"%d · ", static_cast<int>(i + 1));
+                    name += pet.present ? LegacyText(pet.nickname.empty() ? pet.name : pet.nickname) : CString(L"空栏位");
+                    int row = petStorage_.InsertItem(static_cast<int>(i), name);
+                    petStorage_.SetItemText(row, 1, pet.present ? Number(pet.level) : CString());
+                    petStorage_.SetItemData(row, i);
+                    if (i == storageSlot)
+                        petStorage_.SetItemState(row, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+                }
+            }
+        }
         if (game) RefreshDetail();
         refreshing_ = false;
         Layout();

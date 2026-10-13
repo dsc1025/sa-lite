@@ -73,6 +73,8 @@ bool LoginClient::HandleGamePacket(const std::vector<std::string>& fields)
     const auto& data = strings[0];
     if (fields[1] == "22" || data[0] == 'I')
         return ApplyItemStatus(data, fields[1] == "22");
+    if (data.compare(0, 3, "WH|") == 0)
+        return false;
     auto values = SplitLegacy(data);
     if (data[0] == 'C')
         return ApplyMapStatus(values);
@@ -240,7 +242,7 @@ bool LoginClient::ApplyPetStatus(const std::vector<std::string>& values)
         pets_[slot].received = true;
         return true;
     }
-    auto pet = pets_[slot];
+    auto pet = values[1] == "1" ? PetStatus{} : pets_[slot];
     std::vector<int*> numbers = { &pet.image, &pet.hp, &pet.maxHp, &pet.mp, &pet.maxMp,
         &pet.experience, &pet.nextExperience, &pet.level, &pet.attack, &pet.defence,
         &pet.quick, &pet.loyalty, &pet.earth, &pet.water, &pet.fire, &pet.wind,
@@ -252,6 +254,8 @@ bool LoginClient::ApplyPetStatus(const std::vector<std::string>& values)
         mask &= ~(std::uint32_t{1} << 5);
     ApplyStatus(values, 2, mask, numbers, &pet.name, &pet.nickname);
     ApplyExtra(values, pet.perception, pet.rebirth);
+    if (values.size() >= 3 && values[values.size() - 3] == "UC1" && values.back().empty())
+        pet.uniqueCode = UnescapeLegacy(values[values.size() - 2]);
     pet.present = true;
     if (full)
         pet.received = true;

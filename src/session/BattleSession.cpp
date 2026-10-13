@@ -8,7 +8,7 @@ namespace Client
     {
         {
             std::lock_guard<std::mutex> lock(mutex_);
-            if (stop_ || done_ || shared_.screen != Screen::Game)
+            if (stop_ || done_ || shared_.screen != Screen::Game || (enabled && shared_.petStoragePending))
                 return;
             encounterRequested_ = enabled;
             if (enabled)

@@ -20,6 +20,9 @@ namespace Client
         std::vector<Game::PetStatus> pets;
         std::vector<Game::ItemStatus> items;
         bool hasItems = false;
+        std::vector<Game::StoredPet> petStorage;
+        bool hasPetStorage = false;
+        bool petStoragePending = false;
         bool encounterEnabled = false;
         bool encounterPending = false;
         std::wstring encounterMessage = L"遇敌未开始";

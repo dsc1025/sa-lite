@@ -43,6 +43,8 @@ void LoginClient::Disconnect() noexcept
     pets_.assign(5, {});
     items_.assign(20, {});
     itemsReceived_ = false;
+    petStorage_.clear();
+    petStorageReceived_ = false;
     battleReplySerial_ = 0;
     battleReplyAccepted_ = false;
     waitingRide_ = false;

@@ -7,6 +7,13 @@ namespace Game
 {
     enum class LoginResult { Accepted, Rejected };
     enum class PetState { Standby, Battle, Ride };
+    enum class PetStorageAction { List, Put, Get };
+    struct StoredPet
+    {
+        bool present = false;
+        std::string name, nickname, uniqueCode;
+        int level = 0;
+    };
     struct Character
     {
         std::string name;
@@ -37,7 +44,7 @@ namespace Game
     struct PetStatus
     {
         bool received = false, present = false;
-        std::string name, nickname;
+        std::string name, nickname, uniqueCode;
         int image = 0, hp = 0, maxHp = 0, mp = 0, maxMp = 0;
         int experience = 0, nextExperience = 0, level = 0;
         int attack = 0, defence = 0, quick = 0, loyalty = 0;

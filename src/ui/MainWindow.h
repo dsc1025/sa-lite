@@ -10,6 +10,22 @@
 
 namespace Client
 {
+    class ItemPropertiesWindow : public CWnd
+    {
+    public:
+        void Show(CWnd* owner, const CString& text);
+
+    protected:
+        BOOL PreTranslateMessage(MSG* message) override;
+        afx_msg int OnCreate(LPCREATESTRUCT create);
+        afx_msg void OnSize(UINT type, int width, int height);
+        DECLARE_MESSAGE_MAP()
+
+    private:
+        CFont font_;
+        CEdit text_;
+    };
+
     class MainWindow : public CFrameWnd
     {
     public:
@@ -41,6 +57,11 @@ namespace Client
         afx_msg void OnTab(NMHDR*, LRESULT* result);
         afx_msg void OnSelect(NMHDR*, LRESULT* result);
         afx_msg void OnPetClick(NMHDR* header, LRESULT* result);
+        afx_msg void OnListRightClick(NMHDR* header, LRESULT* result);
+        afx_msg void OnPetStorageRightClick(NMHDR* header, LRESULT* result);
+        afx_msg void OnPetStorageSelect(NMHDR* header, LRESULT* result);
+        afx_msg void OnItemDoubleClick(NMHDR* header, LRESULT* result);
+        afx_msg void OnItemStorageRightClick(NMHDR* header, LRESULT* result);
         afx_msg void OnPetState();
         afx_msg void OnPetStateClose();
         afx_msg void OnMapPosition();
@@ -58,6 +79,7 @@ namespace Client
         void RefreshDetail();
         void RefreshMapPositions();
         void AddRow(const wchar_t* name, const CString& value);
+        void ShowItemProperties(CListCtrl& list, int row);
         void LoadLogin();
         void SaveLogin();
 
@@ -77,9 +99,12 @@ namespace Client
         BattleGroup battleSides_[2];
         CButton battleStart_, battleStop_, battleSettings_;
         CStatic battleRound_, battleInfo_, battleExperience_;
-        CListCtrl list_, detail_;
+        CListCtrl list_, detail_, petStorage_, itemStorage_;
+        std::vector<Game::ItemStatus> itemStorageItems_;
+        ItemPropertiesWindow itemProperties_;
         CComboBox petState_;
         int editingPet_ = -1;
+        bool storageSelected_ = false;
         SessionView view_;
         GameSession session_;
         bool closeWindow_ = false;
