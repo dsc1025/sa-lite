@@ -13,7 +13,8 @@ namespace Client
         int separator = executable.ReverseFind(L'\\');
         if (separator < 0)
             throw std::runtime_error("无法获取程序目录，不能读取登录配置");
-        configPath_ = executable.Left(separator + 1) + L"login.ini";
+        configPath_ = executable.Left(separator + 1) + L"config.ini";
+        battleSettingsWindow_.LoadSettings(configPath_, session_);
         wchar_t value[256];
         GetPrivateProfileStringW(L"Login", L"Server", L"", value, 256, configPath_);
         address_.SetWindowText(value);
@@ -36,7 +37,7 @@ namespace Client
             CString value;
             edits[i]->GetWindowText(value);
             if (!WritePrivateProfileStringW(L"Login", keys[i], value, configPath_))
-                throw std::runtime_error("无法保存 exe 同目录的 login.ini，请检查目录写入权限");
+                throw std::runtime_error("无法保存 exe 同目录的 config.ini，请检查目录写入权限");
         }
     }
 }
