@@ -42,6 +42,7 @@ namespace Client
         bool shop = game && mainTabs_.GetCurSel() == 3;
         developing_.ShowWindow(game && !role && !mapPage && !battle ? SW_SHOW : SW_HIDE);
         RefreshBattle(battle);
+        battleSceneWindow_.Update(this, view_, session_);
         if (!game && battleSettingsWindow_.GetSafeHwnd())
             battleSettingsWindow_.ShowWindow(SW_HIDE);
         miniMap_.ShowWindow(mapPage ? SW_SHOW : SW_HIDE);

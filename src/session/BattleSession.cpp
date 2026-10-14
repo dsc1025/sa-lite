@@ -8,6 +8,7 @@ namespace Client
     {
         std::lock_guard<std::mutex> lock(mutex_);
         healing_ = settings;
+        shared_.quickBattle = settings.quickBattle;
     }
 
     void GameSession::SetEncounterEnabled(bool enabled)
@@ -20,7 +21,9 @@ namespace Client
             if (enabled)
                 requestedMap_ = -1;
             shared_.encounterPending = true;
-            shared_.encounterMessage = enabled ? L"正在开始快速遇敌…" : L"正在停止遇敌…";
+            shared_.encounterMessage = enabled ? L"正在开始快速遇敌…" :
+                shared_.player.inBattle ? L"等待战斗结束，结束后停止自动战斗" : L"正在停止自动战斗…";
+            shared_.message = shared_.encounterMessage;
         }
         ::PostMessage(window_, message_, 0, 0);
     }
@@ -48,7 +51,8 @@ namespace Client
                     return;
             }
             client.PollEncounter();
-            message = !client.IsEncounterEnabled() ? L"遇敌已停止" :
+            message = !requested && client.GetPlayerStatus().inBattle ? L"等待战斗结束，结束后停止自动战斗" :
+                !client.IsEncounterEnabled() ? L"自动战斗已停止" :
                 client.GetPlayerStatus().inBattle ? L"战斗中，结束后继续遇敌" : L"快速遇敌中";
         }
         catch (const std::exception& error)
@@ -70,10 +74,11 @@ namespace Client
             if (failed)
                 encounterRequested_ = false;
             bool enabled = client.IsEncounterEnabled();
-            changed = shared_.encounterEnabled != enabled || shared_.encounterPending ||
+            bool pending = !requested && (client.GetPlayerStatus().inBattle || client.IsEncounterStopping());
+            changed = shared_.encounterEnabled != enabled || shared_.encounterPending != pending ||
                 shared_.encounterMessage != message;
             shared_.encounterEnabled = enabled;
-            shared_.encounterPending = false;
+            shared_.encounterPending = pending;
             shared_.encounterMessage = message;
         }
         if (changed)

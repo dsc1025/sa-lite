@@ -78,6 +78,7 @@ namespace Client
         BattleGroup battleSides_[2];
         CButton battleStart_, battleStop_, battleSettings_;
         BattleSettingsWindow battleSettingsWindow_;
+        BattleSceneWindow battleSceneWindow_;
         CStatic battleRound_, battleInfo_, battleExperience_;
         CListCtrl list_;
         SessionView view_;

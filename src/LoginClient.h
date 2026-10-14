@@ -64,6 +64,7 @@ public:
     const std::vector<Game::MagicStatus>& GetMagic() const noexcept { return magic_; }
     const Game::BattleState& GetBattle() const noexcept { return battle_; }
     const Game::BattleResult& GetBattleResult() const noexcept { return battleResult_; }
+    const std::vector<std::wstring>& GetBattleDebug() const noexcept { return battleDebug_; }
     void Disconnect() noexcept;
     bool IsConnected() const noexcept;
 
@@ -75,6 +76,7 @@ private:
     bool HandleBattleResult(const std::vector<std::string>& fields);
     bool PollBattle();
     void FinishBattle();
+    void TraceBattle(const wchar_t* direction, const std::string& packet);
     bool HandlePositionPacket(const std::vector<std::string>& fields);
     bool HandleServerMessage(const std::vector<std::string>& fields);
     bool HandlePetStateReply(const std::vector<std::string>& fields);
@@ -101,6 +103,7 @@ private:
     Game::HealingSettings healing_;
     Game::BattleState battle_;
     Game::BattleResult battleResult_;
+    std::vector<std::wstring> battleDebug_;
     std::vector<PetStatus> pets_ = std::vector<PetStatus>(5);
     std::vector<ItemStatus> items_ = std::vector<ItemStatus>(20);
     std::vector<Game::MagicStatus> magic_ = std::vector<Game::MagicStatus>(5);

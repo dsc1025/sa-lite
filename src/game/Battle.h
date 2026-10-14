@@ -16,6 +16,7 @@ namespace Game
     {
         bool present = false;
         std::string name;
+        std::uint32_t image = 0;
         int level = 0, hp = 0, maxHp = 0;
         std::string rideName;
         int rideLevel = 0, rideHp = 0, rideMaxHp = 0;
@@ -26,6 +27,7 @@ namespace Game
     {
         int playerSlot = -1;
         int round = -1;
+        std::uint32_t fieldAttribute = 0;
         bool received = false;
         std::uint32_t menuFlags = 0;
         std::uint32_t readyMask = 0;

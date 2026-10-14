@@ -2,9 +2,251 @@
 #include "BattleUi.h"
 #include "UiText.h"
 #include <algorithm>
+#include <cstring>
 
 namespace Client
 {
+    BEGIN_MESSAGE_MAP(BattleSceneWindow, CWnd)
+        ON_WM_PAINT()
+        ON_WM_CLOSE()
+    END_MESSAGE_MAP()
+
+    void BattleSceneWindow::LoadResources(const CString& configPath)
+    {
+        wchar_t path[32768];
+        GetPrivateProfileStringW(L"Battle", L"ResourceDirectory",
+            L"C:\\Work\\SA\\SA2.5\\SA2.5\\data", path, 32768, configPath);
+        resourceDirectory_ = path;
+        resourceDebug_.clear();
+        animations_.clear();
+        pictures_.clear();
+        inspected_.clear();
+        sprites_.close();
+        images_.close();
+        sprites_.clear();
+        images_.clear();
+        resourceDebug_.push_back(L"资源目录：" + resourceDirectory_.wstring());
+        auto loadIndex = [&](const wchar_t* name, std::size_t recordSize, auto readRecord)
+        {
+            std::ifstream file(resourceDirectory_ / name, std::ios::binary | std::ios::ate);
+            if (!file)
+            {
+                resourceDebug_.push_back(std::wstring(name) + L"：打开失败");
+                return;
+            }
+            auto size = static_cast<std::streamoff>(file.tellg());
+            if (size <= 0 || size % static_cast<std::streamoff>(recordSize) != 0 || size > 80000000)
+            {
+                resourceDebug_.push_back(std::wstring(name) + L"：索引长度无效");
+                return;
+            }
+            file.seekg(0);
+            std::vector<unsigned char> bytes(static_cast<std::size_t>(size));
+            file.read(reinterpret_cast<char*>(bytes.data()), size);
+            if (!file)
+            {
+                resourceDebug_.push_back(std::wstring(name) + L"：读取失败");
+                return;
+            }
+            for (std::size_t offset = 0; offset < bytes.size(); offset += recordSize)
+                readRecord(bytes.data() + offset);
+            resourceDebug_.push_back(std::wstring(name) + L"：读取 " +
+                std::to_wstring(bytes.size() / recordSize) + L" 条索引");
+        };
+        loadIndex(L"spradrn_5.bin", 12, [&](const unsigned char* record)
+        {
+            std::uint32_t id, offset;
+            std::memcpy(&id, record, 4);
+            std::memcpy(&offset, record + 4, 4);
+            animations_[id] = offset;
+        });
+        loadIndex(L"adrn_15.bin", 80, [&](const unsigned char* record)
+        {
+            std::uint32_t id, offset, size;
+            std::memcpy(&id, record, 4);
+            std::memcpy(&offset, record + 4, 4);
+            std::memcpy(&size, record + 8, 4);
+            pictures_[id] = { offset, size };
+        });
+        sprites_.open(resourceDirectory_ / L"spr_4.bin", std::ios::binary | std::ios::ate);
+        images_.open(resourceDirectory_ / L"real_15.bin", std::ios::binary | std::ios::ate);
+        spriteSize_ = sprites_ ? static_cast<std::uint64_t>(sprites_.tellg()) : 0;
+        imageSize_ = images_ ? static_cast<std::uint64_t>(images_.tellg()) : 0;
+        resourceDebug_.push_back(L"spr_4.bin：" + std::to_wstring(spriteSize_) +
+            L" 字节；real_15.bin：" + std::to_wstring(imageSize_) + L" 字节（按需读取）");
+        resourceDebug_.push_back(L"当前阶段：单位占位显示；图片解码、动作播放尚未接入。");
+    }
+
+    void BattleSceneWindow::InspectImage(std::uint32_t image)
+    {
+        if (!inspected_.emplace(image, true).second)
+            return;
+        if (resourceDebug_.size() >= 40)
+            resourceDebug_.erase(resourceDebug_.begin() + 5);
+        std::wstring message = L"素材调用 ID=" + std::to_wstring(image);
+        auto animation = animations_.find(image);
+        if (animation == animations_.end())
+        {
+            resourceDebug_.push_back(message + L"：动画索引未找到");
+            return;
+        }
+        auto offset = static_cast<std::uint64_t>(animation->second);
+        if (offset + 24 > spriteSize_)
+        {
+            resourceDebug_.push_back(message + L"：动画文件缺失或偏移越界");
+            return;
+        }
+        std::uint32_t header[6]{};
+        sprites_.clear();
+        sprites_.seekg(static_cast<std::streamoff>(offset));
+        sprites_.read(reinterpret_cast<char*>(header), sizeof(header));
+        if (!sprites_ || header[2] == 0)
+        {
+            resourceDebug_.push_back(message + L"：首动作头读取失败或无帧");
+            return;
+        }
+        message += L" → 首帧图片=" + std::to_wstring(header[3]);
+        auto picture = pictures_.find(header[3]);
+        if (picture == pictures_.end() || picture->second[1] < 16 ||
+            static_cast<std::uint64_t>(picture->second[0]) + picture->second[1] > imageSize_)
+        {
+            resourceDebug_.push_back(message + L"：图片索引缺失或数据越界");
+            return;
+        }
+        unsigned char imageHeader[16]{};
+        images_.clear();
+        images_.seekg(picture->second[0]);
+        images_.read(reinterpret_cast<char*>(imageHeader), sizeof(imageHeader));
+        std::uint32_t width, height;
+        std::memcpy(&width, imageHeader + 4, 4);
+        std::memcpy(&height, imageHeader + 8, 4);
+        if (!images_ || imageHeader[0] != 'R' || imageHeader[1] != 'D')
+            message += L"：图片头无效";
+        else
+            message += L" → RD " + std::to_wstring(width) + L"×" + std::to_wstring(height) +
+                L"（仅探测首帧，格式待完整验证）";
+        resourceDebug_.push_back(message);
+    }
+
+    void BattleSceneWindow::Update(CWnd* owner, const SessionView& view, GameSession& session)
+    {
+        session_ = &session;
+        bool active = view.screen == Screen::Game && view.player.inBattle && !view.quickBattle;
+        if (!active)
+        {
+            active_ = false;
+            dismissed_ = false;
+            if (GetSafeHwnd() && (view.quickBattle || view.screen != Screen::Game))
+                ShowWindow(SW_HIDE);
+            else if (GetSafeHwnd())
+            {
+                SetWindowText(L"简易战斗画面 — 战斗结束");
+                CString text = debugText_;
+                for (const auto& line : view.battleDebug)
+                    text += line.c_str() + CString(L"\r\n");
+                CString previous;
+                debug_.GetWindowText(previous);
+                if (previous != text)
+                {
+                    debug_.SetWindowText(text);
+                    debug_.LineScroll(debug_.GetLineCount());
+                }
+            }
+            return;
+        }
+        if (!GetSafeHwnd())
+        {
+            const DWORD style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_CLIPCHILDREN;
+            CRect area(0, 0, 640, 480);
+            ::AdjustWindowRectEx(&area, style, FALSE, WS_EX_DLGMODALFRAME);
+            if (!CreateEx(WS_EX_DLGMODALFRAME, AfxRegisterWndClass(CS_DBLCLKS,
+                LoadCursor(nullptr, IDC_ARROW), reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1)),
+                L"简易战斗画面", style, area, owner, 0))
+                return;
+            font_.CreatePointFont(85, L"Microsoft YaHei UI");
+            debug_.Create(WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL | WS_BORDER |
+                ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | ES_AUTOHSCROLL,
+                CRect(8, 8, 632, 166), this, 1);
+            debug_.SetFont(&font_);
+            debug_.SetLimitText(256 * 1024);
+            debug_.SetWindowPos(&CWnd::wndTop, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+            CenterWindow(owner);
+        }
+        if (!active_)
+        {
+            inspected_.clear();
+            if (!dismissed_)
+                ShowWindow(SW_SHOWNOACTIVATE);
+        }
+        active_ = true;
+        battle_ = view.battle;
+        for (const auto& member : battle_.members)
+            if (member.present)
+                InspectImage(member.image);
+        CString text;
+        text.Format(L"DEBUG 回合=%d  场地属性=%X  我方位置=%d\r\n服务端：%s\r\n",
+            battle_.round, battle_.fieldAttribute, battle_.playerSlot, view.battleResult.message.c_str());
+        for (const auto& line : resourceDebug_)
+            text += line.c_str() + CString(L"\r\n");
+        debugText_ = text;
+        for (const auto& line : view.battleDebug)
+            text += line.c_str() + CString(L"\r\n");
+        CString previous;
+        debug_.GetWindowText(previous);
+        if (previous != text)
+        {
+            debug_.SetWindowText(text);
+            debug_.LineScroll(debug_.GetLineCount());
+        }
+        SetWindowText(L"简易战斗画面 — 自动战斗 / Debug");
+        Invalidate(FALSE);
+    }
+
+    void BattleSceneWindow::OnPaint()
+    {
+        CPaintDC dc(this);
+        CRect area;
+        GetClientRect(&area);
+        dc.FillSolidRect(area, RGB(28, 40, 48));
+        int saved = dc.SaveDC();
+        dc.SelectObject(&font_);
+        dc.SetBkMode(TRANSPARENT);
+        dc.SetTextColor(RGB(235, 235, 235));
+        const int playerSide = battle_.playerSlot >= 10 ? 1 : 0;
+        const int columns[] = { 0, 1, -1, 2, -2 };
+        for (int slot = 0; slot < 20; ++slot)
+        {
+            const auto& member = battle_.members[slot];
+            if (!member.present)
+                continue;
+            bool ally = slot / 10 == playerSide;
+            int x = (area.Width() - 112) / 2 + columns[slot % 5] * 124;
+            int y = (ally ? 338 : 180) + (slot % 10 < 5 ? 64 : 0);
+            CRect box(x, y, x + 112, y + 58);
+            dc.FillSolidRect(box, member.hp > 0 ? (ally ? RGB(36, 78, 74) : RGB(88, 51, 51)) : RGB(55, 55, 55));
+            CString label;
+            label.Format(L"[%d] %s\n素材 %u  HP %d/%d", slot,
+                LegacyText(member.name).GetString(), member.image, member.hp, member.maxHp);
+            CRect caption = box;
+            caption.DeflateRect(3, 2);
+            dc.DrawText(label, caption, DT_CENTER | DT_WORDBREAK | DT_NOPREFIX);
+            dc.FillSolidRect(x + 4, y + 51, 104, 4, RGB(50, 50, 50));
+            int hp = member.maxHp > 0 ? static_cast<int>(std::min<std::int64_t>(104,
+                static_cast<std::int64_t>(std::max(0, member.hp)) * 104 / member.maxHp)) : 0;
+            if (hp > 0)
+                dc.FillSolidRect(x + 4, y + 51, hp, 4, RGB(80, 200, 100));
+        }
+        dc.RestoreDC(saved);
+    }
+
+    void BattleSceneWindow::OnClose()
+    {
+        if (session_)
+            session_->SetEncounterEnabled(false);
+        dismissed_ = active_;
+        ShowWindow(SW_HIDE);
+    }
+
     BEGIN_MESSAGE_MAP(BattleSettingsWindow, CWnd)
         ON_WM_CREATE()
         ON_WM_CLOSE()
@@ -160,6 +402,17 @@ namespace Client
     {
         if (updating_ || configPath_.IsEmpty())
             return;
+        if (session_)
+        {
+            bool done, stopped;
+            auto view = session_->Snapshot(done, stopped);
+            if (done || stopped || view.screen != Screen::Game || view.encounterEnabled ||
+                view.encounterPending || view.player.inBattle)
+            {
+                ShowWindow(SW_HIDE);
+                return;
+            }
+        }
         auto readPercent = [](CEdit& edit, int& value)
         {
             CString text;
@@ -207,6 +460,7 @@ namespace Client
     void BattleSettingsWindow::ApplySettings()
     {
         Game::HealingSettings settings;
+        settings.quickBattle = quickBattleEnabled_;
         settings.useItems = useItems_;
         settings.useMagic = useMagic_ && !magicName_.empty();
         settings.itemPercent = itemPercent_;
@@ -358,10 +612,16 @@ namespace Client
         battleRound_.SetWindowText(round);
         battleTabs_.ShowWindow(visible ? SW_SHOW : SW_HIDE);
         battleSettings_.EnableWindow(leveling && !view_.encounterEnabled && !view_.encounterPending && !view_.player.inBattle);
+        if ((view_.encounterEnabled || view_.encounterPending || view_.player.inBattle) &&
+            battleSettingsWindow_.GetSafeHwnd())
+            battleSettingsWindow_.ShowWindow(SW_HIDE);
         battleStart_.EnableWindow(leveling && !view_.encounterEnabled && !view_.encounterPending);
         battleStop_.EnableWindow(leveling && (view_.encounterEnabled || view_.encounterPending));
         CString message = L"战斗提示：";
-        message += view_.battleResult.message.empty() ? L"等待战斗" : view_.battleResult.message.c_str();
+        if (view_.encounterPending || (!view_.player.inBattle && view_.encounterMessage == L"自动战斗已停止"))
+            message += view_.encounterMessage.c_str();
+        else
+            message += view_.battleResult.message.empty() ? L"等待战斗" : view_.battleResult.message.c_str();
         battleInfo_.SetWindowText(message);
         CString experience;
         if (view_.battleResult.received)
@@ -383,7 +643,11 @@ namespace Client
     void MainWindow::OnBattleStart()
     {
         if (view_.screen == Screen::Game)
+        {
+            if (battleSettingsWindow_.GetSafeHwnd())
+                battleSettingsWindow_.ShowWindow(SW_HIDE);
             session_.SetEncounterEnabled(true);
+        }
     }
 
     void MainWindow::OnBattleStop()

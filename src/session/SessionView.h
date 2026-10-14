@@ -17,6 +17,8 @@ namespace Client
         Game::PlayerStatus player;
         Game::BattleState battle;
         Game::BattleResult battleResult;
+        bool quickBattle = true;
+        std::vector<std::wstring> battleDebug;
         std::vector<Game::PetStatus> pets;
         std::vector<Game::ItemStatus> items;
         std::vector<Game::MagicStatus> magic;

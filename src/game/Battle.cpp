@@ -4,6 +4,7 @@
 #include "../text/TextEncoding.h"
 #include <cstdio>
 #include <stdexcept>
+#include <utility>
 
 using namespace Protocol;
 
@@ -18,11 +19,25 @@ namespace
     }
 }
 
+void LoginClient::TraceBattle(const wchar_t* direction, const std::string& packet)
+{
+    if (healing_.quickBattle)
+        return;
+    std::wstring text = std::to_wstring(GetTickCount64()) + L" " + direction + L" " +
+        TextEncoding::LegacyText(packet.substr(0, 2048));
+    if (packet.size() > 2048)
+        text += L" …（显示已截断）";
+    if (battleDebug_.size() >= 64)
+        battleDebug_.erase(battleDebug_.begin());
+    battleDebug_.push_back(std::move(text));
+}
+
 bool LoginClient::HandleBattlePacket(const std::vector<std::string>& fields)
 {
     auto strings = ReceiveStrings(fields);
     if (strings.size() != 1)
         throw std::runtime_error("Invalid battle reply");
+    TraceBattle(L"RX B/15", strings[0]);
     auto values = SplitLegacy(strings[0]);
     if (values[0] == "BU")
     {
@@ -57,12 +72,12 @@ bool LoginClient::HandleBattlePacket(const std::vector<std::string>& fields)
         return true;
     }
     if (values[0] != "BC")
-        return false;
+        return !healing_.quickBattle;
     // BC carries a field attribute, then thirteen fields per occupied battle slot.
     if (values.size() < 3 || !values.back().empty() || (values.size() - 3) % 13 != 0)
         throw std::runtime_error("Incomplete battle members");
-    BattleNumber(values[1]);
     auto updated = battle_;
+    updated.fieldAttribute = BattleNumber(values[1]);
     updated.members = {};
     for (std::size_t i = 2; i + 13 < values.size(); i += 13)
     {
@@ -71,6 +86,7 @@ bool LoginClient::HandleBattlePacket(const std::vector<std::string>& fields)
             throw std::runtime_error("Invalid battle member slot");
         auto& member = updated.members[slot];
         member.name = UnescapeLegacy(values[i + 1]);
+        member.image = BattleNumber(values[i + 3]);
         member.level = static_cast<int>(BattleNumber(values[i + 4]));
         member.hp = static_cast<int>(BattleNumber(values[i + 5]));
         member.maxHp = static_cast<int>(BattleNumber(values[i + 6]));
@@ -102,6 +118,7 @@ bool LoginClient::HandleBattleResult(const std::vector<std::string>& fields)
     auto strings = ReceiveStrings(fields);
     if (strings.size() != 1)
         throw std::runtime_error("Invalid battle result");
+    TraceBattle(L"RX RS/12", strings[0]);
     // RS starts with the character's slot (-2), level-up flag and base-62 experience.
     auto end = strings[0].find(',');
     if (end == std::string::npos)
@@ -135,6 +152,7 @@ bool LoginClient::PollBattle()
     {
         // STW acknowledges the post-battle XYD before resuming encounters.
         SendNumbers("8", { 0 }, GetTickCount64() + BATTLE_DELAY_MS);
+        TraceBattle(L"TX STW/8", "0");
         playerStatus_.inBattle = false;
         battle_ = {};
         return true;
@@ -156,8 +174,11 @@ bool LoginClient::PollBattle()
         }
     }
     std::string packets;
+    std::vector<std::string> commands;
     auto append = [&](const std::string& command)
     {
+        if (!healing_.quickBattle)
+            commands.push_back(command);
         packets += EncodePacket("&;14;" + Encode64(command, sessionKey_, -1) + ";" +
             EncodeInteger(static_cast<std::uint32_t>(command.size()), sessionKey_) + ";#;");
     };
@@ -263,7 +284,11 @@ bool LoginClient::PollBattle()
         }
     }
     if (!packets.empty())
+    {
         connection_.Send(packets, GetTickCount64() + BATTLE_DELAY_MS);
+        for (const auto& sent : commands)
+            TraceBattle(L"TX B/14", sent);
+    }
     battleResult_.message = packets.empty() ? L"等待回合结束" : L"已提交本回合指令";
     battle_.sentRound = battle_.round;
     battle_.commandsPending = false;

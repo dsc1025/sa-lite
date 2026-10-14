@@ -250,11 +250,13 @@ namespace Client
                 shared_.itemPending = false;
             }
             shared_.message = message;
+            shared_.quickBattle = healing_.quickBattle;
             if (client)
             {
                 shared_.player = client->GetPlayerStatus();
                 shared_.battle = client->GetBattle();
                 shared_.battleResult = client->GetBattleResult();
+                shared_.battleDebug = client->GetBattleDebug();
                 shared_.pets = client->GetPets();
                 shared_.items = client->GetItems();
                 shared_.magic = client->GetMagic();
@@ -324,6 +326,10 @@ namespace Client
             if (selection >= 0)
             {
                 Publish(Screen::Entering, L"正在进入游戏…");
+                {
+                    std::lock_guard<std::mutex> lock(mutex_);
+                    client.SetHealingSettings(healing_);
+                }
                 client.EnterGame(characters.at(selection));
                 entered = true;
                 {
