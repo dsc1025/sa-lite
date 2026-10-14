@@ -4,8 +4,6 @@
 #include "../text/TextEncoding.h"
 #include <cstdio>
 #include <stdexcept>
-#include <utility>
-#include <algorithm>
 
 using namespace Protocol;
 
@@ -20,176 +18,11 @@ namespace
     }
 }
 
-void LoginClient::TraceBattle(const wchar_t* direction, const std::string& packet)
-{
-    if (healing_.quickBattle)
-        return;
-    std::wstring text = std::to_wstring(GetTickCount64()) + L" " + direction + L" " +
-        TextEncoding::LegacyText(packet.substr(0, 2048));
-    if (packet.size() > 2048)
-        text += L" …（显示已截断）";
-    if (battleDebug_.size() >= 64)
-        battleDebug_.erase(battleDebug_.begin());
-    battleDebug_.push_back(std::move(text));
-}
-
-void LoginClient::CompleteBattlePlayback(std::uint64_t serial)
-{
-    if (healing_.quickBattle)
-        battlePlayback_.clear();
-    else
-        battlePlayback_.erase(std::remove_if(battlePlayback_.begin(), battlePlayback_.end(),
-            [&](const Game::BattlePlayback& playback) { return playback.serial <= serial; }), battlePlayback_.end());
-}
-
-void LoginClient::ParseBattleActions(const std::vector<std::string>& values)
-{
-    Game::BattlePlayback playback;
-    playback.initial = battle_;
-    auto number = [](const std::string& value, std::uint32_t& result)
-    {
-        if (value.empty() || value.size() > 8 ||
-            value.find_first_not_of("0123456789abcdefABCDEF") != std::string::npos)
-            return false;
-        result = static_cast<std::uint32_t>(std::stoul(value, nullptr, 16));
-        return true;
-    };
-    auto boundary = [](const std::string& value)
-    {
-        return value == "bg" || (value.size() == 2 && value[0] == 'B' && value[1] >= 'A' && value[1] <= 'Z');
-    };
-    for (std::size_t begin = 0; begin < values.size();)
-    {
-        if (!boundary(values[begin])) { ++begin; continue; }
-        const auto& command = values[begin];
-        std::size_t end = begin + 1;
-        while (end < values.size())
-        {
-            bool numericField = (command == "BD" && end >= begin + 2 && end <= begin + 4) ||
-                ((command == "bg" || command == "BM") && end == begin + 1) ||
-                (command == "BM" && end == begin + 2);
-            if (!numericField && boundary(values[end])) break;
-            ++end;
-        }
-        if (command == "BH" || command == "BB")
-        {
-            int actor = -1;
-            Game::BattleEvent event;
-            auto flush = [&]()
-            {
-                if (event.target >= 0 && event.target < 20)
-                    playback.events.push_back(event);
-            };
-            for (std::size_t i = begin + 1; i < end; ++i)
-            {
-                const auto& token = values[i];
-                if (token.size() < 2) continue;
-                std::uint32_t value = 0;
-                if (!number(token.substr(1), value)) continue;
-                if (token[0] == 'a') actor = value < 20 ? static_cast<int>(value) : -1;
-                else if (token[0] == 'r')
-                {
-                    flush();
-                    event = {};
-                    event.actor = actor;
-                    event.target = value < 20 ? static_cast<int>(value) : -1;
-                }
-                else if (token[0] == 'f') event.flags = value;
-                else if (token[0] == 'd') event.amount = value;
-                else if (token[0] == 'p') event.petAmount = value;
-                else if (token[0] == 'g') event.guardian = value < 20 ? static_cast<int>(value) : -1;
-            }
-            flush();
-        }
-        else if (command == "BD" || command == "BL")
-        {
-            if (end >= begin + 3 && values[begin + 1].size() > 1 && values[begin + 1][0] == 'r')
-            {
-                std::uint32_t target = 0, kind = 0, sign = 0;
-                if (number(values[begin + 1].substr(1), target) && target < 20)
-                {
-                    Game::BattleEvent event;
-                    event.target = static_cast<int>(target);
-                    bool valid = false;
-                    if (command == "BL" && values[begin + 2].size() > 1 && values[begin + 2][0] == 'h')
-                    {
-                        event.kind = Game::BattleEvent::Kind::SetHp;
-                        valid = number(values[begin + 2].substr(1), event.amount);
-                    }
-                    else if (command == "BD" && end >= begin + 5 &&
-                        number(values[begin + 2], kind) && kind == 0 &&
-                        number(values[begin + 3], sign) && sign <= 2)
-                    {
-                        event.kind = sign == 0 ? Game::BattleEvent::Kind::Damage : Game::BattleEvent::Kind::Heal;
-                        const auto& damage = values[begin + 4];
-                        valid = number(!damage.empty() && damage[0] == 'd' ? damage.substr(1) : damage, event.amount);
-                        if (end > begin + 5 && values[begin + 5].size() > 1 && values[begin + 5][0] == 'p')
-                            number(values[begin + 5].substr(1), event.petAmount);
-                    }
-                    if (valid) playback.events.push_back(event);
-                }
-            }
-        }
-        else if (command == "bg" || command == "BE")
-        {
-            if (end > begin + 1)
-            {
-                std::uint32_t actor = 0;
-                auto token = values[begin + 1];
-                if (command == "BE" && !token.empty() && token[0] == 'e') token.erase(0, 1);
-                if (number(token, actor) && actor < 20)
-                {
-                    Game::BattleEvent event;
-                    event.kind = command == "bg" ? Game::BattleEvent::Kind::Guard : Game::BattleEvent::Kind::Escape;
-                    event.actor = static_cast<int>(actor);
-                    for (std::size_t i = begin + 2; i < end; ++i)
-                        if (values[i].size() > 1 && values[i][0] == 'f')
-                            number(values[i].substr(1), event.flags);
-                    playback.events.push_back(event);
-                }
-            }
-        }
-        else if (command == "BJ")
-        {
-            Game::BattleEvent event;
-            event.kind = Game::BattleEvent::Kind::Cast;
-            int effects = 0;
-            for (std::size_t i = begin + 1; i < end; ++i)
-            {
-                const auto& token = values[i];
-                std::uint32_t value = 0;
-                if (token.size() < 2 || !number(token.substr(1), value)) continue;
-                if (token[0] == 'a') event.actor = value < 20 ? static_cast<int>(value) : -1;
-                else if (token[0] == 'e')
-                {
-                    if (effects++ == 0) event.effect = value;
-                    else event.targetEffect = value;
-                }
-                else if (token[0] == 'r' && value < 20)
-                {
-                    event.targets.push_back(static_cast<int>(value));
-                    if (event.target < 0) event.target = static_cast<int>(value);
-                }
-            }
-            if (event.actor >= 0) playback.events.push_back(event);
-        }
-        else
-            TraceBattle(L"动画暂未支持", command);
-        begin = end;
-    }
-    if (!playback.events.empty())
-    {
-        playback.serial = ++playbackSerial_;
-        battlePlayback_.push_back(std::move(playback));
-    }
-}
-
 bool LoginClient::HandleBattlePacket(const std::vector<std::string>& fields)
 {
     auto strings = ReceiveStrings(fields);
     if (strings.size() != 1)
         throw std::runtime_error("Invalid battle reply");
-    TraceBattle(L"RX B/15", strings[0]);
     auto values = SplitLegacy(strings[0]);
     if (values[0] == "BU")
     {
@@ -224,16 +57,12 @@ bool LoginClient::HandleBattlePacket(const std::vector<std::string>& fields)
         return true;
     }
     if (values[0] != "BC")
-    {
-        if (!healing_.quickBattle && playbackEnabled_)
-            ParseBattleActions(values);
         return !healing_.quickBattle;
-    }
     // BC carries a field attribute, then thirteen fields per occupied battle slot.
     if (values.size() < 3 || !values.back().empty() || (values.size() - 3) % 13 != 0)
         throw std::runtime_error("Incomplete battle members");
     auto updated = battle_;
-    updated.fieldAttribute = BattleNumber(values[1]);
+    BattleNumber(values[1]);
     updated.members = {};
     for (std::size_t i = 2; i + 13 < values.size(); i += 13)
     {
@@ -261,7 +90,6 @@ bool LoginClient::HandleBattlePacket(const std::vector<std::string>& fields)
         member.present = true;
     }
     updated.received = true;
-    ++updated.membersRevision;
     updated.commandsPending = true;
     updated.roundReceived = false;
     updated.nextAction = GetTickCount64() + (healing_.quickBattle ? BATTLE_DELAY_MS : SIMPLE_BATTLE_DELAY_MS);
@@ -275,7 +103,6 @@ bool LoginClient::HandleBattleResult(const std::vector<std::string>& fields)
     auto strings = ReceiveStrings(fields);
     if (strings.size() != 1)
         throw std::runtime_error("Invalid battle result");
-    TraceBattle(L"RX RS/12", strings[0]);
     // RS starts with the character's slot (-2), level-up flag and base-62 experience.
     auto end = strings[0].find(',');
     if (end == std::string::npos)
@@ -303,15 +130,12 @@ void LoginClient::FinishBattle()
 
 bool LoginClient::PollBattle()
 {
-    if (!healing_.quickBattle && playbackEnabled_ && !battlePlayback_.empty())
-        return false;
     if (!playerStatus_.inBattle || GetTickCount64() < battle_.nextAction)
         return false;
     if (battle_.endPending)
     {
         // STW acknowledges the post-battle XYD before resuming encounters.
         SendNumbers("8", { 0 }, GetTickCount64() + BATTLE_DELAY_MS);
-        TraceBattle(L"TX STW/8", "0");
         playerStatus_.inBattle = false;
         battle_ = {};
         return true;
@@ -333,11 +157,8 @@ bool LoginClient::PollBattle()
         }
     }
     std::string packets;
-    std::vector<std::string> commands;
     auto append = [&](const std::string& command)
     {
-        if (!healing_.quickBattle)
-            commands.push_back(command);
         packets += EncodePacket("&;14;" + Encode64(command, sessionKey_, -1) + ";" +
             EncodeInteger(static_cast<std::uint32_t>(command.size()), sessionKey_) + ";#;");
     };
@@ -448,11 +269,7 @@ bool LoginClient::PollBattle()
         }
     }
     if (!packets.empty())
-    {
         connection_.Send(packets, GetTickCount64() + BATTLE_DELAY_MS);
-        for (const auto& sent : commands)
-            TraceBattle(L"TX B/14", sent);
-    }
     battleResult_.message = packets.empty() ? L"等待回合结束" : L"已提交本回合指令";
     battle_.sentRound = battle_.round;
     battle_.commandsPending = false;

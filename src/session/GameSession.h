@@ -33,8 +33,6 @@ namespace Client
             std::uint32_t revision = 0, const std::string& uniqueCode = {});
         void SetEncounterEnabled(bool enabled);
         void SetHealingSettings(const Game::HealingSettings& settings);
-        void CompleteBattlePlayback(std::uint64_t serial);
-        void SkipBattlePlayback();
 
     private:
         void UpdateEncounter(LoginClient& client);
@@ -50,8 +48,6 @@ namespace Client
         bool stop_ = false, done_ = true;
         bool encounterRequested_ = false;
         Game::HealingSettings healing_;
-        std::uint64_t completedPlayback_ = 0;
-        bool playbackEnabled_ = true;
         int requestedCharacter_ = -1;
         bool createRequested_ = false;
         LoginClient::NewCharacter requestedCreation_;

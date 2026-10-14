@@ -8,7 +8,6 @@
 #include <filesystem>
 #include <fstream>
 #include <unordered_map>
-#include <deque>
 
 #define IDC_BATTLE_TABS 124
 #define IDC_BATTLE_UPPER 126
@@ -44,16 +43,11 @@ namespace Client
         static std::uint64_t SpriteKey(std::uint32_t image, int direction, int action, std::uint32_t frame);
         void PrepareAnimationFrames();
         void ApplyBattleState(const Game::BattleState& state);
-        void StartEvent(const Game::BattleEvent& event);
-        std::uint32_t EffectFrame(std::uint32_t image, int direction);
         struct UnitAnimation
         {
-            int action = 3;
             std::uint32_t frame = 0;
             std::uint64_t started = 0;
-            std::wstring label;
         };
-        void UpdateDebug(const SessionView& view);
         struct PictureIndex
         {
             std::uint32_t offset = 0, size = 0, width = 0, height = 0;
@@ -73,15 +67,8 @@ namespace Client
         CSize bufferSize_{ 0, 0 };
         std::vector<RGBQUAD> canvas_;
         Game::BattleState battle_;
-        Game::BattleState latestBattle_;
         GameSession* session_ = nullptr;
         std::array<UnitAnimation, 20> unitAnimations_;
-        std::deque<Game::BattlePlayback> playback_;
-        std::uint64_t seenPlayback_ = 0, eventEnd_ = 0;
-        std::size_t eventIndex_ = 0;
-        int playbackRound_ = -1;
-        std::uint64_t playbackRevision_ = 0;
-        Game::BattleEvent currentEvent_;
         bool active_ = false, dismissed_ = false;
         std::filesystem::path resourceDirectory_;
         std::unordered_map<std::uint32_t, std::array<std::uint32_t, 2>> animations_;
@@ -94,8 +81,6 @@ namespace Client
         std::uint64_t cacheSerial_ = 0;
         std::ifstream sprites_, images_;
         std::uint64_t spriteSize_ = 0, imageSize_ = 0;
-        std::vector<std::wstring> resourceDebug_;
-        CString debugText_;
     };
 
     class BattleSettingsWindow : public CWnd

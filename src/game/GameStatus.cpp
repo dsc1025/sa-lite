@@ -117,12 +117,6 @@ bool LoginClient::HandlePositionPacket(const std::vector<std::string>& fields)
     else
     {
         bool inBattle = numbers[0] != 0;
-        if (!inBattle && playerStatus_.inBattle && !healing_.quickBattle &&
-            playbackEnabled_ && !battlePlayback_.empty())
-        {
-            FinishBattle();
-            return true;
-        }
         if (!inBattle || !playerStatus_.inBattle)
             battle_ = {};
         if (inBattle && !playerStatus_.inBattle)

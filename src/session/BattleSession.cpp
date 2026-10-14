@@ -4,19 +4,6 @@
 
 namespace Client
 {
-    void GameSession::SkipBattlePlayback()
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        playbackEnabled_ = false;
-    }
-
-    void GameSession::CompleteBattlePlayback(std::uint64_t serial)
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        if (serial > completedPlayback_)
-            completedPlayback_ = serial;
-    }
-
     void GameSession::SetHealingSettings(const Game::HealingSettings& settings)
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -32,10 +19,7 @@ namespace Client
                 return;
             encounterRequested_ = enabled;
             if (enabled)
-            {
                 requestedMap_ = -1;
-                playbackEnabled_ = true;
-            }
             shared_.encounterPending = true;
             shared_.encounterMessage = enabled ? L"正在开始快速遇敌…" :
                 shared_.player.inBattle ? L"等待战斗结束，结束后停止自动战斗" : L"正在停止自动战斗…";

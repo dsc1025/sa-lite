@@ -38,9 +38,6 @@ void LoginClient::Disconnect() noexcept
     encounter_ = {};
     battle_ = {};
     battleResult_ = {};
-    battleDebug_.clear();
-    battlePlayback_.clear();
-    playbackSerial_ = 0;
     positionSerial_ = 0;
     eventSequence_ = 0;
     pets_.assign(5, {});
