@@ -78,7 +78,7 @@ namespace Client
         CButton battleStart_, battleStop_, battleSettings_;
         std::unique_ptr<BattleSettingsWindow> battleSettingsWindow_;
         std::unique_ptr<BattleSceneWindow> battleSceneWindow_;
-        CStatic battleRound_, battleInfo_, battleExperience_;
+        CStatic battleRound_, battleExperience_;
         CListCtrl list_;
         SessionView view_;
         GameSession session_;

@@ -271,13 +271,14 @@ namespace Client
             auto& unit = unitAnimations_[slot];
             if (unit.started == 0) unit.started = now;
             const int direction = slot / 10 == playerSide ? 3 : 7;
-            InspectImage(member.image, direction, 3, 0);
-            auto first = staticSprites_.find(SpriteKey(member.image, direction, 3, 0));
+            const int action = slot / 10 == playerSide ? 0 : 3;
+            InspectImage(member.image, direction, action, 0);
+            auto first = staticSprites_.find(SpriteKey(member.image, direction, action, 0));
             if (first == staticSprites_.end()) { unit.frame = 0; continue; }
             const auto elapsed = now >= unit.started ? now - unit.started : 0;
             unit.frame = static_cast<std::uint32_t>((elapsed % first->second.duration) *
                 first->second.frames / first->second.duration);
-            InspectImage(member.image, direction, 3, unit.frame);
+            InspectImage(member.image, direction, action, unit.frame);
         }
     }
 
@@ -423,7 +424,7 @@ namespace Client
             if (!member.present)
                 continue;
             bool ally = slot / 10 == playerSide;
-            const std::uint64_t key = SpriteKey(member.image, ally ? 3 : 7, 3, unitAnimations_[slot].frame);
+            const std::uint64_t key = SpriteKey(member.image, ally ? 3 : 7, ally ? 0 : 3, unitAnimations_[slot].frame);
             auto found = staticSprites_.find(key);
             if (found == staticSprites_.end())
                 continue;
@@ -463,7 +464,7 @@ namespace Client
             CPoint anchor = position(slot);
             int x = anchor.x - 56;
             int y = anchor.y;
-            const std::uint64_t key = SpriteKey(member.image, ally ? 3 : 7, 3, unitAnimations_[slot].frame);
+            const std::uint64_t key = SpriteKey(member.image, ally ? 3 : 7, ally ? 0 : 3, unitAnimations_[slot].frame);
             if (staticSprites_.find(key) == staticSprites_.end())
             {
                 CRect box(x, y - 58, x + 112, y);

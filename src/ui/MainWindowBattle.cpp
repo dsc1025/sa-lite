@@ -22,8 +22,6 @@ namespace Client
         for (int i = 0; i < 2; ++i)
             battleSides_[i]->Create(sides[i], WS_CHILD | WS_CLIPSIBLINGS | BS_OWNERDRAW,
                 empty, this, IDC_BATTLE_UPPER + i);
-        battleInfo_.Create(L"战斗提示：等待战斗", WS_CHILD | SS_LEFT | SS_NOPREFIX,
-            empty, this, IDC_BATTLE_INFO);
         battleExperience_.Create(L"经验获得：本场 —    累计 0", WS_CHILD, empty, this);
     }
 
@@ -44,13 +42,11 @@ namespace Client
         int sideWidth = std::max(0, (battleWidth - 12) / 2);
         int rightLeft = battlePage.left + sideWidth + 12;
         battleSides_[0]->MoveWindow(battlePage.left, sideTop, sideWidth,
-            std::max(0, sideBottom - sideTop - 24));
+            std::max(0, sideBottom - sideTop));
         battleSides_[1]->MoveWindow(rightLeft, sideTop + 24,
-            std::max<LONG>(0, battlePage.right - rightLeft), std::max(0, sideBottom - sideTop - 24));
+            std::max<LONG>(0, battlePage.right - rightLeft), std::max(0, sideBottom - sideTop));
         battleRound_.MoveWindow(rightLeft, sideTop,
             std::max<LONG>(0, battlePage.right - rightLeft - 8), 22);
-        battleInfo_.MoveWindow(battlePage.left + 8, sideBottom - 22,
-            std::max(0, sideWidth - 16), 22);
         battleExperience_.MoveWindow(battlePage.left, sideBottom + 8, battleWidth, 22);
     }
 
@@ -60,7 +56,7 @@ namespace Client
         if (visible)
             developing_.ShowWindow(leveling ? SW_HIDE : SW_SHOW);
         CWnd* battleControls[] = { &battleStart_, &battleStop_, &battleSettings_, &battleRound_,
-            battleSides_[0].get(), battleSides_[1].get(), &battleInfo_, &battleExperience_ };
+            battleSides_[0].get(), battleSides_[1].get(), &battleExperience_ };
         for (auto control : battleControls)
             control->ShowWindow(leveling ? SW_SHOW : SW_HIDE);
         bool received = view_.player.inBattle && view_.battle.received;
@@ -85,12 +81,6 @@ namespace Client
             battleSettingsWindow_->ShowWindow(SW_HIDE);
         battleStart_.EnableWindow(leveling && !view_.encounterEnabled && !view_.encounterPending);
         battleStop_.EnableWindow(leveling && (view_.encounterEnabled || view_.encounterPending));
-        CString message = L"战斗提示：";
-        if (view_.encounterPending || (!view_.player.inBattle && view_.encounterMessage == L"自动战斗已停止"))
-            message += view_.encounterMessage.c_str();
-        else
-            message += view_.battleResult.message.empty() ? L"等待战斗" : view_.battleResult.message.c_str();
-        battleInfo_.SetWindowText(message);
         CString experience;
         if (view_.battleResult.received)
             experience.Format(L"经验获得：本场 %u    累计 %llu",

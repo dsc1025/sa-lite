@@ -96,7 +96,6 @@ bool LoginClient::HandleBattlePacket(const std::vector<std::string>& fields)
     updated.roundReceived = false;
     updated.nextAction = GetTickCount64() + (healing_.quickBattle ? Game::BATTLE_DELAY_MS : Game::SIMPLE_BATTLE_DELAY_MS);
     battle_ = updated;
-    battleResult_.message = L"等待本回合指令";
     return true;
 }
 
@@ -117,7 +116,6 @@ bool LoginClient::HandleBattleResult(const std::vector<std::string>& fields)
     battleResult_.received = true;
     battleResult_.experience = experience;
     battleResult_.totalExperience += experience;
-    battleResult_.message = L"战斗结束";
     return true;
 }
 
@@ -273,7 +271,6 @@ bool LoginClient::PollBattle()
     }
     if (!packets.empty())
         connection_.Send(packets, GetTickCount64() + Game::BATTLE_DELAY_MS);
-    battleResult_.message = packets.empty() ? L"等待回合结束" : L"已提交本回合指令";
     battle_.sentRound = battle_.round;
     battle_.commandsPending = false;
     return true;

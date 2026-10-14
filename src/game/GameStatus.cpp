@@ -159,12 +159,6 @@ bool LoginClient::HandlePositionPacket(const std::vector<std::string>& fields)
             encounter_.nextRequest = GetTickCount64() + Game::BATTLE_DELAY_MS;
         if (!inBattle || !playerStatus_.inBattle)
             battle_ = {};
-        if (inBattle && !playerStatus_.inBattle)
-        {
-            battleResult_.received = false;
-            battleResult_.experience = 0;
-            battleResult_.message = L"等待战斗队员数据";
-        }
         if (inBattle && encounter_.requestPending)
             encounter_.battleStarted = true;
         playerStatus_.inBattle = inBattle;
