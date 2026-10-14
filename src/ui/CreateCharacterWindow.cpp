@@ -1,4 +1,6 @@
 #include "CreateCharacterWindow.h"
+#include "../session/GameSession.h"
+#include "../session/SessionView.h"
 #include "../text/TextEncoding.h"
 #include <stdexcept>
 
@@ -94,7 +96,7 @@ namespace Client
             if (!WideCharToMultiByte(936, WC_NO_BEST_FIT_CHARS, name.GetString(), name.GetLength(),
                 character_.name.data(), length, nullptr, &substituted) || substituted)
                 throw std::invalid_argument("名字包含服务端编码不支持的字符");
-            LoginClient::ValidateNewCharacter(character_);
+            Game::ValidateNewCharacter(character_);
             if (!session_->RequestCreateCharacter(character_))
                 throw std::runtime_error("当前不能创建角色，请检查连接及角色槽位");
             pending_ = true;

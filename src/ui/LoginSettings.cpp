@@ -1,4 +1,6 @@
 #include "MainWindow.h"
+#include "BattleSettingsWindow.h"
+#include "BattleSceneWindow.h"
 #include <stdexcept>
 
 namespace Client
@@ -14,8 +16,8 @@ namespace Client
         if (separator < 0)
             throw std::runtime_error("无法获取程序目录，不能读取登录配置");
         configPath_ = executable.Left(separator + 1) + L"config.ini";
-        battleSettingsWindow_.LoadSettings(configPath_, session_);
-        battleSceneWindow_.LoadResources(configPath_);
+        battleSettingsWindow_->LoadSettings(configPath_, session_);
+        battleSceneWindow_->LoadResources(configPath_);
         wchar_t value[256];
         GetPrivateProfileStringW(L"Login", L"Server", L"", value, 256, configPath_);
         address_.SetWindowText(value);

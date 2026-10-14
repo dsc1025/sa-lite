@@ -3,11 +3,11 @@
 #include <afxwin.h>
 #include <afxcmn.h>
 #include "PropertiesWindow.h"
-#include "../session/GameSession.h"
 
 namespace Client
 {
-    enum RoleControlId { Tabs = 103, List, Detail, PetStateCombo, PetStorageList, ItemStorageList };
+    struct SessionView;
+    class GameSession;
 
     class RolePage : public CWnd
     {

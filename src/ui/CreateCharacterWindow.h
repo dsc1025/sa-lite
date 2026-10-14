@@ -1,11 +1,14 @@
 #pragma once
 
 #include <afxwin.h>
-#include "../session/GameSession.h"
+#include "../game/Character.h"
 #include <random>
 
 namespace Client
 {
+    class GameSession;
+    struct SessionView;
+
     class CreateCharacterWindow : public CWnd
     {
     public:
@@ -26,7 +29,7 @@ namespace Client
         CEdit name_;
         CButton random_, submit_, cancel_;
         GameSession* session_ = nullptr;
-        LoginClient::NewCharacter character_;
+        Game::NewCharacter character_;
         std::mt19937 randomEngine_{ std::random_device{}() };
         bool pending_ = false;
         unsigned int revision_ = 0;

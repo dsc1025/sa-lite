@@ -1,4 +1,5 @@
-#include "GameSession.h"
+#include "../LoginClient.h"
+#include "GameSessionState.h"
 #include "../text/TextEncoding.h"
 #include <stdexcept>
 
@@ -6,37 +7,37 @@ namespace Client
 {
     void GameSession::SetHealingSettings(const Game::HealingSettings& settings)
     {
-        std::lock_guard<std::mutex> lock(mutex_);
-        healing_ = settings;
-        shared_.quickBattle = settings.quickBattle;
+        std::lock_guard<std::mutex> lock(state_->mutex_);
+        state_->healing_ = settings;
+        state_->shared_.quickBattle = settings.quickBattle;
     }
 
     void GameSession::SetEncounterEnabled(bool enabled)
     {
         {
-            std::lock_guard<std::mutex> lock(mutex_);
-            if (stop_ || done_ || shared_.screen != Screen::Game || (enabled && (shared_.petStoragePending || shared_.itemPending)))
+            std::lock_guard<std::mutex> lock(state_->mutex_);
+            if (state_->stop_ || state_->done_ || state_->shared_.screen != Screen::Game || (enabled && (state_->shared_.petStoragePending || state_->shared_.itemPending)))
                 return;
-            encounterRequested_ = enabled;
+            state_->encounterRequested_ = enabled;
             if (enabled)
-                requestedMap_ = -1;
-            shared_.encounterPending = true;
-            shared_.encounterMessage = enabled ? L"正在开始快速遇敌…" :
-                shared_.player.inBattle ? L"等待战斗结束，结束后停止自动战斗" : L"正在停止自动战斗…";
-            shared_.message = shared_.encounterMessage;
+                state_->requestedMap_ = -1;
+            state_->shared_.encounterPending = true;
+            state_->shared_.encounterMessage = enabled ? L"正在开始快速遇敌…" :
+                state_->shared_.player.inBattle ? L"等待战斗结束，结束后停止自动战斗" : L"正在停止自动战斗…";
+            state_->shared_.message = state_->shared_.encounterMessage;
         }
-        ::PostMessage(window_, message_, 0, 0);
+        ::PostMessage(state_->window_, state_->message_, 0, 0);
     }
 
     void GameSession::UpdateEncounter(LoginClient& client)
     {
         bool requested;
         {
-            std::lock_guard<std::mutex> lock(mutex_);
-            if (stop_) return;
-            requested = encounterRequested_;
+            std::lock_guard<std::mutex> lock(state_->mutex_);
+            if (state_->stop_) return;
+            requested = state_->encounterRequested_;
             if (!requested && !client.IsEncounterEnabled() && !client.IsEncounterStopping() &&
-                !shared_.encounterPending)
+                !state_->shared_.encounterPending)
                 return;
         }
         std::wstring message;
@@ -46,8 +47,8 @@ namespace Client
             if (requested != client.IsEncounterEnabled())
                 client.SetEncounterEnabled(requested);
             {
-                std::lock_guard<std::mutex> lock(mutex_);
-                if (stop_ || encounterRequested_ != requested)
+                std::lock_guard<std::mutex> lock(state_->mutex_);
+                if (state_->stop_ || state_->encounterRequested_ != requested)
                     return;
             }
             client.PollEncounter();
@@ -68,18 +69,18 @@ namespace Client
         }
         bool changed;
         {
-            std::lock_guard<std::mutex> lock(mutex_);
-            if (stop_ || encounterRequested_ != requested)
+            std::lock_guard<std::mutex> lock(state_->mutex_);
+            if (state_->stop_ || state_->encounterRequested_ != requested)
                 return;
             if (failed)
-                encounterRequested_ = false;
+                state_->encounterRequested_ = false;
             bool enabled = client.IsEncounterEnabled();
             bool pending = !requested && (client.GetPlayerStatus().inBattle || client.IsEncounterStopping());
-            changed = shared_.encounterEnabled != enabled || shared_.encounterPending != pending ||
-                shared_.encounterMessage != message;
-            shared_.encounterEnabled = enabled;
-            shared_.encounterPending = pending;
-            shared_.encounterMessage = message;
+            changed = state_->shared_.encounterEnabled != enabled || state_->shared_.encounterPending != pending ||
+                state_->shared_.encounterMessage != message;
+            state_->shared_.encounterEnabled = enabled;
+            state_->shared_.encounterPending = pending;
+            state_->shared_.encounterMessage = message;
         }
         if (changed)
             Publish(Screen::Game, message, &client);

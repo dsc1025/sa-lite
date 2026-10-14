@@ -1,4 +1,6 @@
 #include "RolePage.h"
+#include "../session/GameSession.h"
+#include "../session/SessionView.h"
 #include "UiText.h"
 
 namespace Client

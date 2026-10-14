@@ -1,9 +1,15 @@
-#include "GameSession.h"
+#include "../LoginClient.h"
+#include "GameSessionState.h"
 #include "../text/TextEncoding.h"
+#include "../game/BattleTiming.h"
 #include <stdexcept>
 
 namespace Client
 {
+    GameSession::GameSession() : state_(std::make_unique<State>())
+    {
+    }
+
     GameSession::~GameSession()
     {
         Stop();
@@ -14,182 +20,182 @@ namespace Client
         const std::string& account, const std::string& password)
     {
         Join();
-        window_ = window;
-        message_ = message;
+        state_->window_ = window;
+        state_->message_ = message;
         try
         {
             {
-                std::lock_guard<std::mutex> lock(mutex_);
-                stop_ = false; done_ = false; requestedCharacter_ = -1;
-                createRequested_ = false;
-                requestedPet_ = -1;
-                storageRequested_ = false;
-                requestedFood_ = -1;
-                requestedDiscard_ = -1;
-                requestedDiscardCode_.clear();
-                requestedStorageCode_.clear();
-                itemStorageRequested_ = false;
-                requestedItemStorageCode_.clear();
-                requestedMap_ = -1;
-                encounterRequested_ = false;
-                shared_ = {};
-                shared_.screen = Screen::Connecting;
-                shared_.message = L"正在连接并登录…";
+                std::lock_guard<std::mutex> lock(state_->mutex_);
+                state_->stop_ = false; state_->done_ = false; state_->requestedCharacter_ = -1;
+                state_->createRequested_ = false;
+                state_->requestedPet_ = -1;
+                state_->storageRequested_ = false;
+                state_->requestedFood_ = -1;
+                state_->requestedDiscard_ = -1;
+                state_->requestedDiscardCode_.clear();
+                state_->requestedStorageCode_.clear();
+                state_->itemStorageRequested_ = false;
+                state_->requestedItemStorageCode_.clear();
+                state_->requestedMap_ = -1;
+                state_->encounterRequested_ = false;
+                state_->shared_ = {};
+                state_->shared_.screen = Screen::Connecting;
+                state_->shared_.message = L"正在连接并登录…";
             }
-            worker_ = std::thread(&GameSession::RunSession, this, address, port, account, password);
+            state_->worker_ = std::thread(&GameSession::RunSession, this, address, port, account, password);
         }
         catch (...)
         {
-            std::lock_guard<std::mutex> lock(mutex_);
-            done_ = true;
+            std::lock_guard<std::mutex> lock(state_->mutex_);
+            state_->done_ = true;
             throw;
         }
     }
 
     void GameSession::Join()
     {
-        if (worker_.joinable())
-            worker_.join();
+        if (state_->worker_.joinable())
+            state_->worker_.join();
     }
 
     bool GameSession::IsDone()
     {
-        std::lock_guard<std::mutex> lock(mutex_);
-        return done_;
+        std::lock_guard<std::mutex> lock(state_->mutex_);
+        return state_->done_;
     }
 
     SessionView GameSession::Snapshot(bool& done, bool& stopped)
     {
-        std::lock_guard<std::mutex> lock(mutex_);
-        done = done_;
-        stopped = stop_;
-        return shared_;
+        std::lock_guard<std::mutex> lock(state_->mutex_);
+        done = state_->done_;
+        stopped = state_->stop_;
+        return state_->shared_;
     }
 
     void GameSession::SelectCharacter(int selection)
     {
         {
-            std::lock_guard<std::mutex> lock(mutex_);
-            if (shared_.screen != Screen::Characters || shared_.createPending || stop_ || done_ ||
-                selection < 0 || selection >= static_cast<int>(shared_.characters.size())) return;
-            requestedCharacter_ = selection;
+            std::lock_guard<std::mutex> lock(state_->mutex_);
+            if (state_->shared_.screen != Screen::Characters || state_->shared_.createPending || state_->stop_ || state_->done_ ||
+                selection < 0 || selection >= static_cast<int>(state_->shared_.characters.size())) return;
+            state_->requestedCharacter_ = selection;
         }
-        wake_.notify_all();
+        state_->wake_.notify_all();
     }
 
-    bool GameSession::RequestCreateCharacter(const LoginClient::NewCharacter& character)
+    bool GameSession::RequestCreateCharacter(const Game::NewCharacter& character)
     {
         LoginClient::ValidateNewCharacter(character);
         {
-            std::lock_guard<std::mutex> lock(mutex_);
-            if (stop_ || done_ || shared_.screen != Screen::Characters || shared_.createPending ||
-                requestedCharacter_ >= 0 || shared_.characters.size() >= 2)
+            std::lock_guard<std::mutex> lock(state_->mutex_);
+            if (state_->stop_ || state_->done_ || state_->shared_.screen != Screen::Characters || state_->shared_.createPending ||
+                state_->requestedCharacter_ >= 0 || state_->shared_.characters.size() >= 2)
                 return false;
-            requestedCreation_ = character;
-            createRequested_ = true;
-            shared_.createPending = true;
-            shared_.message = L"正在创建角色…";
+            state_->requestedCreation_ = character;
+            state_->createRequested_ = true;
+            state_->shared_.createPending = true;
+            state_->shared_.message = L"正在创建角色…";
         }
-        wake_.notify_all();
-        ::PostMessage(window_, message_, 0, 0);
+        state_->wake_.notify_all();
+        ::PostMessage(state_->window_, state_->message_, 0, 0);
         return true;
     }
 
     void GameSession::RequestMove(int map, int x, int y)
     {
-        std::lock_guard<std::mutex> lock(mutex_);
-        if (!stop_ && !done_)
+        std::lock_guard<std::mutex> lock(state_->mutex_);
+        if (!state_->stop_ && !state_->done_)
         {
-            encounterRequested_ = false;
-            requestedMap_ = map;
-            requestedX_ = x;
-            requestedY_ = y;
+            state_->encounterRequested_ = false;
+            state_->requestedMap_ = map;
+            state_->requestedX_ = x;
+            state_->requestedY_ = y;
         }
     }
 
     bool GameSession::RequestPetState(int slot, int state)
     {
-        std::lock_guard<std::mutex> lock(mutex_);
-        if (stop_ || done_ || requestedPet_ >= 0 || shared_.petStoragePending || shared_.itemPending)
+        std::lock_guard<std::mutex> lock(state_->mutex_);
+        if (state_->stop_ || state_->done_ || state_->requestedPet_ >= 0 || state_->shared_.petStoragePending || state_->shared_.itemPending)
             return false;
-        requestedPet_ = slot;
-        requestedPetState_ = state;
+        state_->requestedPet_ = slot;
+        state_->requestedPetState_ = state;
         return true;
     }
 
     bool GameSession::RequestPetStorage(Game::PetStorageAction action, int slot, const std::string& uniqueCode)
     {
         {
-            std::lock_guard<std::mutex> lock(mutex_);
-            if (stop_ || done_ || shared_.screen != Screen::Game || shared_.petStoragePending || shared_.itemPending ||
-                requestedPet_ >= 0 || encounterRequested_ || shared_.encounterPending || shared_.player.inBattle)
+            std::lock_guard<std::mutex> lock(state_->mutex_);
+            if (state_->stop_ || state_->done_ || state_->shared_.screen != Screen::Game || state_->shared_.petStoragePending || state_->shared_.itemPending ||
+                state_->requestedPet_ >= 0 || state_->encounterRequested_ || state_->shared_.encounterPending || state_->shared_.player.inBattle)
                 return false;
             if (action != Game::PetStorageAction::List &&
-                (!shared_.hasPetStorage || slot < 0 || uniqueCode.empty()))
+                (!state_->shared_.hasPetStorage || slot < 0 || uniqueCode.empty()))
                 return false;
-            storageRequested_ = true;
-            requestedStorageAction_ = action;
-            requestedStorageSlot_ = slot;
-            requestedStorageCode_ = uniqueCode;
-            shared_.petStoragePending = true;
-            shared_.message = action == Game::PetStorageAction::List ? L"正在加载宠物仓库…" :
+            state_->storageRequested_ = true;
+            state_->requestedStorageAction_ = action;
+            state_->requestedStorageSlot_ = slot;
+            state_->requestedStorageCode_ = uniqueCode;
+            state_->shared_.petStoragePending = true;
+            state_->shared_.message = action == Game::PetStorageAction::List ? L"正在加载宠物仓库…" :
                 action == Game::PetStorageAction::Put ? L"正在存入宠物…" : L"正在取出宠物…";
         }
-        ::PostMessage(window_, message_, 0, 0);
+        ::PostMessage(state_->window_, state_->message_, 0, 0);
         return true;
     }
 
     bool GameSession::RequestDiscard(bool pet, int slot, std::uint32_t revision, const std::string& uniqueCode)
     {
         {
-            std::lock_guard<std::mutex> lock(mutex_);
-            if (stop_ || done_ || shared_.screen != Screen::Game || shared_.itemPending ||
-                shared_.petStoragePending || requestedPet_ >= 0 || encounterRequested_ ||
-                shared_.encounterEnabled || shared_.encounterPending || shared_.player.inBattle ||
-                !shared_.player.received || slot < 0)
+            std::lock_guard<std::mutex> lock(state_->mutex_);
+            if (state_->stop_ || state_->done_ || state_->shared_.screen != Screen::Game || state_->shared_.itemPending ||
+                state_->shared_.petStoragePending || state_->requestedPet_ >= 0 || state_->encounterRequested_ ||
+                state_->shared_.encounterEnabled || state_->shared_.encounterPending || state_->shared_.player.inBattle ||
+                !state_->shared_.player.received || slot < 0)
                 return false;
             if (pet)
             {
-                if (slot >= static_cast<int>(shared_.pets.size()) || !shared_.pets[slot].received ||
-                    !shared_.pets[slot].present || uniqueCode.empty() ||
-                    shared_.pets[slot].uniqueCode != uniqueCode || !shared_.player.battleReceived ||
-                    shared_.player.battlePet == slot || shared_.player.ridePet == slot)
+                if (slot >= static_cast<int>(state_->shared_.pets.size()) || !state_->shared_.pets[slot].received ||
+                    !state_->shared_.pets[slot].present || uniqueCode.empty() ||
+                    state_->shared_.pets[slot].uniqueCode != uniqueCode || !state_->shared_.player.battleReceived ||
+                    state_->shared_.player.battlePet == slot || state_->shared_.player.ridePet == slot)
                     return false;
             }
-            else if (!shared_.hasItems || slot >= static_cast<int>(shared_.items.size()) ||
-                !shared_.items[slot].present || shared_.items[slot].revision != revision)
+            else if (!state_->shared_.hasItems || slot >= static_cast<int>(state_->shared_.items.size()) ||
+                !state_->shared_.items[slot].present || state_->shared_.items[slot].revision != revision)
                 return false;
-            requestedDiscard_ = slot;
-            requestedDiscardPet_ = pet;
-            requestedDiscardRevision_ = revision;
-            requestedDiscardCode_ = uniqueCode;
-            shared_.itemPending = true;
-            shared_.message = pet ? L"正在丢弃宠物…" : L"正在丢弃道具…";
+            state_->requestedDiscard_ = slot;
+            state_->requestedDiscardPet_ = pet;
+            state_->requestedDiscardRevision_ = revision;
+            state_->requestedDiscardCode_ = uniqueCode;
+            state_->shared_.itemPending = true;
+            state_->shared_.message = pet ? L"正在丢弃宠物…" : L"正在丢弃道具…";
         }
-        ::PostMessage(window_, message_, 0, 0);
+        ::PostMessage(state_->window_, state_->message_, 0, 0);
         return true;
     }
 
     bool GameSession::RequestFood(int slot, std::uint32_t revision, int petSlot)
     {
         {
-            std::lock_guard<std::mutex> lock(mutex_);
-            if (stop_ || done_ || shared_.screen != Screen::Game || shared_.itemPending ||
-                shared_.petStoragePending || requestedPet_ >= 0 || encounterRequested_ ||
-                shared_.encounterPending || shared_.player.inBattle || slot < 5 ||
-                slot >= static_cast<int>(shared_.items.size()) || !shared_.items[slot].present ||
-                shared_.items[slot].type != 20 || shared_.items[slot].revision != revision)
+            std::lock_guard<std::mutex> lock(state_->mutex_);
+            if (state_->stop_ || state_->done_ || state_->shared_.screen != Screen::Game || state_->shared_.itemPending ||
+                state_->shared_.petStoragePending || state_->requestedPet_ >= 0 || state_->encounterRequested_ ||
+                state_->shared_.encounterPending || state_->shared_.player.inBattle || slot < 5 ||
+                slot >= static_cast<int>(state_->shared_.items.size()) || !state_->shared_.items[slot].present ||
+                state_->shared_.items[slot].type != 20 || state_->shared_.items[slot].revision != revision)
                 return false;
-            if (petSlot < -1 || petSlot >= static_cast<int>(shared_.pets.size()) ||
-                (petSlot >= 0 && (!shared_.pets[petSlot].received || !shared_.pets[petSlot].present)))
+            if (petSlot < -1 || petSlot >= static_cast<int>(state_->shared_.pets.size()) ||
+                (petSlot >= 0 && (!state_->shared_.pets[petSlot].received || !state_->shared_.pets[petSlot].present)))
                 return false;
-            requestedFood_ = slot;
-            requestedFoodPet_ = petSlot;
-            requestedFoodRevision_ = revision;
-            shared_.itemPending = true;
-            shared_.message = petSlot < 0 ? L"正在对当前角色使用食物…" : L"正在对随身宠物使用食物…";
+            state_->requestedFood_ = slot;
+            state_->requestedFoodPet_ = petSlot;
+            state_->requestedFoodRevision_ = revision;
+            state_->shared_.itemPending = true;
+            state_->shared_.message = petSlot < 0 ? L"正在对当前角色使用食物…" : L"正在对随身宠物使用食物…";
         }
-        ::PostMessage(window_, message_, 0, 0);
+        ::PostMessage(state_->window_, state_->message_, 0, 0);
         return true;
     }
 
@@ -197,76 +203,76 @@ namespace Client
         std::uint32_t revision, const std::string& uniqueCode)
     {
         {
-            std::lock_guard<std::mutex> lock(mutex_);
-            if (stop_ || done_ || shared_.screen != Screen::Game || shared_.itemPending ||
-                shared_.petStoragePending || requestedPet_ >= 0 || encounterRequested_ ||
-                shared_.encounterPending || shared_.player.inBattle)
+            std::lock_guard<std::mutex> lock(state_->mutex_);
+            if (state_->stop_ || state_->done_ || state_->shared_.screen != Screen::Game || state_->shared_.itemPending ||
+                state_->shared_.petStoragePending || state_->requestedPet_ >= 0 || state_->encounterRequested_ ||
+                state_->shared_.encounterPending || state_->shared_.player.inBattle)
                 return false;
-            if (action != Game::ItemStorageAction::List && (!shared_.hasItemStorage || !shared_.hasItems))
+            if (action != Game::ItemStorageAction::List && (!state_->shared_.hasItemStorage || !state_->shared_.hasItems))
                 return false;
             if (action == Game::ItemStorageAction::Put && (slot < 5 ||
-                slot >= static_cast<int>(shared_.items.size()) || !shared_.items[slot].present ||
-                shared_.items[slot].revision != revision))
+                slot >= static_cast<int>(state_->shared_.items.size()) || !state_->shared_.items[slot].present ||
+                state_->shared_.items[slot].revision != revision))
                 return false;
             if (action == Game::ItemStorageAction::Get && (slot < 0 ||
-                slot >= static_cast<int>(shared_.itemStorage.size()) || !shared_.itemStorage[slot].present ||
-                shared_.itemStorage[slot].uniqueCode != uniqueCode || uniqueCode.empty()))
+                slot >= static_cast<int>(state_->shared_.itemStorage.size()) || !state_->shared_.itemStorage[slot].present ||
+                state_->shared_.itemStorage[slot].uniqueCode != uniqueCode || uniqueCode.empty()))
                 return false;
-            itemStorageRequested_ = true;
-            requestedItemStorageAction_ = action;
-            requestedItemStorageSlot_ = slot;
-            requestedItemStorageRevision_ = revision;
-            requestedItemStorageCode_ = uniqueCode;
-            shared_.itemPending = true;
-            shared_.message = action == Game::ItemStorageAction::List ? L"正在加载道具仓库…" :
+            state_->itemStorageRequested_ = true;
+            state_->requestedItemStorageAction_ = action;
+            state_->requestedItemStorageSlot_ = slot;
+            state_->requestedItemStorageRevision_ = revision;
+            state_->requestedItemStorageCode_ = uniqueCode;
+            state_->shared_.itemPending = true;
+            state_->shared_.message = action == Game::ItemStorageAction::List ? L"正在加载道具仓库…" :
                 action == Game::ItemStorageAction::Put ? L"正在存入道具…" : L"正在取出道具…";
         }
-        ::PostMessage(window_, message_, 0, 0);
+        ::PostMessage(state_->window_, state_->message_, 0, 0);
         return true;
     }
 
     void GameSession::Stop()
     {
         {
-            std::lock_guard<std::mutex> lock(mutex_);
-            stop_ = true;
-            encounterRequested_ = false;
+            std::lock_guard<std::mutex> lock(state_->mutex_);
+            state_->stop_ = true;
+            state_->encounterRequested_ = false;
         }
-        wake_.notify_all();
+        state_->wake_.notify_all();
     }
 
     void GameSession::Publish(Screen screen, const std::wstring& message, const LoginClient* client)
     {
         {
-            std::lock_guard<std::mutex> lock(mutex_);
-            shared_.screen = screen;
+            std::lock_guard<std::mutex> lock(state_->mutex_);
+            state_->shared_.screen = screen;
             if (screen != Screen::Game)
             {
-                encounterRequested_ = false;
-                shared_.encounterEnabled = false;
-                shared_.encounterPending = false;
-                shared_.encounterMessage = L"遇敌未开始";
-                shared_.petStoragePending = false;
-                shared_.itemPending = false;
+                state_->encounterRequested_ = false;
+                state_->shared_.encounterEnabled = false;
+                state_->shared_.encounterPending = false;
+                state_->shared_.encounterMessage = L"遇敌未开始";
+                state_->shared_.petStoragePending = false;
+                state_->shared_.itemPending = false;
             }
-            shared_.message = message;
-            shared_.quickBattle = healing_.quickBattle;
+            state_->shared_.message = message;
+            state_->shared_.quickBattle = state_->healing_.quickBattle;
             if (client)
             {
-                shared_.player = client->GetPlayerStatus();
-                shared_.battle = client->GetBattle();
-                shared_.battleResult = client->GetBattleResult();
-                shared_.pets = client->GetPets();
-                shared_.items = client->GetItems();
-                shared_.magic = client->GetMagic();
-                shared_.hasItems = client->HasItems();
-                shared_.itemStorage = client->GetItemStorage();
-                shared_.hasItemStorage = client->HasItemStorage();
-                shared_.petStorage = client->GetPetStorage();
-                shared_.hasPetStorage = client->HasPetStorage();
+                state_->shared_.player = client->GetPlayerStatus();
+                state_->shared_.battle = client->GetBattle();
+                state_->shared_.battleResult = client->GetBattleResult();
+                state_->shared_.pets = client->GetPets();
+                state_->shared_.items = client->GetItems();
+                state_->shared_.magic = client->GetMagic();
+                state_->shared_.hasItems = client->HasItems();
+                state_->shared_.itemStorage = client->GetItemStorage();
+                state_->shared_.hasItemStorage = client->HasItemStorage();
+                state_->shared_.petStorage = client->GetPetStorage();
+                state_->shared_.hasPetStorage = client->HasPetStorage();
             }
         }
-        ::PostMessage(window_, message_, 0, 0);
+        ::PostMessage(state_->window_, state_->message_, 0, 0);
     }
 
     void GameSession::RunSession(std::string address, std::uint16_t port, std::string account, std::string password)
@@ -283,25 +289,25 @@ namespace Client
                 throw std::runtime_error("账号或密码不正确，或账号服务拒绝登录");
             auto characters = client.GetCharacters();
             {
-                std::lock_guard<std::mutex> lock(mutex_);
-                shared_.characters = characters;
+                std::lock_guard<std::mutex> lock(state_->mutex_);
+                state_->shared_.characters = characters;
             }
             Publish(Screen::Characters, characters.empty() ? L"暂无角色，请创建角色" : L"选择一个角色，进入游戏");
             int selection = -1;
             for (;;)
             {
-                LoginClient::NewCharacter creation;
+                Game::NewCharacter creation;
                 {
-                    std::unique_lock<std::mutex> lock(mutex_);
-                    wake_.wait(lock, [&] { return stop_ || requestedCharacter_ >= 0 || createRequested_; });
-                    if (stop_) break;
-                    if (requestedCharacter_ >= 0)
+                    std::unique_lock<std::mutex> lock(state_->mutex_);
+                    state_->wake_.wait(lock, [&] { return state_->stop_ || state_->requestedCharacter_ >= 0 || state_->createRequested_; });
+                    if (state_->stop_) break;
+                    if (state_->requestedCharacter_ >= 0)
                     {
-                        selection = requestedCharacter_;
+                        selection = state_->requestedCharacter_;
                         break;
                     }
-                    creation = requestedCreation_;
-                    createRequested_ = false;
+                    creation = state_->requestedCreation_;
+                    state_->createRequested_ = false;
                 }
                 bool created = false;
                 std::string error;
@@ -313,11 +319,11 @@ namespace Client
                 }
                 if (created) characters = client.GetCharacters();
                 {
-                    std::lock_guard<std::mutex> lock(mutex_);
-                    shared_.characters = characters;
-                    shared_.createPending = false;
-                    shared_.createdCharacter = created ? creation.name : std::string();
-                    ++shared_.createRevision;
+                    std::lock_guard<std::mutex> lock(state_->mutex_);
+                    state_->shared_.characters = characters;
+                    state_->shared_.createPending = false;
+                    state_->shared_.createdCharacter = created ? creation.name : std::string();
+                    ++state_->shared_.createRevision;
                 }
                 Publish(Screen::Characters, created ? L"角色创建成功，请选择角色进入游戏" :
                     TextEncoding::ErrorText(error.c_str()));
@@ -326,14 +332,14 @@ namespace Client
             {
                 Publish(Screen::Entering, L"正在进入游戏…");
                 {
-                    std::lock_guard<std::mutex> lock(mutex_);
-                    client.SetHealingSettings(healing_);
+                    std::lock_guard<std::mutex> lock(state_->mutex_);
+                    client.SetHealingSettings(state_->healing_);
                 }
                 client.EnterGame(characters.at(selection));
                 entered = true;
                 {
-                    std::lock_guard<std::mutex> lock(mutex_);
-                    shared_.characterName = TextEncoding::LegacyText(characters[selection].name);
+                    std::lock_guard<std::mutex> lock(state_->mutex_);
+                    state_->shared_.characterName = TextEncoding::LegacyText(characters[selection].name);
                 }
                 std::wstring storageMessage = L"已连接";
                 try { client.RefreshPetStorage(); }
@@ -358,40 +364,40 @@ namespace Client
                     Game::PetStorageAction storageAction;
                     std::string storageCode;
                     {
-                        std::lock_guard<std::mutex> lock(mutex_);
-                        if (stop_) break;
-                        pollTimeout = encounterRequested_ || client.GetPlayerStatus().inBattle ? BATTLE_DELAY_MS : 100;
-                        if (client.GetPlayerStatus().inBattle && !healing_.quickBattle)
+                        std::lock_guard<std::mutex> lock(state_->mutex_);
+                        if (state_->stop_) break;
+                        pollTimeout = state_->encounterRequested_ || client.GetPlayerStatus().inBattle ? Game::BATTLE_DELAY_MS : 100;
+                        if (client.GetPlayerStatus().inBattle && !state_->healing_.quickBattle)
                             pollTimeout = 50;
-                        pet = requestedPet_;
-                        state = requestedPetState_;
-                        discard = requestedDiscard_;
-                        discardPet = requestedDiscardPet_;
-                        discardRevision = requestedDiscardRevision_;
-                        discardCode = requestedDiscardCode_;
-                        requestedDiscard_ = -1;
-                        food = requestedFood_;
-                        foodPet = requestedFoodPet_;
-                        foodRevision = requestedFoodRevision_;
-                        requestedFood_ = -1;
-                        itemStorage = itemStorageRequested_;
-                        itemStorageAction = requestedItemStorageAction_;
-                        itemStorageSlot = requestedItemStorageSlot_;
-                        itemStorageRevision = requestedItemStorageRevision_;
-                        itemStorageCode = requestedItemStorageCode_;
-                        itemStorageRequested_ = false;
-                        requestedPet_ = -1;
-                        storage = storageRequested_;
-                        storageAction = requestedStorageAction_;
-                        storageSlot = requestedStorageSlot_;
-                        storageCode = requestedStorageCode_;
-                        storageRequested_ = false;
-                        if (requestedMap_ >= 0)
+                        pet = state_->requestedPet_;
+                        state = state_->requestedPetState_;
+                        discard = state_->requestedDiscard_;
+                        discardPet = state_->requestedDiscardPet_;
+                        discardRevision = state_->requestedDiscardRevision_;
+                        discardCode = state_->requestedDiscardCode_;
+                        state_->requestedDiscard_ = -1;
+                        food = state_->requestedFood_;
+                        foodPet = state_->requestedFoodPet_;
+                        foodRevision = state_->requestedFoodRevision_;
+                        state_->requestedFood_ = -1;
+                        itemStorage = state_->itemStorageRequested_;
+                        itemStorageAction = state_->requestedItemStorageAction_;
+                        itemStorageSlot = state_->requestedItemStorageSlot_;
+                        itemStorageRevision = state_->requestedItemStorageRevision_;
+                        itemStorageCode = state_->requestedItemStorageCode_;
+                        state_->itemStorageRequested_ = false;
+                        state_->requestedPet_ = -1;
+                        storage = state_->storageRequested_;
+                        storageAction = state_->requestedStorageAction_;
+                        storageSlot = state_->requestedStorageSlot_;
+                        storageCode = state_->requestedStorageCode_;
+                        state_->storageRequested_ = false;
+                        if (state_->requestedMap_ >= 0)
                         {
-                            targetMap = requestedMap_;
-                            targetX = requestedX_;
-                            targetY = requestedY_;
-                            requestedMap_ = -1;
+                            targetMap = state_->requestedMap_;
+                            targetX = state_->requestedX_;
+                            targetY = state_->requestedY_;
+                            state_->requestedMap_ = -1;
                             movementMessage = L"已连接";
                         }
                     }
@@ -414,8 +420,8 @@ namespace Client
                             message = TextEncoding::ErrorText(error.what());
                         }
                         {
-                            std::lock_guard<std::mutex> lock(mutex_);
-                            shared_.petStoragePending = false;
+                            std::lock_guard<std::mutex> lock(state_->mutex_);
+                            state_->shared_.petStoragePending = false;
                         }
                         if (!client.IsConnected())
                             throw std::runtime_error(failure);
@@ -442,8 +448,8 @@ namespace Client
                             message = TextEncoding::ErrorText(error.what());
                         }
                         {
-                            std::lock_guard<std::mutex> lock(mutex_);
-                            shared_.itemPending = false;
+                            std::lock_guard<std::mutex> lock(state_->mutex_);
+                            state_->shared_.itemPending = false;
                         }
                         if (!client.IsConnected())
                             throw std::runtime_error(failure);
@@ -466,8 +472,8 @@ namespace Client
                             message = TextEncoding::ErrorText(error.what());
                         }
                         {
-                            std::lock_guard<std::mutex> lock(mutex_);
-                            shared_.itemPending = false;
+                            std::lock_guard<std::mutex> lock(state_->mutex_);
+                            state_->shared_.itemPending = false;
                         }
                         if (!client.IsConnected())
                             throw std::runtime_error(failure);
@@ -485,31 +491,31 @@ namespace Client
                             message = TextEncoding::ErrorText(error.what());
                         }
                         {
-                            std::lock_guard<std::mutex> lock(mutex_);
-                            shared_.itemPending = false;
+                            std::lock_guard<std::mutex> lock(state_->mutex_);
+                            state_->shared_.itemPending = false;
                         }
                         if (!client.IsConnected())
                             throw std::runtime_error(failure);
                         Publish(Screen::Game, message, &client);
                     }
                     {
-                        std::lock_guard<std::mutex> lock(mutex_);
-                        client.SetHealingSettings(healing_);
+                        std::lock_guard<std::mutex> lock(state_->mutex_);
+                        client.SetHealingSettings(state_->healing_);
                     }
                     if (client.PollGame(pollTimeout))
                     {
                         std::wstring message = movementMessage;
                         {
-                            std::lock_guard<std::mutex> lock(mutex_);
-                            if (encounterRequested_ || shared_.encounterEnabled || shared_.encounterPending)
-                                message = shared_.encounterMessage;
+                            std::lock_guard<std::mutex> lock(state_->mutex_);
+                            if (state_->encounterRequested_ || state_->shared_.encounterEnabled || state_->shared_.encounterPending)
+                                message = state_->shared_.encounterMessage;
                         }
                         Publish(Screen::Game, message, &client);
                     }
                     UpdateEncounter(client);
                     {
-                        std::lock_guard<std::mutex> lock(mutex_);
-                        if (encounterRequested_)
+                        std::lock_guard<std::mutex> lock(state_->mutex_);
+                        if (state_->encounterRequested_)
                             targetMap = -1;
                     }
                     const auto& position = client.GetPlayerStatus();
@@ -559,15 +565,15 @@ namespace Client
         {
             SecureZeroMemory(password.data(), password.size());
             {
-                std::lock_guard<std::mutex> lock(mutex_);
-                shared_.failed = true;
+                std::lock_guard<std::mutex> lock(state_->mutex_);
+                state_->shared_.failed = true;
             }
             Publish(Screen::Login, TextEncoding::ErrorText(error.what()));
         }
         {
-            std::lock_guard<std::mutex> lock(mutex_);
-            done_ = true;
+            std::lock_guard<std::mutex> lock(state_->mutex_);
+            state_->done_ = true;
         }
-        ::PostMessage(window_, message_, 0, 0);
+        ::PostMessage(state_->window_, state_->message_, 0, 0);
     }
 }

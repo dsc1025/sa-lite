@@ -1,7 +1,12 @@
 #pragma once
 
-#include "../game/GameTypes.h"
+#include "../game/Character.h"
+#include "../game/PlayerStatus.h"
+#include "../game/PetTypes.h"
+#include "../game/ItemTypes.h"
+#include "../game/MagicStatus.h"
 #include "../game/Battle.h"
+#include <string>
 #include <vector>
 
 namespace Client

@@ -1,8 +1,14 @@
 #pragma once
 
 #include "network/SocketConnection.h"
-#include "game/GameTypes.h"
+#include "game/Character.h"
+#include "game/PlayerStatus.h"
+#include "game/PetTypes.h"
+#include "game/ItemTypes.h"
+#include "game/MagicStatus.h"
+#include "game/BattleSettings.h"
 #include "game/Battle.h"
+#include "game/Encounter.h"
 #include <cstdint>
 #include <initializer_list>
 #include <string>
@@ -14,6 +20,7 @@ public:
     using LoginResult = Game::LoginResult;
     using PetState = Game::PetState;
     using Character = Game::Character;
+    using NewCharacter = Game::NewCharacter;
     using PlayerStatus = Game::PlayerStatus;
     using PetStatus = Game::PetStatus;
     using ItemStatus = Game::ItemStatus;
@@ -27,13 +34,6 @@ public:
     LoginResult Login(const std::string& account, const std::string& password,
         int timeoutMs = 10000);
     std::vector<Character> GetCharacters(int timeoutMs = 10000);
-    struct NewCharacter
-    {
-        std::string name;
-        int model = 0, color = 0, hometown = 0;
-        int points[4] = {};
-        int elements[4] = {};
-    };
     static void ValidateNewCharacter(const NewCharacter& character);
     bool CreateCharacter(const NewCharacter& character, std::string& error, int timeoutMs = 10000);
     void EnterGame(const Character& character, int timeoutMs = 10000);

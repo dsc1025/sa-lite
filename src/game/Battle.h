@@ -4,13 +4,6 @@
 #include <cstdint>
 #include <string>
 
-#define BATTLE_DELAY_MS 200
-#define SIMPLE_BATTLE_DELAY_MS 200
-#define BATTLE_PLAYER_MENU_OFF 0x02
-#define BATTLE_PET_MENU_OFF 0x08
-#define BATTLE_MEMBER_DEAD 0x02
-#define BATTLE_MEMBER_HIDDEN 0x200
-
 namespace Game
 {
     struct BattleMember
@@ -45,13 +38,5 @@ namespace Game
         std::uint32_t experience = 0;
         std::uint64_t totalExperience = 0;
         std::wstring message;
-    };
-
-    struct EncounterState
-    {
-        bool enabled = false;
-        bool stopPending = false;
-        int map = -1, x = -1, y = -1;
-        std::uint64_t nextRequest = 0;
     };
 }

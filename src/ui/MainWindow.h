@@ -2,30 +2,29 @@
 
 #include <afxwin.h>
 #include <afxcmn.h>
-#include "MiniMap.h"
-#include "BattleUi.h"
-#include "RolePage.h"
-#include "CreateCharacterWindow.h"
-#include "../map/MapData.h"
+#include "../map/MapIndex.h"
 #include "../session/GameSession.h"
+#include "../session/SessionView.h"
+#include <filesystem>
+#include <memory>
+#include <string>
+#include <vector>
 #include <unordered_map>
 
 namespace Client
 {
+    class MiniMap;
+    class CreateCharacterWindow;
+    class BattleSettingsWindow;
+    class BattleSceneWindow;
+    class RolePage;
+    class BattleGroup;
+
     class MainWindow : public CFrameWnd
     {
     public:
-        MainWindow() : rolePage_(view_, session_, footer_)
-        {
-            background_.CreateSolidBrush(GetSysColor(COLOR_BTNFACE));
-            white_.CreateSolidBrush(GetSysColor(COLOR_WINDOW));
-        }
-
-        ~MainWindow() override
-        {
-            session_.Stop();
-            session_.Join();
-        }
+        MainWindow();
+        ~MainWindow() override;
 
     protected:
         BOOL PreTranslateMessage(MSG* message) override;
@@ -67,23 +66,23 @@ namespace Client
         CButton mapPosition_, mapRegion_;
         const MapNode* selectedMap_ = nullptr;
         std::filesystem::path mapDirectory_;
-        MiniMap miniMap_;
+        std::unique_ptr<MiniMap> miniMap_;
         CEdit address_, port_, account_, password_;
         CButton login_, enter_, exit_;
         CButton createCharacter_;
-        CreateCharacterWindow createCharacterWindow_;
+        std::unique_ptr<CreateCharacterWindow> createCharacterWindow_;
         bool creationOffered_ = false;
         unsigned int selectedCreationRevision_ = 0;
         CTabCtrl mainTabs_, shopTabs_, battleTabs_;
-        BattleGroup battleSides_[2];
+        std::unique_ptr<BattleGroup> battleSides_[2];
         CButton battleStart_, battleStop_, battleSettings_;
-        BattleSettingsWindow battleSettingsWindow_;
-        BattleSceneWindow battleSceneWindow_;
+        std::unique_ptr<BattleSettingsWindow> battleSettingsWindow_;
+        std::unique_ptr<BattleSceneWindow> battleSceneWindow_;
         CStatic battleRound_, battleInfo_, battleExperience_;
         CListCtrl list_;
         SessionView view_;
         GameSession session_;
-        RolePage rolePage_;
+        std::unique_ptr<RolePage> rolePage_;
         bool closeWindow_ = false;
         bool expanded_ = false;
     };

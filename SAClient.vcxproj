@@ -38,8 +38,25 @@
     <Link><SubSystem>Windows</SubSystem><AdditionalDependencies>Ws2_32.lib;Comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies></Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\game\BattleTiming.h" />
+    <ClInclude Include="src\ui\RoleControlIds.h" />
+    <ClInclude Include="src\game\BattleCommands.h" />
+    <ClInclude Include="src\game\BattleSettings.h" />
+    <ClInclude Include="src\game\Character.h" />
+    <ClInclude Include="src\game\Encounter.h" />
+    <ClInclude Include="src\game\ItemTypes.h" />
+    <ClInclude Include="src\game\MagicStatus.h" />
+    <ClInclude Include="src\game\PetTypes.h" />
+    <ClInclude Include="src\game\PlayerStatus.h" />
+    <ClInclude Include="src\map\MapIndex.h" />
+    <ClInclude Include="src\map\ResourceDirectory.h" />
+    <ClInclude Include="src\session\GameSessionState.h" />
+    <ClInclude Include="src\ui\BattleControlIds.h" />
+    <ClInclude Include="src\ui\BattleGroup.h" />
+    <ClInclude Include="src\ui\BattleSceneWindow.h" />
+    <ClInclude Include="src\ui\BattleSettingsWindow.h" />
+    <ClInclude Include="src\ui\PetUi.h" />
     <ClInclude Include="src\LoginClient.h" />
-    <ClInclude Include="src\game\GameTypes.h" />
     <ClInclude Include="src\game\Battle.h" />
     <ClInclude Include="src\network\SocketConnection.h" />
     <ClInclude Include="src\protocol\ProtocolCodec.h" />
@@ -52,11 +69,19 @@
     <ClInclude Include="src\ui\CreateCharacterWindow.h" />
     <ClInclude Include="src\ui\PropertiesWindow.h" />
     <ClInclude Include="src\ui\RolePage.h" />
-    <ClInclude Include="src\ui\BattleUi.h" />
     <ClInclude Include="src\ui\MiniMap.h" />
     <ClInclude Include="src\ui\UiText.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\game\Encounter.cpp" />
+    <ClCompile Include="src\ui\MainWindowLifetime.cpp" />
+    <ClCompile Include="src\game\Character.cpp" />
+    <ClCompile Include="src\map\ResourceDirectory.cpp" />
+    <ClCompile Include="src\ui\BattleGroup.cpp" />
+    <ClCompile Include="src\ui\BattleSceneWindow.cpp" />
+    <ClCompile Include="src\ui\BattleSettingsWindow.cpp" />
+    <ClCompile Include="src\ui\MainWindowBattle.cpp" />
+    <ClCompile Include="src\ui\PetUi.cpp" />
     <ClCompile Include="src\LoginClient.cpp" />
     <ClCompile Include="src\MfcClient.cpp" />
     <ClCompile Include="src\game\GameStatus.cpp" />
@@ -80,7 +105,6 @@
     <ClCompile Include="src\ui\RolePageActions.cpp" />
     <ClCompile Include="src\ui\RolePagePet.cpp" />
     <ClCompile Include="src\ui\RolePageItem.cpp" />
-    <ClCompile Include="src\ui\BattleUi.cpp" />
     <ClCompile Include="src\ui\MainWindowDisplay.cpp" />
     <ClCompile Include="src\ui\MainWindowMap.cpp" />
     <ClCompile Include="src\ui\MiniMap.cpp" />

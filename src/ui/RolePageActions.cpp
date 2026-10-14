@@ -1,5 +1,9 @@
 #include "RolePage.h"
+#include "RoleControlIds.h"
+#include "../session/GameSession.h"
+#include "../session/SessionView.h"
 #include "UiText.h"
+#include "PetUi.h"
 
 namespace Client
 {

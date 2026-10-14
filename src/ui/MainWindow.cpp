@@ -1,7 +1,10 @@
 #include "MainWindow.h"
-#include "BattleUi.h"
+#include "BattleControlIds.h"
+#include "MiniMap.h"
+#include "CreateCharacterWindow.h"
+#include "RolePage.h"
 #include "UiText.h"
-#include "../map/MapData.h"
+#include "../map/MapIndex.h"
 #include "../text/TextEncoding.h"
 #include <stdexcept>
 
@@ -71,14 +74,14 @@ namespace Client
             mainTabs_.InsertItem(i, mainCaptions[i]);
         mainTabs_.SetPadding(CSize(12, 10));
         developing_.Create(L"开发中", WS_CHILD | SS_CENTER | SS_CENTERIMAGE, empty, this);
-        miniMap_.Create(L"", WS_CHILD | WS_CLIPSIBLINGS | SS_OWNERDRAW | SS_NOTIFY, empty, this);
+        miniMap_->Create(L"", WS_CHILD | WS_CLIPSIBLINGS | SS_OWNERDRAW | SS_NOTIFY, empty, this);
         mapPosition_.Create(L"选择地点 ▾", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON,
             empty, this, MapPositionButton);
         mapRegion_.Create(L"选择地图 ▾", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON,
             empty, this, MapRegionButton);
         mapRegion_.EnableWindow(!mapNodes_.empty());
         RefreshMapPositions();
-        if (!rolePage_.Create(this, &font_))
+        if (!rolePage_->Create(this, &font_))
             return -1;
         CreateBattleControls();
         shopTabs_.Create(WS_CHILD | WS_TABSTOP | WS_CLIPSIBLINGS, empty, this, ShopTabs);
@@ -107,7 +110,7 @@ namespace Client
     void MainWindow::OnSize(UINT type, int width, int height)
     {
         CFrameWnd::OnSize(type, width, height);
-        if (rolePage_.GetSafeHwnd())
+        if (rolePage_->GetSafeHwnd())
             Layout();
     }
 
@@ -121,7 +124,7 @@ namespace Client
 
     void MainWindow::Layout()
     {
-        rolePage_.CloseEditor();
+        rolePage_->CloseEditor();
         CRect area;
         GetClientRect(&area);
         int width = area.Width(), height = area.Height();
@@ -147,12 +150,12 @@ namespace Client
             mainPage.left += tabItem.right;
         mainPage.DeflateRect(6, 6);
         developing_.MoveWindow(mainPage);
-        miniMap_.MoveWindow(mainPage);
+        miniMap_->MoveWindow(mainPage);
         int regionLeft = mainPage.left + 8;
         mapRegion_.SetWindowPos(&CWnd::wndTop, regionLeft, mainPage.top + 4, 160, 26, SWP_NOACTIVATE);
         mapPosition_.SetWindowPos(&CWnd::wndTop, regionLeft + 168,
             mainPage.top + 4, 160, 26, SWP_NOACTIVATE);
-        rolePage_.MoveWindow(mainPage);
+        rolePage_->MoveWindow(mainPage);
         shopTabs_.MoveWindow(mainPage);
         if (mainTabs_.GetCurSel() == 3)
         {
@@ -228,7 +231,7 @@ namespace Client
     {
         int selected = list_.GetNextItem(-1, LVNI_SELECTED);
         if (view_.screen != Screen::Characters || view_.createPending || selected < 0 ||
-            (createCharacterWindow_.GetSafeHwnd() && createCharacterWindow_.IsWindowVisible())) return;
+            (createCharacterWindow_->GetSafeHwnd() && createCharacterWindow_->IsWindowVisible())) return;
         session_.SelectCharacter(static_cast<int>(list_.GetItemData(selected)));
         view_.screen = Screen::Entering;
         view_.message = L"正在进入游戏…";
@@ -238,8 +241,8 @@ namespace Client
     void MainWindow::OnCreateCharacter()
     {
         if (view_.screen != Screen::Characters || view_.createPending || view_.characters.size() >= 2) return;
-        createCharacterWindow_.Show(this, &session_);
-        createCharacterWindow_.Update(view_);
+        createCharacterWindow_->Show(this, &session_);
+        createCharacterWindow_->Update(view_);
     }
 
     void MainWindow::OnExit()
@@ -271,12 +274,12 @@ namespace Client
             }
             return CFrameWnd::PreTranslateMessage(message);
         }
-        if (message->message == WM_LBUTTONDOWN && message->hwnd == miniMap_.GetSafeHwnd() &&
+        if (message->message == WM_LBUTTONDOWN && message->hwnd == miniMap_->GetSafeHwnd() &&
             view_.screen == Screen::Game && mainTabs_.GetCurSel() == 1)
         {
             CPoint point(static_cast<short>(LOWORD(message->lParam)), static_cast<short>(HIWORD(message->lParam)));
             int x, y;
-            if (miniMap_.GetTarget(point, x, y))
+            if (miniMap_->GetTarget(point, x, y))
                 session_.RequestMove(view_.player.mapId, x, y);
             return TRUE;
         }
@@ -347,7 +350,7 @@ namespace Client
             view_.message = L"正在退出并返回账号登录…";
         }
         Refresh();
-        createCharacterWindow_.Update(view_);
+        createCharacterWindow_->Update(view_);
         if (view_.screen == Screen::Login) creationOffered_ = false;
         if (view_.screen == Screen::Characters && firstCharacters)
         {
@@ -359,10 +362,10 @@ namespace Client
 
     void MainWindow::OnMainTab(NMHDR*, LRESULT* result)
     {
-        rolePage_.CloseEditor();
+        rolePage_->CloseEditor();
         Refresh();
         if (view_.screen == Screen::Game && mainTabs_.GetCurSel() == 0)
-            rolePage_.Activate();
+            rolePage_->Activate();
         *result = 0;
     }
 }

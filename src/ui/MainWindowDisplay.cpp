@@ -1,11 +1,16 @@
 #include "MainWindow.h"
+#include "MiniMap.h"
+#include "CreateCharacterWindow.h"
+#include "BattleSettingsWindow.h"
+#include "BattleSceneWindow.h"
+#include "RolePage.h"
 #include "UiText.h"
 
 namespace Client
 {
     void MainWindow::Refresh()
     {
-        createCharacterWindow_.Update(view_);
+        createCharacterWindow_->Update(view_);
         bool login = view_.screen == Screen::Login || view_.screen == Screen::Connecting;
         bool characters = view_.screen == Screen::Characters || view_.screen == Screen::Entering;
         bool game = view_.screen == Screen::Game;
@@ -42,18 +47,18 @@ namespace Client
         bool shop = game && mainTabs_.GetCurSel() == 3;
         developing_.ShowWindow(game && !role && !mapPage && !battle ? SW_SHOW : SW_HIDE);
         RefreshBattle(battle);
-        battleSceneWindow_.Update(this, view_, session_);
-        if (!game && battleSettingsWindow_.GetSafeHwnd())
-            battleSettingsWindow_.ShowWindow(SW_HIDE);
-        miniMap_.ShowWindow(mapPage ? SW_SHOW : SW_HIDE);
+        battleSceneWindow_->Update(this, view_, session_);
+        if (!game && battleSettingsWindow_->GetSafeHwnd())
+            battleSettingsWindow_->ShowWindow(SW_HIDE);
+        miniMap_->ShowWindow(mapPage ? SW_SHOW : SW_HIDE);
         mapPosition_.ShowWindow(mapPage ? SW_SHOW : SW_HIDE);
         mapRegion_.ShowWindow(mapPage ? SW_SHOW : SW_HIDE);
         if (mapPage)
         {
-            miniMap_.Update(mapDirectory_, view_.player.mapId, view_.player.mapX, view_.player.mapY);
+            miniMap_->Update(mapDirectory_, view_.player.mapId, view_.player.mapX, view_.player.mapY);
         }
-        rolePage_.ShowWindow(role ? SW_SHOW : SW_HIDE);
-        rolePage_.Refresh();
+        rolePage_->ShowWindow(role ? SW_SHOW : SW_HIDE);
+        rolePage_->Refresh();
         shopTabs_.ShowWindow(shop ? SW_SHOW : SW_HIDE);
         list_.ShowWindow(characters ? SW_SHOW : SW_HIDE);
         exit_.EnableWindow(view_.screen != Screen::Closing);
