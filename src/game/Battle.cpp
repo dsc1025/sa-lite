@@ -107,7 +107,7 @@ bool LoginClient::HandleBattlePacket(const std::vector<std::string>& fields)
     updated.received = true;
     updated.commandsPending = true;
     updated.roundReceived = false;
-    updated.nextAction = GetTickCount64() + BATTLE_DELAY_MS;
+    updated.nextAction = GetTickCount64() + (healing_.quickBattle ? BATTLE_DELAY_MS : SIMPLE_BATTLE_DELAY_MS);
     battle_ = updated;
     battleResult_.message = L"等待本回合指令";
     return true;
@@ -141,7 +141,7 @@ void LoginClient::FinishBattle()
         return;
     battle_.endPending = true;
     battle_.commandsPending = false;
-    battle_.nextAction = GetTickCount64() + BATTLE_DELAY_MS;
+    battle_.nextAction = GetTickCount64() + (healing_.quickBattle ? BATTLE_DELAY_MS : SIMPLE_BATTLE_DELAY_MS);
 }
 
 bool LoginClient::PollBattle()
@@ -189,9 +189,14 @@ bool LoginClient::PollBattle()
         {
             const auto& member = battle_.members[slot];
             if (!member.present || member.hp <= 0 || member.maxHp <= 0 ||
-                (member.flags & (BATTLE_MEMBER_DEAD | BATTLE_MEMBER_HIDDEN)) ||
-                static_cast<std::int64_t>(member.hp) * 100 >=
-                    static_cast<std::int64_t>(member.maxHp) * percent)
+                (member.flags & (BATTLE_MEMBER_DEAD | BATTLE_MEMBER_HIDDEN)))
+                continue;
+            bool needsHealing = static_cast<std::int64_t>(member.hp) * 100 <
+                static_cast<std::int64_t>(member.maxHp) * percent;
+            bool rideNeedsHealing = slot == player && member.rideHp > 0 && member.rideMaxHp > 0 &&
+                static_cast<std::int64_t>(member.rideHp) * 100 <
+                    static_cast<std::int64_t>(member.rideMaxHp) * percent;
+            if (!needsHealing && !rideNeedsHealing)
                 continue;
             if (targetType == 0 && slot != player)
                 continue;

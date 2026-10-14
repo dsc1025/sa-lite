@@ -26,24 +26,40 @@ namespace Client
     {
     public:
         void LoadResources(const CString& configPath);
+        void PrepareForEncounter();
         void Update(CWnd* owner, const SessionView& view, GameSession& session);
 
     protected:
         afx_msg void OnPaint();
+        afx_msg void OnGetMinMaxInfo(MINMAXINFO* info);
         afx_msg void OnClose();
         DECLARE_MESSAGE_MAP()
 
     private:
-        void InspectImage(std::uint32_t image);
+        void InspectImage(std::uint32_t image, int direction);
+        void UpdateDebug(const SessionView& view);
+        struct PictureIndex
+        {
+            std::uint32_t offset = 0, size = 0, width = 0, height = 0;
+            int x = 0, y = 0;
+        };
+        struct StaticSprite
+        {
+            int width = 0, height = 0, x = 0, y = 0;
+            std::vector<RGBQUAD> pixels;
+        };
         CFont font_;
-        CEdit debug_;
         Game::BattleState battle_;
         GameSession* session_ = nullptr;
         bool active_ = false, dismissed_ = false;
         std::filesystem::path resourceDirectory_;
-        std::unordered_map<std::uint32_t, std::uint32_t> animations_;
-        std::unordered_map<std::uint32_t, std::array<std::uint32_t, 2>> pictures_;
-        std::unordered_map<std::uint32_t, bool> inspected_;
+        std::unordered_map<std::uint32_t, std::array<std::uint32_t, 2>> animations_;
+        std::unordered_map<std::uint32_t, PictureIndex> pictures_;
+        std::unordered_map<std::uint64_t, bool> inspected_;
+        std::unordered_map<std::uint64_t, StaticSprite> staticSprites_;
+        std::array<RGBQUAD, 256> palette_{};
+        bool paletteReady_ = false;
+        std::size_t cachedBytes_ = 0;
         std::ifstream sprites_, images_;
         std::uint64_t spriteSize_ = 0, imageSize_ = 0;
         std::vector<std::wstring> resourceDebug_;

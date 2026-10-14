@@ -1,13 +1,17 @@
 #include "MainWindow.h"
 #include "BattleUi.h"
 #include "UiText.h"
+#include "../text/TextEncoding.h"
 #include <algorithm>
 #include <cstring>
+#include <stdexcept>
+#include <utility>
 
 namespace Client
 {
     BEGIN_MESSAGE_MAP(BattleSceneWindow, CWnd)
         ON_WM_PAINT()
+        ON_WM_GETMINMAXINFO()
         ON_WM_CLOSE()
     END_MESSAGE_MAP()
 
@@ -21,6 +25,9 @@ namespace Client
         animations_.clear();
         pictures_.clear();
         inspected_.clear();
+        staticSprites_.clear();
+        cachedBytes_ = 0;
+        paletteReady_ = false;
         sprites_.close();
         images_.close();
         sprites_.clear();
@@ -55,18 +62,24 @@ namespace Client
         };
         loadIndex(L"spradrn_5.bin", 12, [&](const unsigned char* record)
         {
-            std::uint32_t id, offset;
+            std::uint32_t id, offset, metadata;
             std::memcpy(&id, record, 4);
             std::memcpy(&offset, record + 4, 4);
-            animations_[id] = offset;
+            std::memcpy(&metadata, record + 8, 4);
+            animations_[id] = { offset, metadata & 0xFFFF };
         });
         loadIndex(L"adrn_15.bin", 80, [&](const unsigned char* record)
         {
-            std::uint32_t id, offset, size;
+            std::uint32_t id;
+            PictureIndex picture;
             std::memcpy(&id, record, 4);
-            std::memcpy(&offset, record + 4, 4);
-            std::memcpy(&size, record + 8, 4);
-            pictures_[id] = { offset, size };
+            std::memcpy(&picture.offset, record + 4, 4);
+            std::memcpy(&picture.size, record + 8, 4);
+            std::memcpy(&picture.x, record + 12, 4);
+            std::memcpy(&picture.y, record + 16, 4);
+            std::memcpy(&picture.width, record + 20, 4);
+            std::memcpy(&picture.height, record + 24, 4);
+            pictures_[id] = picture;
         });
         sprites_.open(resourceDirectory_ / L"spr_4.bin", std::ios::binary | std::ios::ate);
         images_.open(resourceDirectory_ / L"real_15.bin", std::ios::binary | std::ios::ate);
@@ -74,83 +87,209 @@ namespace Client
         imageSize_ = images_ ? static_cast<std::uint64_t>(images_.tellg()) : 0;
         resourceDebug_.push_back(L"spr_4.bin：" + std::to_wstring(spriteSize_) +
             L" 字节；real_15.bin：" + std::to_wstring(imageSize_) + L" 字节（按需读取）");
-        resourceDebug_.push_back(L"当前阶段：单位占位显示；图片解码、动作播放尚未接入。");
+        std::ifstream paletteFile(resourceDirectory_ / L"pal" / L"Palet_1.sap", std::ios::binary | std::ios::ate);
+        std::array<unsigned char, 708> raw{};
+        if (paletteFile && paletteFile.tellg() == 708)
+        {
+            paletteFile.seekg(0);
+            paletteFile.read(reinterpret_cast<char*>(raw.data()), raw.size());
+            const COLORREF system[] = { RGB(0,0,0), RGB(0,0,128), RGB(0,128,0), RGB(0,128,128),
+                RGB(128,0,0), RGB(128,0,128), RGB(128,128,0), RGB(192,192,192), RGB(192,220,192),
+                RGB(240,202,166), RGB(0,0,222), RGB(0,95,255), RGB(160,255,255), RGB(210,95,0),
+                RGB(255,210,80), RGB(40,225,40) };
+            const COLORREF upper[] = { RGB(150,195,245), RGB(95,160,225), RGB(70,125,195), RGB(30,85,155),
+                RGB(55,65,70), RGB(30,35,40), RGB(240,251,255), RGB(164,160,160), RGB(128,128,128),
+                RGB(0,0,255), RGB(0,255,0), RGB(0,255,255), RGB(255,0,0), RGB(255,0,255),
+                RGB(255,255,0), RGB(255,255,255) };
+            for (int i = 0; i < 256; ++i)
+            {
+                COLORREF colour = i < 16 ? system[i] : i >= 252 ? upper[i - 240] :
+                    RGB(raw[(i - 16) * 3], raw[(i - 16) * 3 + 1], raw[(i - 16) * 3 + 2]);
+                palette_[i] = { GetBValue(colour), GetGValue(colour), GetRValue(colour),
+                    static_cast<BYTE>(i == 253 ? 0 : 255) };
+            }
+            paletteReady_ = static_cast<bool>(paletteFile);
+        }
+        resourceDebug_.push_back(paletteReady_ ? L"Palet_1.sap：已载入；仅显示静态帧" :
+            L"Palet_1.sap：读取失败，保留单位占位显示");
     }
 
-    void BattleSceneWindow::InspectImage(std::uint32_t image)
+    void BattleSceneWindow::InspectImage(std::uint32_t image, int direction)
     {
-        if (!inspected_.emplace(image, true).second)
+        const std::uint64_t key = (static_cast<std::uint64_t>(image) << 16) | direction;
+        if (staticSprites_.find(key) != staticSprites_.end() || !inspected_.emplace(key, true).second)
             return;
         if (resourceDebug_.size() >= 40)
             resourceDebug_.erase(resourceDebug_.begin() + 5);
-        std::wstring message = L"素材调用 ID=" + std::to_wstring(image);
-        auto animation = animations_.find(image);
-        if (animation == animations_.end())
+        std::wstring message = L"素材 ID=" + std::to_wstring(image);
+        try
         {
-            resourceDebug_.push_back(message + L"：动画索引未找到");
-            return;
+            auto require = [](bool valid, const char* error)
+            {
+                if (!valid) throw std::runtime_error(error);
+            };
+            require(paletteReady_, "调色板未载入");
+            auto animation = animations_.find(image);
+            require(animation != animations_.end(), "动画索引未找到");
+            std::uint64_t cursor = animation->second[0];
+            std::uint32_t bitmap = 0;
+            int frameX = 0, frameY = 0, selectedDirection = -1, selectedAction = -1, score = -1;
+            for (std::uint32_t i = 0; i < animation->second[1]; ++i)
+            {
+                require(cursor + 12 <= spriteSize_, "动作头越界");
+                unsigned char header[12];
+                sprites_.clear();
+                sprites_.seekg(static_cast<std::streamoff>(cursor));
+                sprites_.read(reinterpret_cast<char*>(header), sizeof(header));
+                require(static_cast<bool>(sprites_), "动作头读取失败");
+                std::uint16_t facing, action;
+                std::uint32_t count;
+                std::memcpy(&facing, header, 2);
+                std::memcpy(&action, header + 2, 2);
+                std::memcpy(&count, header + 8, 4);
+                cursor += 12;
+                require(cursor + static_cast<std::uint64_t>(count) * 10 <= spriteSize_, "动作帧越界");
+                int candidate = (action == 3 ? 2 : 0) + (facing == direction ? 1 : 0);
+                if (count > 0 && candidate > score)
+                {
+                    unsigned char frame[10];
+                    sprites_.read(reinterpret_cast<char*>(frame), sizeof(frame));
+                    require(static_cast<bool>(sprites_), "首帧读取失败");
+                    std::int16_t x, y;
+                    std::memcpy(&bitmap, frame, 4);
+                    std::memcpy(&x, frame + 4, 2);
+                    std::memcpy(&y, frame + 6, 2);
+                    frameX = x;
+                    frameY = y;
+                    selectedDirection = facing;
+                    selectedAction = action;
+                    score = candidate;
+                }
+                cursor += static_cast<std::uint64_t>(count) * 10;
+            }
+            require(score >= 0, "没有可显示的帧");
+            auto found = pictures_.find(bitmap);
+            require(found != pictures_.end(), "图片索引缺失");
+            const auto& info = found->second;
+            require(info.size >= 16 && info.size <= 16 * 1024 * 1024 &&
+                static_cast<std::uint64_t>(info.offset) + info.size <= imageSize_, "图片数据越界");
+            require(info.width > 0 && info.height > 0 && info.width <= 4096 && info.height <= 4096 &&
+                static_cast<std::uint64_t>(info.width) * info.height <= 4 * 1024 * 1024, "图片尺寸无效");
+            std::vector<unsigned char> block(info.size);
+            images_.clear();
+            images_.seekg(info.offset);
+            images_.read(reinterpret_cast<char*>(block.data()), block.size());
+            require(static_cast<bool>(images_), "图片读取失败");
+            std::uint32_t width, height, size;
+            std::memcpy(&width, block.data() + 4, 4);
+            std::memcpy(&height, block.data() + 8, 4);
+            std::memcpy(&size, block.data() + 12, 4);
+            require(block[0] == 'R' && block[1] == 'D' && width == info.width &&
+                height == info.height && size == info.size, "RD 图片头与索引不一致");
+            const std::size_t expected = static_cast<std::size_t>(width) * height;
+            std::vector<unsigned char> pixels;
+            pixels.reserve(expected);
+            std::size_t input = 16;
+            auto take = [&]()
+            {
+                require(input < block.size(), "RLE 数据不完整");
+                return block[input++];
+            };
+            if (block[2] == 0)
+            {
+                require(block.size() - 16 == expected, "未压缩图片长度无效");
+                pixels.assign(block.begin() + 16, block.end());
+            }
+            else
+            {
+                while (pixels.size() < expected)
+                {
+                    unsigned char code = take(), family = code >> 4;
+                    std::size_t length = code & 15;
+                    bool literal = family <= 2;
+                    unsigned char colour = 253;
+                    if (family == 8 || family == 9 || family == 10)
+                        colour = take();
+                    if (family == 1 || family == 9 || family == 13)
+                        length = (length << 8) | take();
+                    else if (family == 2 || family == 10 || family == 14)
+                    {
+                        unsigned char high = take(), low = take();
+                        length = (length << 16) | (static_cast<std::size_t>(high) << 8) | low;
+                    }
+                    else if (family != 0 && family != 8 && family != 12)
+                    {
+                        length = 1;
+                        colour = code;
+                    }
+                    require(length <= expected - pixels.size(), "RLE 像素数量越界");
+                    if (literal)
+                    {
+                        require(length <= block.size() - input, "RLE 原色数据不完整");
+                        pixels.insert(pixels.end(), block.begin() + input, block.begin() + input + length);
+                        input += length;
+                    }
+                    else
+                        pixels.insert(pixels.end(), length, colour);
+                }
+                require(input == block.size(), "RLE 存在未解析的尾部数据");
+            }
+            StaticSprite sprite;
+            sprite.width = static_cast<int>(width);
+            sprite.height = static_cast<int>(height);
+            sprite.x = info.x + frameX;
+            sprite.y = info.y + frameY;
+            sprite.pixels.reserve(expected);
+            for (unsigned char pixel : pixels)
+                sprite.pixels.push_back(palette_[pixel]);
+            const std::size_t bytes = expected * sizeof(RGBQUAD);
+            if (cachedBytes_ + bytes > 32 * 1024 * 1024)
+            {
+                staticSprites_.clear();
+                cachedBytes_ = 0;
+                inspected_.clear();
+            }
+            staticSprites_.emplace(key, std::move(sprite));
+            cachedBytes_ += bytes;
+            message += L" → 图片 " + std::to_wstring(bitmap) + L" 动作=" +
+                std::to_wstring(selectedAction) + L" 方向=" + std::to_wstring(selectedDirection) +
+                L" " + std::to_wstring(width) + L"×" + std::to_wstring(height) + L"：静态帧已载入";
         }
-        auto offset = static_cast<std::uint64_t>(animation->second);
-        if (offset + 24 > spriteSize_)
+        catch (const std::exception& error)
         {
-            resourceDebug_.push_back(message + L"：动画文件缺失或偏移越界");
-            return;
+            message += L"：" + TextEncoding::ErrorText(error.what());
         }
-        std::uint32_t header[6]{};
-        sprites_.clear();
-        sprites_.seekg(static_cast<std::streamoff>(offset));
-        sprites_.read(reinterpret_cast<char*>(header), sizeof(header));
-        if (!sprites_ || header[2] == 0)
-        {
-            resourceDebug_.push_back(message + L"：首动作头读取失败或无帧");
-            return;
-        }
-        message += L" → 首帧图片=" + std::to_wstring(header[3]);
-        auto picture = pictures_.find(header[3]);
-        if (picture == pictures_.end() || picture->second[1] < 16 ||
-            static_cast<std::uint64_t>(picture->second[0]) + picture->second[1] > imageSize_)
-        {
-            resourceDebug_.push_back(message + L"：图片索引缺失或数据越界");
-            return;
-        }
-        unsigned char imageHeader[16]{};
-        images_.clear();
-        images_.seekg(picture->second[0]);
-        images_.read(reinterpret_cast<char*>(imageHeader), sizeof(imageHeader));
-        std::uint32_t width, height;
-        std::memcpy(&width, imageHeader + 4, 4);
-        std::memcpy(&height, imageHeader + 8, 4);
-        if (!images_ || imageHeader[0] != 'R' || imageHeader[1] != 'D')
-            message += L"：图片头无效";
-        else
-            message += L" → RD " + std::to_wstring(width) + L"×" + std::to_wstring(height) +
-                L"（仅探测首帧，格式待完整验证）";
         resourceDebug_.push_back(message);
+    }
+
+    void BattleSceneWindow::PrepareForEncounter()
+    {
+        dismissed_ = false;
+        active_ = false;
     }
 
     void BattleSceneWindow::Update(CWnd* owner, const SessionView& view, GameSession& session)
     {
         session_ = &session;
+        if (view.screen != Screen::Game)
+            dismissed_ = false;
+        if (dismissed_)
+        {
+            if (GetSafeHwnd())
+                ShowWindow(SW_HIDE);
+            return;
+        }
         bool active = view.screen == Screen::Game && view.player.inBattle && !view.quickBattle;
         if (!active)
         {
             active_ = false;
-            dismissed_ = false;
             if (GetSafeHwnd() && (view.quickBattle || view.screen != Screen::Game))
                 ShowWindow(SW_HIDE);
             else if (GetSafeHwnd())
             {
                 SetWindowText(L"简易战斗画面 — 战斗结束");
-                CString text = debugText_;
-                for (const auto& line : view.battleDebug)
-                    text += line.c_str() + CString(L"\r\n");
-                CString previous;
-                debug_.GetWindowText(previous);
-                if (previous != text)
-                {
-                    debug_.SetWindowText(text);
-                    debug_.LineScroll(debug_.GetLineCount());
-                }
+                UpdateDebug(view);
+                Invalidate(FALSE);
             }
             return;
         }
@@ -164,12 +303,6 @@ namespace Client
                 L"简易战斗画面", style, area, owner, 0))
                 return;
             font_.CreatePointFont(85, L"Microsoft YaHei UI");
-            debug_.Create(WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL | WS_BORDER |
-                ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | ES_AUTOHSCROLL,
-                CRect(8, 8, 632, 166), this, 1);
-            debug_.SetFont(&font_);
-            debug_.SetLimitText(256 * 1024);
-            debug_.SetWindowPos(&CWnd::wndTop, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
             CenterWindow(owner);
         }
         if (!active_)
@@ -180,26 +313,31 @@ namespace Client
         }
         active_ = true;
         battle_ = view.battle;
-        for (const auto& member : battle_.members)
-            if (member.present)
-                InspectImage(member.image);
-        CString text;
-        text.Format(L"DEBUG 回合=%d  场地属性=%X  我方位置=%d\r\n服务端：%s\r\n",
-            battle_.round, battle_.fieldAttribute, battle_.playerSlot, view.battleResult.message.c_str());
-        for (const auto& line : resourceDebug_)
-            text += line.c_str() + CString(L"\r\n");
-        debugText_ = text;
-        for (const auto& line : view.battleDebug)
-            text += line.c_str() + CString(L"\r\n");
-        CString previous;
-        debug_.GetWindowText(previous);
-        if (previous != text)
+        const int playerSide = battle_.playerSlot >= 10 ? 1 : 0;
+        for (int slot = 0; slot < 20; ++slot)
         {
-            debug_.SetWindowText(text);
-            debug_.LineScroll(debug_.GetLineCount());
+            const auto& member = battle_.members[slot];
+            if (member.present)
+                InspectImage(member.image, slot / 10 == playerSide ? 3 : 7);
         }
+        UpdateDebug(view);
         SetWindowText(L"简易战斗画面 — 自动战斗 / Debug");
         Invalidate(FALSE);
+    }
+
+    void BattleSceneWindow::UpdateDebug(const SessionView& view)
+    {
+        debugText_.Format(L"DEBUG 回合=%d  场地=%X  位置=%d  %s\n",
+            view.battle.round, view.battle.fieldAttribute, view.battle.playerSlot,
+            view.battleResult.message.c_str());
+        if (!resourceDebug_.empty())
+            debugText_ += resourceDebug_.back().c_str() + CString(L"\n");
+        const std::size_t first = resourceDebug_.size() > 5 ? resourceDebug_.size() - 5 : 1;
+        for (std::size_t i = first; i + 1 < resourceDebug_.size(); ++i)
+            debugText_ += resourceDebug_[i].c_str() + CString(L"\n");
+        const std::size_t packetStart = view.battleDebug.size() > 12 ? view.battleDebug.size() - 12 : 0;
+        for (std::size_t i = packetStart; i < view.battleDebug.size(); ++i)
+            debugText_ += view.battleDebug[i].c_str() + CString(L"\n");
     }
 
     void BattleSceneWindow::OnPaint()
@@ -207,43 +345,137 @@ namespace Client
         CPaintDC dc(this);
         CRect area;
         GetClientRect(&area);
-        dc.FillSolidRect(area, RGB(28, 40, 48));
-        int saved = dc.SaveDC();
-        dc.SelectObject(&font_);
-        dc.SetBkMode(TRANSPARENT);
-        dc.SetTextColor(RGB(235, 235, 235));
+        if (area.IsRectEmpty())
+            return;
+        const int width = area.Width(), height = area.Height();
+        std::vector<RGBQUAD> canvas(static_cast<std::size_t>(width) * height, RGBQUAD{ 48, 40, 28, 0 });
         const int playerSide = battle_.playerSlot >= 10 ? 1 : 0;
         const int columns[] = { 0, 1, -1, 2, -2 };
+        auto position = [&](int slot)
+        {
+            bool ally = slot / 10 == playerSide;
+            int column = columns[slot % 5];
+            bool pet = slot % 10 >= 5;
+            return CPoint((ally ? 455 : 185) + column * 52 + (pet ? (ally ? -64 : 64) : 0),
+                (ally ? 366 : 168) + column * (ally ? 34 : -34) + (pet ? (ally ? -48 : 48) : 0));
+        };
+        std::array<int, 20> order;
         for (int slot = 0; slot < 20; ++slot)
+            order[slot] = slot;
+        std::stable_sort(order.begin(), order.end(), [&](int left, int right)
+        {
+            return position(left).y < position(right).y;
+        });
+        for (int slot : order)
         {
             const auto& member = battle_.members[slot];
             if (!member.present)
                 continue;
             bool ally = slot / 10 == playerSide;
-            int x = (area.Width() - 112) / 2 + columns[slot % 5] * 124;
-            int y = (ally ? 338 : 180) + (slot % 10 < 5 ? 64 : 0);
-            CRect box(x, y, x + 112, y + 58);
-            dc.FillSolidRect(box, member.hp > 0 ? (ally ? RGB(36, 78, 74) : RGB(88, 51, 51)) : RGB(55, 55, 55));
+            const std::uint64_t key = (static_cast<std::uint64_t>(member.image) << 16) | (ally ? 3 : 7);
+            auto found = staticSprites_.find(key);
+            if (found == staticSprites_.end())
+                continue;
+            const auto& sprite = found->second;
+            CPoint anchor = position(slot);
+            const int left = anchor.x + sprite.x;
+            const int top = anchor.y + sprite.y;
+            for (int row = std::max(0, -top); row < sprite.height && top + row < height; ++row)
+            {
+                for (int column = std::max(0, -left); column < sprite.width && left + column < width; ++column)
+                {
+                    const auto& pixel = sprite.pixels[(sprite.height - 1 - row) * sprite.width + column];
+                    if (pixel.rgbReserved != 0)
+                        canvas[(top + row) * width + left + column] = pixel;
+                }
+            }
+        }
+        BITMAPINFO info{};
+        info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+        info.bmiHeader.biWidth = width;
+        info.bmiHeader.biHeight = -height;
+        info.bmiHeader.biPlanes = 1;
+        info.bmiHeader.biBitCount = 32;
+        info.bmiHeader.biCompression = BI_RGB;
+        ::SetDIBitsToDevice(dc.GetSafeHdc(), 0, 0, width, height, 0, 0, 0, height,
+            canvas.data(), &info, DIB_RGB_COLORS);
+        int saved = dc.SaveDC();
+        dc.SelectObject(&font_);
+        dc.SetBkMode(TRANSPARENT);
+        dc.SetTextColor(RGB(235, 235, 235));
+        for (int slot : order)
+        {
+            const auto& member = battle_.members[slot];
+            if (!member.present)
+                continue;
+            bool ally = slot / 10 == playerSide;
+            CPoint anchor = position(slot);
+            int x = anchor.x - 56;
+            int y = anchor.y;
+            const std::uint64_t key = (static_cast<std::uint64_t>(member.image) << 16) | (ally ? 3 : 7);
+            if (staticSprites_.find(key) == staticSprites_.end())
+            {
+                CRect box(x, y - 58, x + 112, y);
+                dc.FillSolidRect(box, ally ? RGB(36, 78, 74) : RGB(88, 51, 51));
+                CString missing;
+                missing.Format(L"素材 %u\n未载入", member.image);
+                dc.DrawText(missing, box, DT_CENTER | DT_WORDBREAK | DT_NOPREFIX);
+            }
             CString label;
-            label.Format(L"[%d] %s\n素材 %u  HP %d/%d", slot,
-                LegacyText(member.name).GetString(), member.image, member.hp, member.maxHp);
-            CRect caption = box;
-            caption.DeflateRect(3, 2);
-            dc.DrawText(label, caption, DT_CENTER | DT_WORDBREAK | DT_NOPREFIX);
-            dc.FillSolidRect(x + 4, y + 51, 104, 4, RGB(50, 50, 50));
+            label.Format(L"[%d] %s %d/%d", slot, LegacyText(member.name).GetString(), member.hp, member.maxHp);
+            CRect caption(x, y + 2, x + 112, y + 18);
+            dc.DrawText(label, caption, DT_CENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
+            dc.FillSolidRect(x + 4, y + 20, 104, 4, RGB(50, 50, 50));
             int hp = member.maxHp > 0 ? static_cast<int>(std::min<std::int64_t>(104,
                 static_cast<std::int64_t>(std::max(0, member.hp)) * 104 / member.maxHp)) : 0;
             if (hp > 0)
-                dc.FillSolidRect(x + 4, y + 51, hp, 4, RGB(80, 200, 100));
+                dc.FillSolidRect(x + 4, y + 20, hp, 4, RGB(80, 200, 100));
+        }
+        TEXTMETRIC metrics{};
+        dc.GetTextMetrics(&metrics);
+        const int lineHeight = metrics.tmHeight + 2;
+        const int lineCount = std::max(1, (height / 2 - 12) / lineHeight);
+        std::vector<CString> lines;
+        int cursor = 0;
+        for (;;)
+        {
+            CString text = debugText_.Tokenize(L"\n", cursor);
+            if (text.IsEmpty())
+                break;
+            lines.push_back(text);
+        }
+        for (int line = 0; line < lineCount && line < static_cast<int>(lines.size()); ++line)
+        {
+            std::size_t index = line < 2 ? line :
+                lines.size() > static_cast<std::size_t>(lineCount) ? lines.size() - lineCount + line : line;
+            CRect row(8, 6 + line * lineHeight, area.right - 8, 6 + (line + 1) * lineHeight);
+            CRect shadow = row;
+            shadow.OffsetRect(1, 1);
+            dc.SetTextColor(RGB(0, 0, 0));
+            dc.DrawText(lines[index], shadow, DT_LEFT | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
+            dc.SetTextColor(RGB(220, 240, 170));
+            dc.DrawText(lines[index], row, DT_LEFT | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
         }
         dc.RestoreDC(saved);
     }
 
+    void BattleSceneWindow::OnGetMinMaxInfo(MINMAXINFO* info)
+    {
+        CWnd::OnGetMinMaxInfo(info);
+        CRect area(0, 0, 640, 480);
+        ::AdjustWindowRectEx(&area, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_CLIPCHILDREN,
+            FALSE, WS_EX_DLGMODALFRAME);
+        info->ptMinTrackSize = CPoint(area.Width(), area.Height());
+        info->ptMaxTrackSize = info->ptMinTrackSize;
+        info->ptMaxSize = info->ptMinTrackSize;
+    }
+
     void BattleSceneWindow::OnClose()
     {
+        dismissed_ = true;
+        active_ = false;
         if (session_)
             session_->SetEncounterEnabled(false);
-        dismissed_ = active_;
         ShowWindow(SW_HIDE);
     }
 
@@ -642,10 +874,11 @@ namespace Client
 
     void MainWindow::OnBattleStart()
     {
-        if (view_.screen == Screen::Game)
+        if (view_.screen == Screen::Game && !view_.encounterEnabled && !view_.encounterPending)
         {
             if (battleSettingsWindow_.GetSafeHwnd())
                 battleSettingsWindow_.ShowWindow(SW_HIDE);
+            battleSceneWindow_.PrepareForEncounter();
             session_.SetEncounterEnabled(true);
         }
     }

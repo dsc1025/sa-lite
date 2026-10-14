@@ -5,6 +5,7 @@
 #include <string>
 
 #define BATTLE_DELAY_MS 200
+#define SIMPLE_BATTLE_DELAY_MS 500
 #define BATTLE_PLAYER_MENU_OFF 0x02
 #define BATTLE_PET_MENU_OFF 0x08
 #define BATTLE_MEMBER_DEAD 0x02
