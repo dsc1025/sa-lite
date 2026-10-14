@@ -265,13 +265,6 @@ namespace Client
         auto directory = std::filesystem::path(std::wstring(executable.data(), length)).parent_path();
         const auto relative = std::filesystem::path(L"data") / L"map" / L"map_index.json";
         auto path = directory / relative;
-        while (!std::filesystem::exists(path) && directory != directory.root_path())
-        {
-            directory = directory.parent_path();
-            path = directory / relative;
-        }
-        if (!std::filesystem::exists(path))
-            path = std::filesystem::current_path() / relative;
         std::ifstream input(path, std::ios::binary);
         if (!input)
             throw std::runtime_error("无法打开 data\\map\\map_index.json");

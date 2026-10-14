@@ -37,7 +37,7 @@ namespace Client
         CStatic labels_[4];
         GameSession* session_ = nullptr;
         bool useItems_ = false, useMagic_ = false;
-        int itemPercent_ = 60, magicPercent_ = 60, magicSlot_ = -1;
+        int itemPercent_ = 80, magicPercent_ = 60, magicSlot_ = -1;
         std::string magicName_;
         std::vector<Game::MagicStatus> currentMagic_;
     };

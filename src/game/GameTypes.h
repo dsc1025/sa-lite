@@ -65,7 +65,7 @@ namespace Game
     struct HealingSettings
     {
         bool useItems = false, useMagic = false;
-        int itemPercent = 60, magicPercent = 60, magicSlot = -1;
+        int itemPercent = 80, magicPercent = 60, magicSlot = -1;
         std::string magicName;
     };
     struct MagicStatus

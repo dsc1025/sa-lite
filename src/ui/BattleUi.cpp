@@ -64,9 +64,9 @@ namespace Client
         magicHp_.Create(editStyle, CRect(322, 36, 364, 58), this, 6);
         itemHp_.SetLimitText(3);
         magicHp_.SetLimitText(3);
-        labels_[0].Create(L"HP：", WS_CHILD | WS_VISIBLE, CRect(170, 13, 202, 32), this);
+        labels_[0].Create(L"HP<", WS_CHILD | WS_VISIBLE, CRect(170, 13, 202, 32), this);
         labels_[1].Create(L"%", WS_CHILD | WS_VISIBLE, CRect(250, 13, 266, 32), this);
-        labels_[2].Create(L"HP：", WS_CHILD | WS_VISIBLE, CRect(286, 39, 318, 58), this);
+        labels_[2].Create(L"HP<", WS_CHILD | WS_VISIBLE, CRect(286, 39, 318, 58), this);
         labels_[3].Create(L"%", WS_CHILD | WS_VISIBLE, CRect(370, 39, 382, 58), this);
         save_.Create(L"确认", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON,
             CRect(312, 70, 382, 94), this, 1);

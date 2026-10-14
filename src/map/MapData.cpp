@@ -26,11 +26,11 @@ namespace Client
         input.read(reinterpret_cast<char*>(colours.data()), static_cast<std::streamsize>(colours.size()));
         if (!input)
             throw std::runtime_error("小地图颜色数据读取失败");
-        auto original = directory.parent_path().parent_path().parent_path() / L"SA2.5";
         auto datPath = directory / (std::to_wstring(id) + L".DAT");
         if (!std::filesystem::exists(datPath))
-            datPath = original / L"map" / (std::to_wstring(id) + L".DAT");
-        if (std::filesystem::exists(datPath) && std::filesystem::file_size(datPath) >= 8)
+            throw std::runtime_error("找不到当前地图的 data\\map\\<地图编号>.DAT 文件");
+        if (std::filesystem::file_size(datPath) < 8)
+            throw std::runtime_error("物件地图 .DAT 长度无效");
         {
             std::ifstream dat(datPath, std::ios::binary | std::ios::ate);
             if (!dat || dat.tellg() != static_cast<std::streamoff>(8 + cells * 6))
@@ -45,13 +45,8 @@ namespace Client
             dat.read(reinterpret_cast<char*>(objects.data()), static_cast<std::streamsize>(cells * 2));
             if (!dat)
                 throw std::runtime_error("物件地图 .DAT 读取失败");
-            auto resource = [&](const wchar_t* filename)
-            {
-                auto path = directory.parent_path() / filename;
-                return std::filesystem::exists(path) ? path : original / L"data" / filename;
-            };
-            auto indexPath = resource(L"adrn_15.bin");
-            auto colourPath = resource(L"auto.dat");
+            auto indexPath = directory.parent_path() / L"adrn_15.bin";
+            auto colourPath = directory.parent_path() / L"auto.dat";
             struct Shape { unsigned char east = 0, south = 0; bool footprint = false; };
             static std::filesystem::path cachedIndexPath, cachedColourPath;
             static std::vector<Shape> shapes;

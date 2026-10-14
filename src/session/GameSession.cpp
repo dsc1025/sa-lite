@@ -483,7 +483,6 @@ namespace Client
                         }
                         if (!client.IsConnected())
                             throw std::runtime_error(failure);
-                        movementMessage = message;
                         Publish(Screen::Game, message, &client);
                     }
                     {
@@ -491,7 +490,15 @@ namespace Client
                         client.SetHealingSettings(healing_);
                     }
                     if (client.PollGame(pollTimeout))
-                        Publish(Screen::Game, movementMessage, &client);
+                    {
+                        std::wstring message = movementMessage;
+                        {
+                            std::lock_guard<std::mutex> lock(mutex_);
+                            if (encounterRequested_ || shared_.encounterEnabled || shared_.encounterPending)
+                                message = shared_.encounterMessage;
+                        }
+                        Publish(Screen::Game, message, &client);
+                    }
                     UpdateEncounter(client);
                     {
                         std::lock_guard<std::mutex> lock(mutex_);
