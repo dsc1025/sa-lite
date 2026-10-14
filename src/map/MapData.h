@@ -27,6 +27,7 @@ namespace Client
         std::vector<MapNode> children;
     };
 
+    std::filesystem::path LoadResourceDirectory(const std::filesystem::path& configPath);
     std::vector<MapNode> LoadMapIndex(std::filesystem::path& mapDirectory,
         std::unordered_map<int, std::wstring>& names);
     MapData LoadMap(const std::filesystem::path& directory, int id);

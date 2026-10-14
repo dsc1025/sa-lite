@@ -1,6 +1,7 @@
 #include "MainWindow.h"
 #include "BattleUi.h"
 #include "UiText.h"
+#include "../map/MapData.h"
 #include "../text/TextEncoding.h"
 #include <algorithm>
 #include <cstring>
@@ -17,10 +18,7 @@ namespace Client
 
     void BattleSceneWindow::LoadResources(const CString& configPath)
     {
-        wchar_t path[32768];
-        GetPrivateProfileStringW(L"Battle", L"ResourceDirectory",
-            L"C:\\Work\\SA\\SA2.5\\SA2.5\\data", path, 32768, configPath);
-        resourceDirectory_ = path;
+        resourceDirectory_ = LoadResourceDirectory(std::filesystem::path(configPath.GetString()));
         resourceDebug_.clear();
         animations_.clear();
         pictures_.clear();
@@ -93,18 +91,18 @@ namespace Client
         {
             paletteFile.seekg(0);
             paletteFile.read(reinterpret_cast<char*>(raw.data()), raw.size());
-            const COLORREF system[] = { RGB(0,0,0), RGB(0,0,128), RGB(0,128,0), RGB(0,128,128),
-                RGB(128,0,0), RGB(128,0,128), RGB(128,128,0), RGB(192,192,192), RGB(192,220,192),
-                RGB(240,202,166), RGB(0,0,222), RGB(0,95,255), RGB(160,255,255), RGB(210,95,0),
-                RGB(255,210,80), RGB(40,225,40) };
-            const COLORREF upper[] = { RGB(150,195,245), RGB(95,160,225), RGB(70,125,195), RGB(30,85,155),
-                RGB(55,65,70), RGB(30,35,40), RGB(240,251,255), RGB(164,160,160), RGB(128,128,128),
-                RGB(0,0,255), RGB(0,255,0), RGB(0,255,255), RGB(255,0,0), RGB(255,0,255),
-                RGB(255,255,0), RGB(255,255,255) };
+            const COLORREF system[] = { RGB(0,0,0), RGB(128,0,0), RGB(0,128,0), RGB(128,128,0),
+                RGB(0,0,128), RGB(128,0,128), RGB(0,128,128), RGB(192,192,192), RGB(192,220,192),
+                RGB(166,202,240), RGB(222,0,0), RGB(255,95,0), RGB(255,255,160), RGB(0,95,210),
+                RGB(80,210,255), RGB(40,225,40) };
+            const COLORREF upper[] = { RGB(255,251,240), RGB(160,160,164), RGB(128,128,128),
+                RGB(255,0,0), RGB(0,255,0), RGB(255,255,0), RGB(0,0,255), RGB(255,0,255),
+                RGB(0,255,255), RGB(255,255,255), RGB(245,195,150), RGB(225,160,95), RGB(195,125,70),
+                RGB(155,85,30), RGB(70,65,55), RGB(40,35,30) };
             for (int i = 0; i < 256; ++i)
             {
-                COLORREF colour = i < 16 ? system[i] : i >= 252 ? upper[i - 240] :
-                    RGB(raw[(i - 16) * 3], raw[(i - 16) * 3 + 1], raw[(i - 16) * 3 + 2]);
+                COLORREF colour = i < 16 ? system[i] : i >= 240 ? upper[i - 240] :
+                    RGB(raw[(i - 16) * 3 + 2], raw[(i - 16) * 3 + 1], raw[(i - 16) * 3]);
                 palette_[i] = { GetBValue(colour), GetGValue(colour), GetRValue(colour),
                     static_cast<BYTE>(i == 253 ? 0 : 255) };
             }
@@ -348,7 +346,7 @@ namespace Client
         if (area.IsRectEmpty())
             return;
         const int width = area.Width(), height = area.Height();
-        std::vector<RGBQUAD> canvas(static_cast<std::size_t>(width) * height, RGBQUAD{ 48, 40, 28, 0 });
+        std::vector<RGBQUAD> canvas(static_cast<std::size_t>(width) * height, RGBQUAD{ 220, 220, 220, 0 });
         const int playerSide = battle_.playerSlot >= 10 ? 1 : 0;
         const int columns[] = { 0, 1, -1, 2, -2 };
         auto position = [&](int slot)

@@ -255,6 +255,19 @@ namespace Client
         }
     }
 
+    std::filesystem::path LoadResourceDirectory(const std::filesystem::path& configPath)
+    {
+        std::vector<wchar_t> value(32768);
+        GetPrivateProfileStringW(L"Resources", L"Directory", L"", value.data(),
+            static_cast<DWORD>(value.size()), configPath.c_str());
+        std::filesystem::path directory(value.data());
+        if (directory.empty())
+            return configPath.parent_path() / L"data";
+        if (directory.is_relative())
+            directory = configPath.parent_path() / directory;
+        return directory.lexically_normal();
+    }
+
     std::vector<MapNode> LoadMapIndex(std::filesystem::path& mapDirectory,
         std::unordered_map<int, std::wstring>& names)
     {
@@ -263,11 +276,10 @@ namespace Client
         if (length == 0 || length >= executable.size())
             throw std::runtime_error("无法确定地图索引路径");
         auto directory = std::filesystem::path(std::wstring(executable.data(), length)).parent_path();
-        const auto relative = std::filesystem::path(L"data") / L"map" / L"map_index.json";
-        auto path = directory / relative;
+        auto path = LoadResourceDirectory(directory / L"config.ini") / L"map" / L"map_index.json";
         std::ifstream input(path, std::ios::binary);
         if (!input)
-            throw std::runtime_error("无法打开 data\\map\\map_index.json");
+            throw std::runtime_error("无法打开地图索引：" + path.u8string());
         mapDirectory = path.parent_path();
         std::string bytes((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
         if (input.bad() || bytes.empty() || bytes.size() > INT_MAX)
