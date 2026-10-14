@@ -113,9 +113,27 @@ bool LoginClient::HandleBattleResult(const std::vector<std::string>& fields)
         (values[1] != "0" && values[1] != "1"))
         throw std::runtime_error("Invalid character battle result");
     auto experience = ParseMask(values[2]);
+    std::uint64_t petExperience = 0;
+    std::vector<bool> petReceived(pets_.size(), false);
+    auto start = end + 1;
+    while ((end = strings[0].find(',', start)) != std::string::npos)
+    {
+        if (end != start)
+        {
+            auto pet = SplitLegacy(strings[0].substr(start, end - start));
+            if (pet.size() != 3 || (pet[1] != "0" && pet[1] != "1"))
+                throw std::runtime_error("Invalid pet battle result");
+            int slot = ParseNumber(pet[0]);
+            if (slot < 0 || static_cast<std::size_t>(slot) >= pets_.size() || petReceived[slot])
+                throw std::runtime_error("Invalid pet battle result slot");
+            petReceived[slot] = true;
+            petExperience += ParseMask(pet[2]);
+        }
+        start = end + 1;
+    }
     battleResult_.received = true;
     battleResult_.experience = experience;
-    battleResult_.totalExperience += experience;
+    battleResult_.petExperience = petExperience;
     return true;
 }
 

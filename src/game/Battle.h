@@ -36,6 +36,6 @@ namespace Game
     {
         bool received = false;
         std::uint32_t experience = 0;
-        std::uint64_t totalExperience = 0;
+        std::uint64_t petExperience = 0;
     };
 }

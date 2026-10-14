@@ -22,7 +22,7 @@ namespace Client
         for (int i = 0; i < 2; ++i)
             battleSides_[i]->Create(sides[i], WS_CHILD | WS_CLIPSIBLINGS | BS_OWNERDRAW,
                 empty, this, IDC_BATTLE_UPPER + i);
-        battleExperience_.Create(L"经验获得：本场 —    累计 0", WS_CHILD, empty, this);
+        battleExperience_.Create(L"经验获得：人物 —    宠物 —", WS_CHILD, empty, this);
     }
 
     void MainWindow::LayoutBattle(const CRect& mainPage)
@@ -83,11 +83,10 @@ namespace Client
         battleStop_.EnableWindow(leveling && (view_.encounterEnabled || view_.encounterPending));
         CString experience;
         if (view_.battleResult.received)
-            experience.Format(L"经验获得：本场 %u    累计 %llu",
-                view_.battleResult.experience, static_cast<unsigned long long>(view_.battleResult.totalExperience));
+            experience.Format(L"经验获得：人物 %u    宠物 %llu",
+                view_.battleResult.experience, static_cast<unsigned long long>(view_.battleResult.petExperience));
         else
-            experience.Format(L"经验获得：本场 —    累计 %llu",
-                static_cast<unsigned long long>(view_.battleResult.totalExperience));
+            experience = L"经验获得：人物 —    宠物 —";
         battleExperience_.SetWindowText(experience);
     }
 
