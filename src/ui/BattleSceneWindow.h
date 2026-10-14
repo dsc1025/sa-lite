@@ -37,7 +37,6 @@ namespace Client
         void ApplyBattleState(const Game::BattleState& state);
         struct UnitAnimation
         {
-            int action = 1;
             std::uint32_t frame = 0;
             std::uint64_t started = 0;
         };

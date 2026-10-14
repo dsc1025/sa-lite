@@ -140,6 +140,7 @@ bool LoginClient::PollBattle()
         SendNumbers("8", { 0 }, GetTickCount64() + Game::BATTLE_DELAY_MS);
         playerStatus_.inBattle = false;
         battle_ = {};
+        encounter_.nextRequest = GetTickCount64() + Game::BATTLE_DELAY_MS;
         return true;
     }
     int player = battle_.playerSlot;

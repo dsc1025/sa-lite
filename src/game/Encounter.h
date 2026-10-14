@@ -8,7 +8,11 @@ namespace Game
     {
         bool enabled = false;
         bool stopPending = false;
-        int map = -1, x = -1, y = -1;
+        bool requestPending = false;
+        bool battleStarted = false;
+        int requestResult = -1;
+        int map = -1;
+        std::uint64_t requestDeadline = 0;
         std::uint64_t nextRequest = 0;
     };
 }

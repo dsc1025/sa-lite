@@ -22,7 +22,7 @@ namespace Client
             if (enabled)
                 state_->requestedMap_ = -1;
             state_->shared_.encounterPending = true;
-            state_->shared_.encounterMessage = enabled ? L"正在开始快速遇敌…" :
+            state_->shared_.encounterMessage = enabled ? L"正在开始原地遇敌…" :
                 state_->shared_.player.inBattle ? L"等待战斗结束，结束后停止自动战斗" : L"正在停止自动战斗…";
             state_->shared_.message = state_->shared_.encounterMessage;
         }
@@ -53,11 +53,14 @@ namespace Client
             }
             client.PollEncounter();
             message = !requested && client.GetPlayerStatus().inBattle ? L"等待战斗结束，结束后停止自动战斗" :
+                client.IsEncounterStopping() ? L"等待开战请求完成，完成后停止自动战斗" :
                 !client.IsEncounterEnabled() ? L"自动战斗已停止" :
-                client.GetPlayerStatus().inBattle ? L"战斗中，结束后继续遇敌" : L"快速遇敌中";
+                client.GetPlayerStatus().inBattle ? L"战斗中，结束后继续遇敌" :
+                client.IsEncounterWaiting() ? L"等待服务器原地开战" : L"原地遇敌中";
         }
         catch (const std::exception& error)
         {
+            if (!client.IsConnected()) throw;
             failed = true;
             message = TextEncoding::ErrorText(error.what());
             try { client.SetEncounterEnabled(false); }

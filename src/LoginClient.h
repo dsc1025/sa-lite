@@ -56,6 +56,7 @@ public:
     void SetHealingSettings(const Game::HealingSettings& settings) { healing_ = settings; }
     bool IsEncounterEnabled() const noexcept { return encounter_.enabled; }
     bool IsEncounterStopping() const noexcept { return encounter_.stopPending; }
+    bool IsEncounterWaiting() const noexcept { return encounter_.requestPending; }
     void LeaveGame(int timeoutMs = 10000);
     const PlayerStatus& GetPlayerStatus() const noexcept;
     const std::vector<PetStatus>& GetPets() const noexcept;
@@ -89,7 +90,7 @@ private:
     bool ApplyPetSkillStatus(const std::vector<std::string>& values);
     void SendNumbers(const char* function, std::initializer_list<int> numbers, ULONGLONG deadline);
     void RefreshPosition(ULONGLONG deadline);
-    void SendEncounterWalk(const std::string& directions, int x, int y);
+    bool HandleEncounterReply(const std::vector<std::string>& fields);
 
     SocketConnection connection_;
     bool loggedIn_ = false;

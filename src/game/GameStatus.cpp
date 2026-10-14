@@ -58,6 +58,8 @@ namespace
 
 bool LoginClient::HandleGamePacket(const std::vector<std::string>& fields)
 {
+    if (fields[1] == "119")
+        return HandleEncounterReply(fields);
     if (fields[1] == "12")
         return HandleBattleResult(fields);
     if (fields[1] == "15")
@@ -125,6 +127,8 @@ bool LoginClient::HandlePositionPacket(const std::vector<std::string>& fields)
             battleResult_.experience = 0;
             battleResult_.message = L"等待战斗队员数据";
         }
+        if (inBattle && encounter_.requestPending)
+            encounter_.battleStarted = true;
         playerStatus_.inBattle = inBattle;
     }
     return true;
