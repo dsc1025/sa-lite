@@ -33,6 +33,8 @@ namespace Client
                 requestedMap_ = -1;
                 encounterRequested_ = false;
                 shared_ = {};
+                completedPlayback_ = 0;
+                playbackEnabled_ = true;
                 shared_.screen = Screen::Connecting;
                 shared_.message = L"正在连接并登录…";
             }
@@ -257,6 +259,7 @@ namespace Client
                 shared_.battle = client->GetBattle();
                 shared_.battleResult = client->GetBattleResult();
                 shared_.battleDebug = client->GetBattleDebug();
+                shared_.battlePlayback = client->GetBattlePlayback();
                 shared_.pets = client->GetPets();
                 shared_.items = client->GetItems();
                 shared_.magic = client->GetMagic();
@@ -362,6 +365,8 @@ namespace Client
                         std::lock_guard<std::mutex> lock(mutex_);
                         if (stop_) break;
                         pollTimeout = encounterRequested_ || client.GetPlayerStatus().inBattle ? BATTLE_DELAY_MS : 100;
+                        if (client.GetPlayerStatus().inBattle && !healing_.quickBattle)
+                            pollTimeout = 50;
                         pet = requestedPet_;
                         state = requestedPetState_;
                         discard = requestedDiscard_;
@@ -494,6 +499,8 @@ namespace Client
                     {
                         std::lock_guard<std::mutex> lock(mutex_);
                         client.SetHealingSettings(healing_);
+                        client.CompleteBattlePlayback(completedPlayback_);
+                        client.SetBattlePlaybackEnabled(playbackEnabled_);
                     }
                     if (client.PollGame(pollTimeout))
                     {

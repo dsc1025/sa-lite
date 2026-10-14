@@ -7,6 +7,7 @@
 #include <cstring>
 #include <stdexcept>
 #include <utility>
+#include <climits>
 
 namespace Client
 {
@@ -14,6 +15,9 @@ namespace Client
         ON_WM_PAINT()
         ON_WM_GETMINMAXINFO()
         ON_WM_CLOSE()
+        ON_WM_TIMER()
+        ON_WM_ERASEBKGND()
+        ON_WM_DESTROY()
     END_MESSAGE_MAP()
 
     void BattleSceneWindow::LoadResources(const CString& configPath)
@@ -25,6 +29,7 @@ namespace Client
         inspected_.clear();
         staticSprites_.clear();
         cachedBytes_ = 0;
+        cacheSerial_ = 0;
         paletteReady_ = false;
         sprites_.close();
         images_.close();
@@ -108,14 +113,26 @@ namespace Client
             }
             paletteReady_ = static_cast<bool>(paletteFile);
         }
-        resourceDebug_.push_back(paletteReady_ ? L"Palet_1.sap：已载入；仅显示静态帧" :
+        resourceDebug_.push_back(paletteReady_ ? L"Palet_1.sap：已载入；按服务端事件播放动画" :
             L"Palet_1.sap：读取失败，保留单位占位显示");
     }
 
-    void BattleSceneWindow::InspectImage(std::uint32_t image, int direction)
+    std::uint64_t BattleSceneWindow::SpriteKey(std::uint32_t image, int direction, int action, std::uint32_t frame)
     {
-        const std::uint64_t key = (static_cast<std::uint64_t>(image) << 16) | direction;
-        if (staticSprites_.find(key) != staticSprites_.end() || !inspected_.emplace(key, true).second)
+        return (static_cast<std::uint64_t>(image) << 32) | (static_cast<std::uint64_t>(direction) << 24) |
+            (static_cast<std::uint64_t>(action) << 16) | frame;
+    }
+
+    void BattleSceneWindow::InspectImage(std::uint32_t image, int direction, int requestedAction, std::uint32_t frameIndex)
+    {
+        const std::uint64_t key = SpriteKey(image, direction, requestedAction, frameIndex);
+        auto cached = staticSprites_.find(key);
+        if (cached != staticSprites_.end())
+        {
+            cached->second.lastUsed = ++cacheSerial_;
+            return;
+        }
+        if (!inspected_.emplace(key, true).second)
             return;
         if (resourceDebug_.size() >= 40)
             resourceDebug_.erase(resourceDebug_.begin() + 5);
@@ -132,6 +149,7 @@ namespace Client
             std::uint64_t cursor = animation->second[0];
             std::uint32_t bitmap = 0;
             int frameX = 0, frameY = 0, selectedDirection = -1, selectedAction = -1, score = -1;
+            std::uint32_t selectedCount = 1, selectedDuration = 500;
             for (std::uint32_t i = 0; i < animation->second[1]; ++i)
             {
                 require(cursor + 12 <= spriteSize_, "动作头越界");
@@ -141,16 +159,19 @@ namespace Client
                 sprites_.read(reinterpret_cast<char*>(header), sizeof(header));
                 require(static_cast<bool>(sprites_), "动作头读取失败");
                 std::uint16_t facing, action;
-                std::uint32_t count;
+                std::uint32_t count, duration;
                 std::memcpy(&facing, header, 2);
                 std::memcpy(&action, header + 2, 2);
                 std::memcpy(&count, header + 8, 4);
+                std::memcpy(&duration, header + 4, 4);
                 cursor += 12;
                 require(cursor + static_cast<std::uint64_t>(count) * 10 <= spriteSize_, "动作帧越界");
-                int candidate = (action == 3 ? 2 : 0) + (facing == direction ? 1 : 0);
+                require(count <= 4096, "动作帧数量无效");
+                int candidate = (action == requestedAction ? 4 : action == 3 ? 2 : 0) + (facing == direction ? 1 : 0);
                 if (count > 0 && candidate > score)
                 {
                     unsigned char frame[10];
+                    sprites_.seekg(static_cast<std::streamoff>(cursor + (frameIndex % count) * 10));
                     sprites_.read(reinterpret_cast<char*>(frame), sizeof(frame));
                     require(static_cast<bool>(sprites_), "首帧读取失败");
                     std::int16_t x, y;
@@ -162,6 +183,8 @@ namespace Client
                     selectedDirection = facing;
                     selectedAction = action;
                     score = candidate;
+                    selectedCount = count;
+                    selectedDuration = std::max<std::uint32_t>(100, std::min<std::uint32_t>(duration, 10000));
                 }
                 cursor += static_cast<std::uint64_t>(count) * 10;
             }
@@ -237,42 +260,208 @@ namespace Client
             sprite.height = static_cast<int>(height);
             sprite.x = info.x + frameX;
             sprite.y = info.y + frameY;
+            sprite.frames = selectedCount;
+            sprite.duration = selectedDuration;
+            sprite.lastUsed = ++cacheSerial_;
             sprite.pixels.reserve(expected);
             for (unsigned char pixel : pixels)
                 sprite.pixels.push_back(palette_[pixel]);
             const std::size_t bytes = expected * sizeof(RGBQUAD);
-            if (cachedBytes_ + bytes > 32 * 1024 * 1024)
+            while (cachedBytes_ + bytes > 32 * 1024 * 1024 && !staticSprites_.empty())
             {
-                staticSprites_.clear();
-                cachedBytes_ = 0;
-                inspected_.clear();
+                auto oldest = std::min_element(staticSprites_.begin(), staticSprites_.end(),
+                    [](const auto& left, const auto& right) { return left.second.lastUsed < right.second.lastUsed; });
+                cachedBytes_ -= oldest->second.pixels.size() * sizeof(RGBQUAD);
+                inspected_.erase(oldest->first);
+                staticSprites_.erase(oldest);
             }
             staticSprites_.emplace(key, std::move(sprite));
             cachedBytes_ += bytes;
             message += L" → 图片 " + std::to_wstring(bitmap) + L" 动作=" +
                 std::to_wstring(selectedAction) + L" 方向=" + std::to_wstring(selectedDirection) +
-                L" " + std::to_wstring(width) + L"×" + std::to_wstring(height) + L"：静态帧已载入";
+                L" 帧=" + std::to_wstring(frameIndex % selectedCount) + L"/" + std::to_wstring(selectedCount);
         }
         catch (const std::exception& error)
         {
             message += L"：" + TextEncoding::ErrorText(error.what());
         }
-        resourceDebug_.push_back(message);
+        if (frameIndex == 0)
+            resourceDebug_.push_back(message);
+    }
+
+    std::uint32_t BattleSceneWindow::EffectFrame(std::uint32_t image, int direction)
+    {
+        if (image == 0 || currentEvent_.actor < 0 || currentEvent_.actor >= 20) return 0;
+        InspectImage(image, direction, 0, 0);
+        auto first = staticSprites_.find(SpriteKey(image, direction, 0, 0));
+        if (first == staticSprites_.end()) return 0;
+        const auto started = unitAnimations_[currentEvent_.actor].started;
+        const auto now = GetTickCount64();
+        const auto elapsed = now >= started ? now - started : 0;
+        auto frame = static_cast<std::uint32_t>(std::min<std::uint64_t>(first->second.frames - 1,
+            elapsed * first->second.frames / first->second.duration));
+        InspectImage(image, direction, 0, frame);
+        return frame;
+    }
+
+    void BattleSceneWindow::PrepareAnimationFrames()
+    {
+        const auto now = GetTickCount64();
+        const int playerSide = battle_.playerSlot >= 10 ? 1 : 0;
+        for (int slot = 0; slot < 20; ++slot)
+        {
+            const auto& member = battle_.members[slot];
+            if (!member.present) continue;
+            auto& unit = unitAnimations_[slot];
+            unit.action = 3;
+            if (unit.started == 0) unit.started = now;
+            const int direction = slot / 10 == playerSide ? 3 : 7;
+            InspectImage(member.image, direction, 3, 0);
+            auto first = staticSprites_.find(SpriteKey(member.image, direction, 3, 0));
+            if (first == staticSprites_.end()) { unit.frame = 0; continue; }
+            const auto elapsed = now >= unit.started ? now - unit.started : 0;
+            unit.frame = static_cast<std::uint32_t>((elapsed % first->second.duration) *
+                first->second.frames / first->second.duration);
+            InspectImage(member.image, direction, 3, unit.frame);
+        }
+    }
+
+    void BattleSceneWindow::StartEvent(const Game::BattleEvent& event)
+    {
+        currentEvent_ = event;
+        const auto now = GetTickCount64();
+        auto action = [&](int slot, int value)
+        {
+            if (slot < 0 || slot >= 20 || !battle_.members[slot].present) return;
+            unitAnimations_[slot].action = value;
+            unitAnimations_[slot].started = now;
+            unitAnimations_[slot].frame = 0;
+        };
+        int target = event.guardian >= 0 ? event.guardian : event.target;
+        if (event.kind == Game::BattleEvent::Kind::Guard) action(event.actor, 10);
+        else if (event.kind == Game::BattleEvent::Kind::Escape) action(event.actor, 4);
+        else if (event.kind == Game::BattleEvent::Kind::Cast) action(event.actor, 9);
+        else if (event.kind == Game::BattleEvent::Kind::Attack) action(event.actor, 0);
+        if (target >= 0 && target < 20 && battle_.members[target].present)
+        {
+            auto& member = battle_.members[target];
+            auto& unit = unitAnimations_[target];
+            bool change = event.kind == Game::BattleEvent::Kind::Attack ||
+                event.kind == Game::BattleEvent::Kind::Damage || event.kind == Game::BattleEvent::Kind::Heal ||
+                event.kind == Game::BattleEvent::Kind::SetHp;
+            if (change)
+            {
+                bool heal = event.kind == Game::BattleEvent::Kind::Heal || (event.flags & BATTLE_HIT_ABSORB) != 0;
+                if (event.kind == Game::BattleEvent::Kind::SetHp)
+                    member.hp = static_cast<int>(std::min<std::uint32_t>(event.amount, INT_MAX));
+                else if (!(event.flags & BATTLE_HIT_VANISH))
+                {
+                    std::int64_t hp = static_cast<std::int64_t>(member.hp) +
+                        (heal ? static_cast<std::int64_t>(event.amount) : -static_cast<std::int64_t>(event.amount));
+                    member.hp = static_cast<int>(std::max<std::int64_t>(0,
+                        std::min<std::int64_t>(member.maxHp, hp)));
+                    member.rideHp = static_cast<int>(std::max<std::int64_t>(0, std::min<std::int64_t>(
+                        member.rideMaxHp, static_cast<std::int64_t>(member.rideHp) +
+                        (heal ? static_cast<std::int64_t>(event.petAmount) : -static_cast<std::int64_t>(event.petAmount)))));
+                }
+                if (event.flags & BATTLE_HIT_DEATH) member.hp = 0;
+                if (member.hp == 0)
+                {
+                    member.flags |= BATTLE_MEMBER_DEAD;
+                    action(target, 2);
+                }
+                else
+                {
+                    member.flags &= ~BATTLE_MEMBER_DEAD;
+                    action(target, heal || (event.flags & BATTLE_HIT_DODGE) ? 3 : (event.flags & BATTLE_HIT_GUARD) ? 10 : 1);
+                }
+                unit.label = event.flags & BATTLE_HIT_DODGE ? L"闪避" : event.amount == 0 ? L"0" :
+                    (heal ? L"+" : L"-") + std::to_wstring(event.amount);
+                if (event.kind == Game::BattleEvent::Kind::SetHp)
+                    unit.label = L"HP " + std::to_wstring(member.hp);
+            }
+        }
+        PrepareAnimationFrames();
+        std::uint64_t duration = 33;
+        const int playerSide = battle_.playerSlot >= 10 ? 1 : 0;
+        for (int slot : { event.actor, target })
+        {
+            if (slot < 0 || slot >= 20) continue;
+            const auto& member = battle_.members[slot];
+            auto first = staticSprites_.find(SpriteKey(member.image, slot / 10 == playerSide ? 3 : 7,
+                unitAnimations_[slot].action, 0));
+            if (first != staticSprites_.end()) duration = std::max<std::uint64_t>(duration, first->second.duration);
+        }
+        if (event.kind == Game::BattleEvent::Kind::Cast)
+        {
+            int direction = event.actor / 10 == playerSide ? 3 : 7;
+            for (std::uint32_t effect : { event.effect, event.targetEffect })
+            {
+                if (effect == 0) continue;
+                InspectImage(effect, direction, 0, 0);
+                auto first = staticSprites_.find(SpriteKey(effect, direction, 0, 0));
+                if (first != staticSprites_.end()) duration = std::max<std::uint64_t>(duration, first->second.duration);
+            }
+        }
+        eventEnd_ = now + duration;
+    }
+
+    void BattleSceneWindow::ApplyBattleState(const Game::BattleState& state)
+    {
+        auto previous = battle_.members;
+        battle_ = state;
+        for (int slot = 0; slot < 20; ++slot)
+        {
+            if (previous[slot].image != battle_.members[slot].image ||
+                previous[slot].present != battle_.members[slot].present ||
+                (unitAnimations_[slot].action == 2 && battle_.members[slot].hp > 0))
+            {
+                unitAnimations_[slot] = {};
+                unitAnimations_[slot].started = GetTickCount64();
+            }
+        }
+    }
+
+    void BattleSceneWindow::OnTimer(UINT_PTR timer)
+    {
+        if (timer != 1) { CWnd::OnTimer(timer); return; }
+        if (!active_ || dismissed_) return;
+        PrepareAnimationFrames();
+        Invalidate(FALSE);
     }
 
     void BattleSceneWindow::PrepareForEncounter()
     {
         dismissed_ = false;
         active_ = false;
+        playback_.clear();
+        eventIndex_ = 0;
+        eventEnd_ = 0;
+        playbackRound_ = -1;
+        playbackRevision_ = 0;
+        latestBattle_ = {};
+        unitAnimations_ = {};
     }
 
     void BattleSceneWindow::Update(CWnd* owner, const SessionView& view, GameSession& session)
     {
         session_ = &session;
+        latestBattle_ = view.battle;
+        if (!view.quickBattle)
+            session.SkipBattlePlayback();
         if (view.screen != Screen::Game)
+        {
             dismissed_ = false;
+            seenPlayback_ = 0;
+            playback_.clear();
+            eventEnd_ = 0;
+            eventIndex_ = 0;
+            playbackRound_ = -1;
+            playbackRevision_ = 0;
+        }
         if (dismissed_)
         {
+            session.SkipBattlePlayback();
             if (GetSafeHwnd())
                 ShowWindow(SW_HIDE);
             return;
@@ -281,6 +470,9 @@ namespace Client
         if (!active)
         {
             active_ = false;
+            if (GetSafeHwnd()) KillTimer(1);
+            if (view.quickBattle && !view.battlePlayback.empty())
+                session.CompleteBattlePlayback(view.battlePlayback.back().serial);
             if (GetSafeHwnd() && (view.quickBattle || view.screen != Screen::Game))
                 ShowWindow(SW_HIDE);
             else if (GetSafeHwnd())
@@ -299,28 +491,30 @@ namespace Client
             if (!CreateEx(WS_EX_DLGMODALFRAME, AfxRegisterWndClass(CS_DBLCLKS,
                 LoadCursor(nullptr, IDC_ARROW), reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1)),
                 L"简易战斗画面", style, area, owner, 0))
+            {
+                session.SkipBattlePlayback();
                 return;
+            }
             font_.CreatePointFont(85, L"Microsoft YaHei UI");
             CenterWindow(owner);
         }
         if (!active_)
         {
             inspected_.clear();
+            playbackRound_ = -1;
+            playbackRevision_ = 0;
+            unitAnimations_ = {};
+            for (auto& unit : unitAnimations_) unit.started = GetTickCount64();
+            SetTimer(1, 33, nullptr);
             if (!dismissed_)
                 ShowWindow(SW_SHOWNOACTIVATE);
         }
         active_ = true;
-        battle_ = view.battle;
-        const int playerSide = battle_.playerSlot >= 10 ? 1 : 0;
-        for (int slot = 0; slot < 20; ++slot)
-        {
-            const auto& member = battle_.members[slot];
-            if (member.present)
-                InspectImage(member.image, slot / 10 == playerSide ? 3 : 7);
-        }
-        UpdateDebug(view);
-        SetWindowText(L"简易战斗画面 — 自动战斗 / Debug");
+        ApplyBattleState(view.battle);
+        PrepareAnimationFrames();
         Invalidate(FALSE);
+        UpdateDebug(view);
+        SetWindowText(L"简易战斗画面 — 自动战斗");
     }
 
     void BattleSceneWindow::UpdateDebug(const SessionView& view)
@@ -340,13 +534,31 @@ namespace Client
 
     void BattleSceneWindow::OnPaint()
     {
-        CPaintDC dc(this);
+        CPaintDC paint(this);
         CRect area;
         GetClientRect(&area);
         if (area.IsRectEmpty())
             return;
         const int width = area.Width(), height = area.Height();
-        std::vector<RGBQUAD> canvas(static_cast<std::size_t>(width) * height, RGBQUAD{ 220, 220, 220, 0 });
+        if (!bufferDC_.GetSafeHdc() || bufferSize_ != area.Size())
+        {
+            if (previousBitmap_)
+                ::SelectObject(bufferDC_.GetSafeHdc(), previousBitmap_);
+            previousBitmap_ = nullptr;
+            bufferBitmap_.DeleteObject();
+            bufferDC_.DeleteDC();
+            if (!bufferDC_.CreateCompatibleDC(&paint) || !bufferBitmap_.CreateCompatibleBitmap(&paint, width, height))
+            {
+                paint.FillSolidRect(area, RGB(220, 220, 220));
+                return;
+            }
+            previousBitmap_ = ::SelectObject(bufferDC_.GetSafeHdc(), bufferBitmap_.GetSafeHandle());
+            bufferSize_ = area.Size();
+        }
+        CDC& dc = bufferDC_;
+        auto& canvas = canvas_;
+        canvas.resize(static_cast<std::size_t>(width) * height);
+        std::fill(canvas.begin(), canvas.end(), RGBQUAD{ 220, 220, 220, 0 });
         const int playerSide = battle_.playerSlot >= 10 ? 1 : 0;
         const int columns[] = { 0, 1, -1, 2, -2 };
         auto position = [&](int slot)
@@ -370,7 +582,7 @@ namespace Client
             if (!member.present)
                 continue;
             bool ally = slot / 10 == playerSide;
-            const std::uint64_t key = (static_cast<std::uint64_t>(member.image) << 16) | (ally ? 3 : 7);
+            const std::uint64_t key = SpriteKey(member.image, ally ? 3 : 7, 3, unitAnimations_[slot].frame);
             auto found = staticSprites_.find(key);
             if (found == staticSprites_.end())
                 continue;
@@ -410,7 +622,7 @@ namespace Client
             CPoint anchor = position(slot);
             int x = anchor.x - 56;
             int y = anchor.y;
-            const std::uint64_t key = (static_cast<std::uint64_t>(member.image) << 16) | (ally ? 3 : 7);
+            const std::uint64_t key = SpriteKey(member.image, ally ? 3 : 7, 3, unitAnimations_[slot].frame);
             if (staticSprites_.find(key) == staticSprites_.end())
             {
                 CRect box(x, y - 58, x + 112, y);
@@ -429,6 +641,7 @@ namespace Client
             if (hp > 0)
                 dc.FillSolidRect(x + 4, y + 20, hp, 4, RGB(80, 200, 100));
         }
+#if 0
         TEXTMETRIC metrics{};
         dc.GetTextMetrics(&metrics);
         const int lineHeight = metrics.tmHeight + 2;
@@ -442,6 +655,13 @@ namespace Client
                 break;
             lines.push_back(text);
         }
+        if (!lines.empty())
+        {
+            CString playback;
+            playback.Format(L"  动画队列=%llu  当前事件=%llu", static_cast<unsigned long long>(playback_.size()),
+                static_cast<unsigned long long>(eventIndex_ + (eventEnd_ != 0 ? 1 : 0)));
+            lines[0] += playback;
+        }
         for (int line = 0; line < lineCount && line < static_cast<int>(lines.size()); ++line)
         {
             std::size_t index = line < 2 ? line :
@@ -454,7 +674,26 @@ namespace Client
             dc.SetTextColor(RGB(220, 240, 170));
             dc.DrawText(lines[index], row, DT_LEFT | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
         }
+#endif
         dc.RestoreDC(saved);
+        paint.BitBlt(0, 0, width, height, &dc, 0, 0, SRCCOPY);
+    }
+
+    BOOL BattleSceneWindow::OnEraseBkgnd(CDC*)
+    {
+        return TRUE;
+    }
+
+    void BattleSceneWindow::OnDestroy()
+    {
+        KillTimer(1);
+        if (previousBitmap_)
+            ::SelectObject(bufferDC_.GetSafeHdc(), previousBitmap_);
+        previousBitmap_ = nullptr;
+        bufferBitmap_.DeleteObject();
+        bufferDC_.DeleteDC();
+        canvas_.clear();
+        CWnd::OnDestroy();
     }
 
     void BattleSceneWindow::OnGetMinMaxInfo(MINMAXINFO* info)
@@ -472,8 +711,15 @@ namespace Client
     {
         dismissed_ = true;
         active_ = false;
+        KillTimer(1);
+        playback_.clear();
+        eventEnd_ = 0;
+        eventIndex_ = 0;
         if (session_)
+        {
+            session_->SkipBattlePlayback();
             session_->SetEncounterEnabled(false);
+        }
         ShowWindow(SW_HIDE);
     }
 

@@ -65,6 +65,9 @@ public:
     const Game::BattleState& GetBattle() const noexcept { return battle_; }
     const Game::BattleResult& GetBattleResult() const noexcept { return battleResult_; }
     const std::vector<std::wstring>& GetBattleDebug() const noexcept { return battleDebug_; }
+    const std::vector<Game::BattlePlayback>& GetBattlePlayback() const noexcept { return battlePlayback_; }
+    void CompleteBattlePlayback(std::uint64_t serial);
+    void SetBattlePlaybackEnabled(bool enabled) { playbackEnabled_ = enabled; if (!enabled) battlePlayback_.clear(); }
     void Disconnect() noexcept;
     bool IsConnected() const noexcept;
 
@@ -77,6 +80,7 @@ private:
     bool PollBattle();
     void FinishBattle();
     void TraceBattle(const wchar_t* direction, const std::string& packet);
+    void ParseBattleActions(const std::vector<std::string>& values);
     bool HandlePositionPacket(const std::vector<std::string>& fields);
     bool HandleServerMessage(const std::vector<std::string>& fields);
     bool HandlePetStateReply(const std::vector<std::string>& fields);
@@ -104,6 +108,9 @@ private:
     Game::BattleState battle_;
     Game::BattleResult battleResult_;
     std::vector<std::wstring> battleDebug_;
+    std::vector<Game::BattlePlayback> battlePlayback_;
+    std::uint64_t playbackSerial_ = 0;
+    bool playbackEnabled_ = true;
     std::vector<PetStatus> pets_ = std::vector<PetStatus>(5);
     std::vector<ItemStatus> items_ = std::vector<ItemStatus>(20);
     std::vector<Game::MagicStatus> magic_ = std::vector<Game::MagicStatus>(5);
