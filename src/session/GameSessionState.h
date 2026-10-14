@@ -29,6 +29,7 @@ namespace Client
         bool createRequested_ = false;
         Game::NewCharacter requestedCreation_;
         int requestedPet_ = -1, requestedPetState_ = 0;
+        int requestedAttribute_ = -1;
         bool storageRequested_ = false;
         Game::PetStorageAction requestedStorageAction_ = Game::PetStorageAction::List;
         int requestedStorageSlot_ = -1;

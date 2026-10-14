@@ -31,6 +31,8 @@ namespace Client
         afx_msg void OnPetStorageRightClick(NMHDR* header, LRESULT* result);
         afx_msg void OnListDoubleClick(NMHDR* header, LRESULT* result);
         afx_msg void OnItemStorageRightClick(NMHDR* header, LRESULT* result);
+        afx_msg void OnDetailDraw(NMHDR* header, LRESULT* result);
+        afx_msg void OnDetailClick(NMHDR* header, LRESULT* result);
         afx_msg void OnPetState();
         afx_msg void OnPetStateClose();
         DECLARE_MESSAGE_MAP()
@@ -38,6 +40,8 @@ namespace Client
     private:
         void Layout();
         void RefreshDetail();
+        bool CanIncreaseAttribute() const;
+        bool AttributeButtonRect(int row, CRect& rect) const;
         void RefreshPets();
         void RefreshItems();
         void RefreshPetStorage(bool visible);

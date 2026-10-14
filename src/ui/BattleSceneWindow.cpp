@@ -323,10 +323,13 @@ namespace Client
             return;
         }
         bool active = view.screen == Screen::Game && view.player.inBattle && !view.quickBattle;
+        CString roundText = L"回合：—";
+        const int round = active ? view.battle.round : battle_.round;
+        if (round >= 0)
+            roundText.Format(L"第%d回合", round);
         CString title;
         title.Format(L"等级 %d HP %d/%d MP %d/%d - [%s]", view.player.level,
-            view.player.hp, view.player.maxHp, view.player.mp, view.player.maxMp,
-            active ? (view.battleResult.message.empty() ? L"自动战斗" : view.battleResult.message.c_str()) : L"战斗结束");
+            view.player.hp, view.player.maxHp, view.player.mp, view.player.maxMp, roundText.GetString());
         if (!active)
         {
             active_ = false;
@@ -340,6 +343,8 @@ namespace Client
             }
             return;
         }
+        if (!view.battle.received)
+            return;
         if (!GetSafeHwnd())
         {
             const DWORD style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_CLIPCHILDREN;
@@ -358,12 +363,12 @@ namespace Client
             unitAnimations_ = {};
             for (auto& unit : unitAnimations_) unit.started = GetTickCount64();
             SetTimer(1, 33, nullptr);
-            if (!dismissed_)
-                ShowWindow(SW_SHOWNOACTIVATE);
         }
         active_ = true;
         ApplyBattleState(view.battle);
         PrepareAnimationFrames();
+        if (!IsWindowVisible())
+            ShowWindow(SW_SHOWNOACTIVATE);
         Invalidate(FALSE);
         SetWindowText(title);
     }
@@ -385,7 +390,7 @@ namespace Client
             bufferDC_.DeleteDC();
             if (!bufferDC_.CreateCompatibleDC(&paint) || !bufferBitmap_.CreateCompatibleBitmap(&paint, width, height))
             {
-                paint.FillSolidRect(area, RGB(220, 220, 220));
+                paint.FillSolidRect(area, RGB(160, 160, 160));
                 return;
             }
             previousBitmap_ = ::SelectObject(bufferDC_.GetSafeHdc(), bufferBitmap_.GetSafeHandle());
@@ -394,7 +399,7 @@ namespace Client
         CDC& dc = bufferDC_;
         auto& canvas = canvas_;
         canvas.resize(static_cast<std::size_t>(width) * height);
-        std::fill(canvas.begin(), canvas.end(), RGBQUAD{ 220, 220, 220, 0 });
+        std::fill(canvas.begin(), canvas.end(), RGBQUAD{ 160, 160, 160, 0 });
         const int playerSide = battle_.playerSlot >= 10 ? 1 : 0;
         const int columns[] = { 0, 1, -1, 2, -2 };
         auto position = [&](int slot)

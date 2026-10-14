@@ -13,6 +13,8 @@ namespace Client
         ON_NOTIFY(TCN_SELCHANGE, Tabs, &RolePage::OnTab)
         ON_NOTIFY(LVN_ITEMCHANGED, List, &RolePage::OnSelect)
         ON_NOTIFY(NM_CLICK, List, &RolePage::OnPetClick)
+        ON_NOTIFY(NM_CUSTOMDRAW, Detail, &RolePage::OnDetailDraw)
+        ON_NOTIFY(NM_CLICK, Detail, &RolePage::OnDetailClick)
         ON_NOTIFY(NM_RCLICK, List, &RolePage::OnListRightClick)
         ON_NOTIFY(NM_RCLICK, PetStorageList, &RolePage::OnPetStorageRightClick)
         ON_NOTIFY(NM_DBLCLK, PetStorageList, &RolePage::OnListDoubleClick)

@@ -12,6 +12,8 @@ namespace Game
         int mp = 0;
         int maxMp = 0;
         int level = 0;
+        int remainingPoints = 0;
+        bool remainingPointsReceived = false;
         int gold = 0;
         int mapId = -1;
         int mapX = -1, mapY = -1;

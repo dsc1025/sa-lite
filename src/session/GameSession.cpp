@@ -29,6 +29,7 @@ namespace Client
                 state_->stop_ = false; state_->done_ = false; state_->requestedCharacter_ = -1;
                 state_->createRequested_ = false;
                 state_->requestedPet_ = -1;
+                state_->requestedAttribute_ = -1;
                 state_->storageRequested_ = false;
                 state_->requestedFood_ = -1;
                 state_->requestedDiscard_ = -1;
@@ -111,6 +112,25 @@ namespace Client
             state_->requestedX_ = x;
             state_->requestedY_ = y;
         }
+    }
+
+    bool GameSession::RequestIncreaseAttribute(int attribute)
+    {
+        {
+            std::lock_guard<std::mutex> lock(state_->mutex_);
+            const auto& player = state_->shared_.player;
+            if (state_->stop_ || state_->done_ || state_->shared_.screen != Screen::Game ||
+                state_->shared_.attributePending || state_->shared_.itemPending || state_->shared_.petStoragePending ||
+                state_->encounterRequested_ || state_->shared_.encounterPending || player.inBattle ||
+                !player.received || !player.remainingPointsReceived || player.remainingPoints <= 0 ||
+                attribute < 0 || attribute >= 4)
+                return false;
+            state_->requestedAttribute_ = attribute;
+            state_->shared_.attributePending = true;
+            state_->shared_.message = L"正在加点…";
+        }
+        ::PostMessage(state_->window_, state_->message_, 0, 0);
+        return true;
     }
 
     bool GameSession::RequestPetState(int slot, int state)
@@ -254,6 +274,7 @@ namespace Client
                 state_->shared_.encounterMessage = L"遇敌未开始";
                 state_->shared_.petStoragePending = false;
                 state_->shared_.itemPending = false;
+                state_->shared_.attributePending = false;
             }
             state_->shared_.message = message;
             state_->shared_.quickBattle = state_->healing_.quickBattle;
@@ -351,7 +372,7 @@ namespace Client
                 std::wstring movementMessage = storageMessage;
                 for (;;)
                 {
-                    int pet, state, pollTimeout, storageSlot, food, foodPet, discard;
+                    int pet, state, pollTimeout, storageSlot, food, foodPet, discard, attribute;
                     bool discardPet;
                     std::uint32_t discardRevision;
                     std::string discardCode;
@@ -369,6 +390,8 @@ namespace Client
                         pollTimeout = state_->encounterRequested_ || client.GetPlayerStatus().inBattle ? Game::BATTLE_DELAY_MS : 100;
                         if (client.GetPlayerStatus().inBattle && !state_->healing_.quickBattle)
                             pollTimeout = 50;
+                        attribute = state_->requestedAttribute_;
+                        state_->requestedAttribute_ = -1;
                         pet = state_->requestedPet_;
                         state = state_->requestedPetState_;
                         discard = state_->requestedDiscard_;
@@ -400,6 +423,26 @@ namespace Client
                             state_->requestedMap_ = -1;
                             movementMessage = L"已连接";
                         }
+                    }
+                    if (attribute >= 0)
+                    {
+                        std::wstring message;
+                        try
+                        {
+                            client.IncreaseAttribute(attribute);
+                            message = L"属性已增加 1 点";
+                        }
+                        catch (const std::exception& error)
+                        {
+                            if (!client.IsConnected()) throw;
+                            message = TextEncoding::ErrorText(error.what());
+                        }
+                        {
+                            std::lock_guard<std::mutex> lock(state_->mutex_);
+                            state_->shared_.attributePending = false;
+                        }
+                        movementMessage = message;
+                        Publish(Screen::Game, message, &client);
                     }
                     if (storage)
                     {

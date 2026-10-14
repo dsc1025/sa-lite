@@ -1,6 +1,7 @@
 #include "../LoginClient.h"
 #include "../protocol/ProtocolCodec.h"
 #include "../protocol/LegacyFields.h"
+#include "BattleTiming.h"
 #include <stdexcept>
 #include <utility>
 
@@ -56,8 +57,43 @@ namespace
     }
 }
 
+void LoginClient::IncreaseAttribute(int attribute)
+{
+    if (!inGame_ || !playerStatus_.received || playerStatus_.inBattle ||
+        IsEncounterEnabled() || IsEncounterStopping() || !playerStatus_.remainingPointsReceived ||
+        playerStatus_.remainingPoints <= 0 || attribute < 0 || attribute >= 4)
+        throw std::runtime_error("当前状态无法加点");
+    int* attributes[] = { &playerStatus_.vital, &playerStatus_.strength,
+        &playerStatus_.toughness, &playerStatus_.dexterity };
+    int before = *attributes[attribute];
+    int points = playerStatus_.remainingPoints;
+    auto deadline = GetTickCount64() + 2000;
+    SendNumbers("64", { attribute }, deadline);
+    while (*attributes[attribute] == before && GetTickCount64() < deadline)
+        PollGame(100);
+    if (*attributes[attribute] <= before)
+    {
+        playerStatus_.remainingPointsReceived = false;
+        throw std::runtime_error("服务器未确认加点，请重新登录确认剩余点数");
+    }
+    if (playerStatus_.remainingPoints == points)
+        --playerStatus_.remainingPoints;
+}
+
 bool LoginClient::HandleGamePacket(const std::vector<std::string>& fields)
 {
+    if (fields[1] == "63")
+    {
+        if (fields.size() != 5)
+            throw std::runtime_error("Invalid skill points reply");
+        auto points = ReadInteger(Decode64(fields[2], sessionKey_, -1), { 2, 4, 1, 3 });
+        auto checksum = ReadInteger(Decode64(fields[3], sessionKey_, -1), { 2, 4, 1, 3 });
+        if (checksum != points)
+            throw std::runtime_error("Invalid skill points checksum");
+        playerStatus_.remainingPoints = static_cast<int>(points);
+        playerStatus_.remainingPointsReceived = true;
+        return true;
+    }
     if (fields[1] == "119")
         return HandleEncounterReply(fields);
     if (fields[1] == "12")
@@ -119,6 +155,8 @@ bool LoginClient::HandlePositionPacket(const std::vector<std::string>& fields)
     else
     {
         bool inBattle = numbers[0] != 0;
+        if (!inBattle && playerStatus_.inBattle)
+            encounter_.nextRequest = GetTickCount64() + Game::BATTLE_DELAY_MS;
         if (!inBattle || !playerStatus_.inBattle)
             battle_ = {};
         if (inBattle && !playerStatus_.inBattle)

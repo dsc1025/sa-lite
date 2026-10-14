@@ -62,7 +62,6 @@ void LoginClient::PollEncounter()
         {
             encounter_.requestPending = false;
             encounter_.requestResult = -1;
-            encounter_.nextRequest = now + Game::BATTLE_DELAY_MS;
         }
         else if (now >= encounter_.requestDeadline)
         {

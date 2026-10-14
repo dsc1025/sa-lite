@@ -28,6 +28,7 @@ namespace Client
         std::vector<Game::MagicStatus> magic;
         bool hasItems = false;
         bool itemPending = false;
+        bool attributePending = false;
         std::vector<Game::ItemStatus> itemStorage;
         bool hasItemStorage = false;
         std::vector<Game::StoredPet> petStorage;
