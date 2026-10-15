@@ -49,7 +49,7 @@ namespace Client
             for (std::size_t offset = 0; offset < bytes.size(); offset += recordSize)
                 readRecord(bytes.data() + offset);
         };
-        loadIndex(L"spradrn_5.bin", 12, [&](const unsigned char* record)
+        loadIndex(L"spradrn_lite.bin", 12, [&](const unsigned char* record)
         {
             std::uint32_t id, offset, metadata;
             std::memcpy(&id, record, 4);
@@ -57,7 +57,7 @@ namespace Client
             std::memcpy(&metadata, record + 8, 4);
             animations_[id] = { offset, metadata & 0xFFFF };
         });
-        loadIndex(L"adrn_15.bin", 80, [&](const unsigned char* record)
+        loadIndex(L"adrn_lite.bin", 80, [&](const unsigned char* record)
         {
             std::uint32_t id;
             PictureIndex picture;
@@ -70,11 +70,11 @@ namespace Client
             std::memcpy(&picture.height, record + 24, 4);
             pictures_[id] = picture;
         });
-        sprites_.open(resourceDirectory_ / L"spr_4.bin", std::ios::binary | std::ios::ate);
-        images_.open(resourceDirectory_ / L"real_15.bin", std::ios::binary | std::ios::ate);
+        sprites_.open(resourceDirectory_ / L"spr_lite.bin", std::ios::binary | std::ios::ate);
+        images_.open(resourceDirectory_ / L"real_lite.bin", std::ios::binary | std::ios::ate);
         spriteSize_ = sprites_ ? static_cast<std::uint64_t>(sprites_.tellg()) : 0;
         imageSize_ = images_ ? static_cast<std::uint64_t>(images_.tellg()) : 0;
-        std::ifstream paletteFile(resourceDirectory_ / L"pal" / L"Palet_1.sap", std::ios::binary | std::ios::ate);
+        std::ifstream paletteFile(resourceDirectory_ / L"Palet_1.sap", std::ios::binary | std::ios::ate);
         std::array<unsigned char, 708> raw{};
         if (paletteFile && paletteFile.tellg() == 708)
         {

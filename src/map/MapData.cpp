@@ -46,7 +46,7 @@ namespace Client
             dat.read(reinterpret_cast<char*>(objects.data()), static_cast<std::streamsize>(cells * 2));
             if (!dat)
                 throw std::runtime_error("物件地图 .DAT 读取失败");
-            auto indexPath = directory.parent_path() / L"adrn_15.bin";
+            auto indexPath = directory.parent_path() / L"adrn_lite.bin";
             auto colourPath = directory.parent_path() / L"auto.dat";
             struct Shape { unsigned char east = 0, south = 0; bool footprint = false; };
             static std::filesystem::path cachedIndexPath, cachedColourPath;
@@ -57,7 +57,7 @@ namespace Client
                 std::ifstream index(indexPath, std::ios::binary | std::ios::ate);
                 std::ifstream colourFile(colourPath, std::ios::binary | std::ios::ate);
                 if (!index || !colourFile)
-                    throw std::runtime_error("建筑轮廓需要 adrn_15.bin 和 auto.dat");
+                    throw std::runtime_error("建筑轮廓需要 adrn_lite.bin 和 auto.dat");
                 auto indexSize = static_cast<std::streamoff>(index.tellg());
                 auto colourSize = static_cast<std::streamoff>(colourFile.tellg());
                 if (indexSize <= 0 || indexSize % 80 != 0 || indexSize > 80000000 || colourSize < 10 + 65536)

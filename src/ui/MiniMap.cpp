@@ -113,10 +113,10 @@ namespace Client
     {
         auto map = LoadMap(directory, id);
         const auto& colours = map.colours;
-        auto palettePath = directory.parent_path() / L"pal" / L"Palet_1.sap";
+        auto palettePath = directory.parent_path() / L"Palet_1.sap";
         std::ifstream paletteFile(palettePath, std::ios::binary | std::ios::ate);
         if (!paletteFile || paletteFile.tellg() != 708)
-            throw std::runtime_error("找不到有效的小地图配色表 data\\pal\\Palet_1.sap");
+            throw std::runtime_error("找不到有效的小地图配色表 data\\Palet_1.sap");
         paletteFile.seekg(0);
         std::array<unsigned char, 708> raw{};
         paletteFile.read(reinterpret_cast<char*>(raw.data()), static_cast<std::streamsize>(raw.size()));
