@@ -1,6 +1,7 @@
 #include "BattleSceneWindow.h"
 #include "UiText.h"
 #include "../map/ResourceDirectory.h"
+#include "../map/MapData.h"
 #include "../session/GameSession.h"
 #include "../session/SessionView.h"
 #include <algorithm>
@@ -260,6 +261,47 @@ namespace Client
         }
     }
 
+    void BattleSceneWindow::PrepareBackground(const SessionView& view)
+    {
+        background_.clear();
+        if (!paletteReady_ || view.player.mapId < 0 || view.player.mapX < 0 || view.player.mapY < 0)
+            return;
+        try
+        {
+            auto map = LoadMap(resourceDirectory_ / L"map", view.player.mapId);
+            if (view.player.mapX >= map.width || view.player.mapY >= map.height)
+                return;
+            CRect area;
+            GetClientRect(&area);
+            const int width = area.Width(), height = area.Height();
+            if (width <= 0 || height <= 0)
+                return;
+            constexpr double cellScale = 24.0;
+            std::vector<RGBQUAD> background(static_cast<std::size_t>(width) * height,
+                RGBQUAD{ 244, 241, 237, 0 });
+            for (int py = 0; py < height; ++py)
+            {
+                double difference = view.player.mapY - view.player.mapX + (py + 0.5 - height / 2) * 2 / cellScale;
+                for (int px = 0; px < width; ++px)
+                {
+                    double sum = view.player.mapX + view.player.mapY + 1 + (px + 0.5 - width / 2) / cellScale;
+                    double x = (sum - difference) / 2;
+                    double y = (sum + difference) / 2;
+                    if (x < 0 || x >= map.width || y < 0 || y >= map.height)
+                        continue;
+                    const auto& colour = palette_[map.colours[static_cast<std::size_t>(static_cast<int>(y)) *
+                        map.width + static_cast<int>(x)]];
+                    background[static_cast<std::size_t>(py) * width + px] =
+                        { colour.rgbBlue, colour.rgbGreen, colour.rgbRed, 0 };
+                }
+            }
+            background_ = std::move(background);
+        }
+        catch (const std::exception&)
+        {
+        }
+    }
+
     void BattleSceneWindow::PrepareAnimationFrames()
     {
         const auto now = GetTickCount64();
@@ -361,6 +403,7 @@ namespace Client
         }
         if (!active_)
         {
+            PrepareBackground(view);
             inspected_.clear();
             unitAnimations_ = {};
             for (auto& unit : unitAnimations_) unit.started = GetTickCount64();
@@ -401,7 +444,10 @@ namespace Client
         CDC& dc = bufferDC_;
         auto& canvas = canvas_;
         canvas.resize(static_cast<std::size_t>(width) * height);
-        std::fill(canvas.begin(), canvas.end(), RGBQUAD{ 160, 160, 160, 0 });
+        if (background_.size() == canvas.size())
+            std::copy(background_.begin(), background_.end(), canvas.begin());
+        else
+            std::fill(canvas.begin(), canvas.end(), RGBQUAD{ 160, 160, 160, 0 });
         const int playerSide = battle_.playerSlot >= 10 ? 1 : 0;
         const int columns[] = { 0, 1, -1, 2, -2 };
         auto position = [&](int slot)
@@ -502,6 +548,7 @@ namespace Client
         bufferBitmap_.DeleteObject();
         bufferDC_.DeleteDC();
         canvas_.clear();
+        background_.clear();
         CWnd::OnDestroy();
     }
 

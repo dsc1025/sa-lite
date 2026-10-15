@@ -33,6 +33,7 @@ namespace Client
     private:
         void InspectImage(std::uint32_t image, int direction, int action = 3, std::uint32_t frame = 0);
         static std::uint64_t SpriteKey(std::uint32_t image, int direction, int action, std::uint32_t frame);
+        void PrepareBackground(const SessionView& view);
         void PrepareAnimationFrames();
         void ApplyBattleState(const Game::BattleState& state);
         struct UnitAnimation
@@ -58,6 +59,7 @@ namespace Client
         HGDIOBJ previousBitmap_ = nullptr;
         CSize bufferSize_{ 0, 0 };
         std::vector<RGBQUAD> canvas_;
+        std::vector<RGBQUAD> background_;
         Game::BattleState battle_;
         GameSession* session_ = nullptr;
         std::array<UnitAnimation, 20> unitAnimations_;
