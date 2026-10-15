@@ -9,7 +9,6 @@ namespace Client
     {
         std::lock_guard<std::mutex> lock(state_->mutex_);
         state_->healing_ = settings;
-        state_->shared_.quickBattle = settings.quickBattle;
     }
 
     void GameSession::SetEncounterEnabled(bool enabled)

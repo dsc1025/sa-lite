@@ -5,6 +5,7 @@
 #include "BattleGroup.h"
 #include "UiText.h"
 #include <algorithm>
+#include <stdexcept>
 
 namespace Client
 {
@@ -14,15 +15,17 @@ namespace Client
         battleTabs_.Create(WS_CHILD | WS_TABSTOP | WS_CLIPSIBLINGS, empty, this, IDC_BATTLE_TABS);
         battleTabs_.InsertItem(0, L"练级");
         battleTabs_.InsertItem(1, L"抓宠");
-        battleStart_.Create(L"开始", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, empty, this, IDC_BATTLE_START);
-        battleStop_.Create(L"停止", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, empty, this, IDC_BATTLE_STOP);
+        battleStart_.Create(L"开始", WS_CHILD | WS_TABSTOP | BS_CHECKBOX | BS_PUSHLIKE, empty, this, IDC_BATTLE_START);
         battleSettings_.Create(L"设置", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, empty, this, IDC_BATTLE_SETTINGS);
+        battleDisplay_.Create(L"显示", WS_CHILD | WS_TABSTOP | BS_CHECKBOX | BS_PUSHLIKE, empty, this, IDC_BATTLE_DISPLAY);
         battleRound_.Create(L"回合：—", WS_CHILD | SS_RIGHT, empty, this);
         const wchar_t* sides[] = { L"上方队员", L"下方队员" };
         for (int i = 0; i < 2; ++i)
             battleSides_[i]->Create(sides[i], WS_CHILD | WS_CLIPSIBLINGS | BS_OWNERDRAW,
                 empty, this, IDC_BATTLE_UPPER + i);
         battleExperience_.Create(L"经验获得：人物 —    宠物 —", WS_CHILD, empty, this);
+        capturePet_.Create(L"选择宠物 ▾", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, empty, this, IDC_CAPTURE_PET);
+        captureDestination_.Create(L"选择宠物和地点后，直接移动到捕捉起点", WS_CHILD, empty, this);
     }
 
     void MainWindow::LayoutBattle(const CRect& mainPage)
@@ -34,9 +37,11 @@ namespace Client
         if (mainTabs_.GetCurSel() == 2)
             developing_.MoveWindow(battlePage);
         int battleWidth = std::max(0, battlePage.Width());
+        capturePet_.MoveWindow(battlePage.left, battlePage.top, 180, 26);
+        captureDestination_.MoveWindow(battlePage.left, battlePage.top + 36, battleWidth, 60);
         battleStart_.MoveWindow(battlePage.left, battlePage.top, 70, 26);
-        battleStop_.MoveWindow(battlePage.left + 78, battlePage.top, 70, 26);
         battleSettings_.MoveWindow(battlePage.left + 156, battlePage.top, 70, 26);
+        battleDisplay_.MoveWindow(battlePage.left + 78, battlePage.top, 70, 26);
         int sideTop = battlePage.top + 34;
         int sideBottom = std::max<LONG>(sideTop + 24, battlePage.bottom - 30);
         int sideWidth = std::max(0, (battleWidth - 12) / 2);
@@ -54,8 +59,14 @@ namespace Client
     {
         bool leveling = visible && battleTabs_.GetCurSel() == 0;
         if (visible)
-            ShowIfChanged(developing_, !leveling);
-        CWnd* battleControls[] = { &battleStart_, &battleStop_, &battleSettings_, &battleRound_,
+            ShowIfChanged(developing_, false);
+        bool capturing = visible && battleTabs_.GetCurSel() == 1;
+        ShowIfChanged(capturePet_, capturing);
+        ShowIfChanged(captureDestination_, capturing);
+        EnableIfChanged(capturePet_, capturing && view_.screen == Screen::Game &&
+            !view_.player.inBattle && !view_.encounterEnabled && !view_.encounterPending &&
+            !view_.petStoragePending && !view_.itemPending);
+        CWnd* battleControls[] = { &battleStart_, &battleSettings_, &battleDisplay_, &battleRound_,
             battleSides_[0].get(), battleSides_[1].get(), &battleExperience_ };
         for (auto control : battleControls)
             ShowIfChanged(*control, leveling);
@@ -79,8 +90,10 @@ namespace Client
         if ((view_.encounterEnabled || view_.encounterPending || view_.player.inBattle) &&
             battleSettingsWindow_->GetSafeHwnd())
             battleSettingsWindow_->ShowWindow(SW_HIDE);
-        EnableIfChanged(battleStart_, leveling && !view_.encounterEnabled && !view_.encounterPending);
-        EnableIfChanged(battleStop_, leveling && (view_.encounterEnabled || view_.encounterPending));
+        EnableIfChanged(battleStart_, leveling && !view_.encounterPending);
+        bool started = view_.encounterEnabled || view_.encounterPending;
+        if ((battleStart_.GetCheck() == BST_CHECKED) != started)
+            battleStart_.SetCheck(started ? BST_CHECKED : BST_UNCHECKED);
         CString experience;
         if (view_.battleResult.received)
             experience.Format(L"经验获得：人物 %u    宠物 %llu",
@@ -88,6 +101,29 @@ namespace Client
         else
             experience = L"经验获得：人物 —    宠物 —";
         SetTextIfChanged(battleExperience_, experience);
+    }
+
+    void MainWindow::OnBattleDisplay()
+    {
+        SetBattleDisplay(!showBattle_);
+    }
+
+    LRESULT MainWindow::OnBattleSceneClosed(WPARAM, LPARAM)
+    {
+        SetBattleDisplay(false);
+        return 0;
+    }
+
+    void MainWindow::SetBattleDisplay(bool show)
+    {
+        showBattle_ = show;
+        battleDisplay_.SetCheck(showBattle_ ? BST_CHECKED : BST_UNCHECKED);
+        battleSceneWindow_->Update(this, view_, showBattle_);
+        if (!WritePrivateProfileStringW(L"Battle", L"ShowBattle", show ? L"1" : L"0", configPath_))
+        {
+            MessageBox(L"无法保存 exe 同目录的 config.ini，请检查目录写入权限。",
+                L"战斗画面", MB_OK | MB_ICONWARNING);
+        }
     }
 
     void MainWindow::OnBattleSettings()
@@ -99,7 +135,11 @@ namespace Client
 
     void MainWindow::OnBattleStart()
     {
-        if (view_.screen == Screen::Game && !view_.encounterEnabled && !view_.encounterPending)
+        if (view_.screen != Screen::Game || view_.encounterPending)
+            return;
+        if (view_.encounterEnabled)
+            session_.SetEncounterEnabled(false);
+        else
         {
             if (battleSettingsWindow_->GetSafeHwnd())
                 battleSettingsWindow_->ShowWindow(SW_HIDE);
@@ -108,9 +148,68 @@ namespace Client
         }
     }
 
-    void MainWindow::OnBattleStop()
+    void MainWindow::OnCapturePet()
     {
-        if (view_.screen == Screen::Game)
-            session_.SetEncounterEnabled(false);
+        if (view_.screen != Screen::Game || mainTabs_.GetCurSel() != 2 || battleTabs_.GetCurSel() != 1 ||
+            view_.player.inBattle || view_.encounterEnabled || view_.encounterPending ||
+            view_.petStoragePending || view_.itemPending)
+            return;
+        if (capturePets_.empty())
+        {
+            try { capturePets_ = LoadPetLv1Index(mapDirectory_); }
+            catch (const std::exception& error)
+            {
+                MessageBox(ErrorText(error.what()), L"一级宠物索引加载失败", MB_OK | MB_ICONWARNING);
+                return;
+            }
+        }
+        CMenu menu;
+        if (!menu.CreatePopupMenu())
+            return;
+        struct Selection
+        {
+            const PetLv1Entry* pet;
+            const PetLv1Location* location;
+        };
+        std::vector<Selection> commands;
+        for (const auto& pet : capturePets_)
+        {
+            CMenu locations;
+            if (!locations.CreatePopupMenu())
+                return;
+            for (const auto& location : pet.locations)
+            {
+                CString label;
+                label.Format(L"%s [%d] (%d,%d ~ %d,%d)", location.mapName.c_str(),
+                    location.mapId, location.x, location.y, location.x2, location.y2);
+                label.Replace(L"&", L"&&");
+                commands.push_back({ &pet, &location });
+                if (!locations.AppendMenu(MF_STRING, static_cast<UINT_PTR>(commands.size()), label))
+                    return;
+            }
+            CString name(pet.name.c_str());
+            name.Replace(L"&", L"&&");
+            if (!menu.AppendMenu(MF_POPUP, reinterpret_cast<UINT_PTR>(locations.GetSafeHmenu()), name))
+                return;
+            locations.Detach();
+        }
+        CRect rect;
+        capturePet_.GetWindowRect(&rect);
+        UINT command = menu.TrackPopupMenu(TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON,
+            rect.left, rect.bottom, this);
+        if (command == 0 || command > commands.size() || view_.screen != Screen::Game ||
+            mainTabs_.GetCurSel() != 2 || battleTabs_.GetCurSel() != 1 ||
+            view_.player.inBattle || view_.encounterEnabled || view_.encounterPending ||
+            view_.petStoragePending || view_.itemPending)
+            return;
+        const auto& selection = commands[command - 1];
+        const auto& location = *selection.location;
+        CString label;
+        label.Format(L"%s ▾", selection.pet->name.c_str());
+        capturePet_.SetWindowText(label);
+        label.Format(L"%s：%s [%d] (%d,%d ~ %d,%d)", selection.pet->name.c_str(),
+            location.mapName.c_str(), location.mapId, location.x, location.y, location.x2, location.y2);
+        captureDestination_.SetWindowText(label);
+        session_.RequestMove(location.mapId, location.x, location.y);
     }
 }

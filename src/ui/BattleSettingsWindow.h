@@ -26,12 +26,12 @@ namespace Client
         CString configPath_;
         bool updating_ = false;
         CFont font_;
-        CButton items_, magic_, quickBattle_;
+        CButton items_, magic_;
         CComboBox skills_;
         CEdit itemHp_, magicHp_;
         CStatic labels_[4];
         GameSession* session_ = nullptr;
-        bool useItems_ = false, useMagic_ = false, quickBattleEnabled_ = true;
+        bool useItems_ = false, useMagic_ = false;
         int itemPercent_ = 80, magicPercent_ = 60, magicSlot_ = -1;
         std::string magicName_;
         std::vector<Game::MagicStatus> currentMagic_;

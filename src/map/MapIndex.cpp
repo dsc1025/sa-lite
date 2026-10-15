@@ -300,4 +300,54 @@ namespace Client
         names = std::move(loadedNames);
         return nodes;
     }
+
+    std::vector<PetLv1Entry> LoadPetLv1Index(const std::filesystem::path& mapDirectory)
+    {
+        auto path = mapDirectory / L"pet_lv1_index.json";
+        std::ifstream input(path, std::ios::binary);
+        if (!input)
+            throw std::runtime_error("无法打开一级宠物索引：" + path.u8string());
+        std::string bytes((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+        if (input.bad() || bytes.empty() || bytes.size() > INT_MAX)
+            throw std::runtime_error("一级宠物索引读取失败或文件长度无效");
+        int count = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, bytes.data(),
+            static_cast<int>(bytes.size()), nullptr, 0);
+        if (count == 0)
+            throw std::runtime_error("一级宠物索引不是有效的 UTF-8 文本");
+        std::wstring text(count, L'\0');
+        MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, bytes.data(),
+            static_cast<int>(bytes.size()), text.data(), count);
+        if (!text.empty() && text.front() == 0xfeff) text.erase(0, 1);
+        MapIndexReader reader(text);
+        std::vector<PetLv1Entry> pets;
+        reader.Array([&]
+        {
+            PetLv1Entry pet;
+            PetLv1Location location;
+            reader.Object([&](const std::wstring& key)
+            {
+                if (key == L"name") pet.name = reader.String();
+                else if (key == L"mapName") location.mapName = reader.String();
+                else if (key == L"mapId") location.mapId = MapNumber(reader.Number());
+                else if (key == L"coordinates")
+                    reader.Object([&](const std::wstring& coordinate)
+                    {
+                        if (coordinate == L"x1") location.x = MapNumber(reader.Number());
+                        else if (coordinate == L"y1") location.y = MapNumber(reader.Number());
+                        else if (coordinate == L"x2") location.x2 = MapNumber(reader.Number());
+                        else if (coordinate == L"y2") location.y2 = MapNumber(reader.Number());
+                        else reader.Skip();
+                    });
+                else reader.Skip();
+            });
+            if (pet.name.empty())
+                throw std::runtime_error("一级宠物索引缺少宠物名称");
+            if (location.mapId < 0 || location.x < 0 || location.y < 0 || location.x2 < 0 || location.y2 < 0)
+                throw std::runtime_error("一级宠物索引缺少地图或范围坐标");
+            pet.locations.push_back(std::move(location));
+            pets.push_back(std::move(pet));
+        });
+        reader.Finish();
+        return pets;
+    }
 }

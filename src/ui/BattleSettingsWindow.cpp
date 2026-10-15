@@ -15,14 +15,12 @@ namespace Client
         ON_CBN_SELCHANGE(4, &BattleSettingsWindow::OnSave)
         ON_EN_CHANGE(5, &BattleSettingsWindow::OnSave)
         ON_EN_CHANGE(6, &BattleSettingsWindow::OnSave)
-        ON_BN_CLICKED(7, &BattleSettingsWindow::OnSave)
     END_MESSAGE_MAP()
 
     void BattleSettingsWindow::LoadSettings(const CString& path, GameSession& session)
     {
         configPath_ = path;
         session_ = &session;
-        quickBattleEnabled_ = GetPrivateProfileIntW(L"Battle", L"QuickBattle", 1, configPath_) != 0;
         useItems_ = GetPrivateProfileIntW(L"Battle", L"UseItems", 0, configPath_) != 0;
         useMagic_ = GetPrivateProfileIntW(L"Battle", L"UseMagic", 0, configPath_) != 0;
         itemPercent_ = static_cast<int>(GetPrivateProfileIntW(L"Battle", L"ItemPercent", 80, configPath_));
@@ -61,7 +59,6 @@ namespace Client
         }
         session_ = &session;
         currentMagic_ = magic;
-        quickBattle_.SetCheck(quickBattleEnabled_ ? BST_CHECKED : BST_UNCHECKED);
         items_.SetCheck(useItems_ ? BST_CHECKED : BST_UNCHECKED);
         magic_.SetCheck(useMagic_ ? BST_CHECKED : BST_UNCHECKED);
         itemHp_.SetWindowText(Number(itemPercent_));
@@ -94,7 +91,6 @@ namespace Client
         font_.CreatePointFont(90, L"Microsoft YaHei UI");
 
         DWORD buttonStyle = WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_AUTOCHECKBOX;
-        quickBattle_.Create(L"快速战斗", buttonStyle, CRect(10, 10, 164, 32), this, 7);
         items_.Create(L"食物补血", buttonStyle, CRect(10, 10, 164, 32), this, 2);
         magic_.Create(L"补血", buttonStyle, CRect(10, 36, 102, 58), this, 3);
         skills_.Create(WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_VSCROLL | CBS_DROPDOWNLIST,
@@ -108,7 +104,7 @@ namespace Client
         labels_[1].Create(L"%", WS_CHILD | WS_VISIBLE, CRect(250, 13, 266, 32), this);
         labels_[2].Create(L"HP<", WS_CHILD | WS_VISIBLE, CRect(286, 39, 318, 58), this);
         labels_[3].Create(L"%", WS_CHILD | WS_VISIBLE, CRect(370, 39, 382, 58), this);
-        CWnd* controls[] = { &items_, &magic_, &quickBattle_, &skills_, &itemHp_, &magicHp_ };
+        CWnd* controls[] = { &items_, &magic_, &skills_, &itemHp_, &magicHp_ };
         for (auto control : controls)
             control->SetFont(&font_);
         for (auto& label : labels_)
@@ -125,7 +121,7 @@ namespace Client
         int contentRight = 0;
         for (int row = 0; row < 2; ++row)
         {
-            int x = margin, y = margin + (row + 1) * (height + gap);
+            int x = margin, y = margin + row * (height + gap);
             CButton& option = row == 0 ? items_ : magic_;
             int width = captionWidth(option) + GetSystemMetrics(SM_CXMENUCHECK) + gap;
             option.MoveWindow(x, y, width, height);
@@ -147,14 +143,12 @@ namespace Client
             percent.MoveWindow(x, y + 3, width, height - 3);
             contentRight = std::max(contentRight, x + width);
         }
-        quickBattle_.MoveWindow(margin, margin,
-            captionWidth(quickBattle_) + GetSystemMetrics(SM_CXMENUCHECK) + gap, height);
         dc.SelectObject(previousFont);
         CRect area, window;
         GetClientRect(&area);
         GetWindowRect(&window);
         SetWindowPos(nullptr, 0, 0, window.Width() + contentRight + margin - area.Width(),
-            window.Height() + margin * 2 + 3 * height + 2 * gap - area.Height(), SWP_NOMOVE | SWP_NOZORDER);
+            window.Height() + margin * 2 + 2 * height + gap - area.Height(), SWP_NOMOVE | SWP_NOZORDER);
         return 0;
     }
 
@@ -187,7 +181,6 @@ namespace Client
         readPercent(magicHp_, magicPercent_);
         int row = skills_.GetCurSel();
         int slot = row > 0 ? static_cast<int>(skills_.GetItemData(row)) : -1;
-        quickBattleEnabled_ = quickBattle_.GetCheck() == BST_CHECKED;
         useItems_ = items_.GetCheck() == BST_CHECKED;
         useMagic_ = magic_.GetCheck() == BST_CHECKED;
         if (slot >= 0 && slot < static_cast<int>(currentMagic_.size()))
@@ -201,12 +194,12 @@ namespace Client
             magicName_.clear();
         }
         ApplySettings();
-        const wchar_t* keys[] = { L"QuickBattle", L"UseItems", L"UseMagic",
+        const wchar_t* keys[] = { L"UseItems", L"UseMagic",
             L"ItemPercent", L"MagicPercent", L"MagicSlot", L"MagicName" };
-        CString values[] = { Number(quickBattleEnabled_ ? 1 : 0), Number(useItems_ ? 1 : 0),
+        CString values[] = { Number(useItems_ ? 1 : 0),
             Number(useMagic_ ? 1 : 0), Number(itemPercent_), Number(magicPercent_),
             Number(magicSlot_), LegacyText(magicName_) };
-        for (int i = 0; i < 7; ++i)
+        for (int i = 0; i < 6; ++i)
         {
             if (!WritePrivateProfileStringW(L"Battle", keys[i], values[i], configPath_))
             {
@@ -220,7 +213,6 @@ namespace Client
     void BattleSettingsWindow::ApplySettings()
     {
         Game::HealingSettings settings;
-        settings.quickBattle = quickBattleEnabled_;
         settings.useItems = useItems_;
         settings.useMagic = useMagic_ && !magicName_.empty();
         settings.itemPercent = itemPercent_;

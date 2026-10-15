@@ -16,6 +16,8 @@ namespace Client
         if (separator < 0)
             throw std::runtime_error("无法获取程序目录，不能读取登录配置");
         configPath_ = executable.Left(separator + 1) + L"config.ini";
+        showBattle_ = GetPrivateProfileIntW(L"Battle", L"ShowBattle", 0, configPath_) != 0;
+        battleDisplay_.SetCheck(showBattle_ ? BST_CHECKED : BST_UNCHECKED);
         battleSettingsWindow_->LoadSettings(configPath_, session_);
         battleSceneWindow_->LoadResources(configPath_);
         wchar_t value[256];

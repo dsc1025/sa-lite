@@ -59,7 +59,7 @@ bool LoginClient::HandleBattlePacket(const std::vector<std::string>& fields)
         return true;
     }
     if (values[0] != "BC")
-        return !healing_.quickBattle;
+        return false;
     // BC carries a field attribute, then thirteen fields per occupied battle slot.
     if (values.size() < 3 || !values.back().empty() || (values.size() - 3) % 13 != 0)
         throw std::runtime_error("Incomplete battle members");
@@ -94,7 +94,7 @@ bool LoginClient::HandleBattlePacket(const std::vector<std::string>& fields)
     updated.received = true;
     updated.commandsPending = true;
     updated.roundReceived = false;
-    updated.nextAction = GetTickCount64() + (healing_.quickBattle ? Game::BATTLE_DELAY_MS : Game::SIMPLE_BATTLE_DELAY_MS);
+    updated.nextAction = GetTickCount64() + Game::BATTLE_DELAY_MS;
     battle_ = updated;
     return true;
 }
@@ -143,7 +143,7 @@ void LoginClient::FinishBattle()
         return;
     battle_.endPending = true;
     battle_.commandsPending = false;
-    battle_.nextAction = GetTickCount64() + (healing_.quickBattle ? Game::BATTLE_DELAY_MS : 0);
+    battle_.nextAction = GetTickCount64() + Game::BATTLE_DELAY_MS;
 }
 
 bool LoginClient::PollBattle()

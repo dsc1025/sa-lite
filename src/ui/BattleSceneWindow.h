@@ -11,7 +11,6 @@
 
 namespace Client
 {
-    class GameSession;
     struct SessionView;
 
     class BattleSceneWindow : public CWnd
@@ -19,7 +18,7 @@ namespace Client
     public:
         void LoadResources(const CString& configPath);
         void PrepareForEncounter();
-        void Update(CWnd* owner, const SessionView& view, GameSession& session);
+        void Update(CWnd* owner, const SessionView& view, bool show);
 
     protected:
         afx_msg void OnPaint();
@@ -61,9 +60,9 @@ namespace Client
         std::vector<RGBQUAD> canvas_;
         std::vector<RGBQUAD> background_;
         Game::BattleState battle_;
-        GameSession* session_ = nullptr;
         std::array<UnitAnimation, 20> unitAnimations_;
-        bool active_ = false, dismissed_ = false;
+        bool active_ = false;
+        HWND ownerWindow_ = nullptr;
         std::filesystem::path resourceDirectory_;
         std::unordered_map<std::uint32_t, std::array<std::uint32_t, 2>> animations_;
         std::unordered_map<std::uint32_t, PictureIndex> pictures_;

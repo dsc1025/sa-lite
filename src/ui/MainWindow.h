@@ -43,11 +43,14 @@ namespace Client
         afx_msg void OnMapPosition();
         afx_msg void OnMapRegion();
         afx_msg void OnBattleStart();
-        afx_msg void OnBattleStop();
         afx_msg void OnBattleSettings();
+        afx_msg void OnBattleDisplay();
+        afx_msg LRESULT OnBattleSceneClosed(WPARAM, LPARAM);
+        afx_msg void OnCapturePet();
         DECLARE_MESSAGE_MAP()
 
     private:
+        void SetBattleDisplay(bool show);
         void CreateBattleControls();
         void LayoutBattle(const CRect& mainPage);
         void RefreshBattle(bool visible);
@@ -75,10 +78,14 @@ namespace Client
         unsigned int selectedCreationRevision_ = 0;
         CTabCtrl mainTabs_, shopTabs_, battleTabs_;
         std::unique_ptr<BattleGroup> battleSides_[2];
-        CButton battleStart_, battleStop_, battleSettings_;
+        CButton battleStart_, battleSettings_, battleDisplay_;
+        bool showBattle_ = false;
         std::unique_ptr<BattleSettingsWindow> battleSettingsWindow_;
         std::unique_ptr<BattleSceneWindow> battleSceneWindow_;
         CStatic battleRound_, battleExperience_;
+        CButton capturePet_;
+        CStatic captureDestination_;
+        std::vector<PetLv1Entry> capturePets_;
         CListCtrl list_;
         SessionView view_;
         GameSession session_;

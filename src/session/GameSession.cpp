@@ -277,7 +277,6 @@ namespace Client
                 state_->shared_.attributePending = false;
             }
             state_->shared_.message = message;
-            state_->shared_.quickBattle = state_->healing_.quickBattle;
             if (client)
             {
                 state_->shared_.player = client->GetPlayerStatus();
@@ -388,8 +387,6 @@ namespace Client
                         std::lock_guard<std::mutex> lock(state_->mutex_);
                         if (state_->stop_) break;
                         pollTimeout = state_->encounterRequested_ || client.GetPlayerStatus().inBattle ? Game::BATTLE_DELAY_MS : 100;
-                        if (client.GetPlayerStatus().inBattle && !state_->healing_.quickBattle)
-                            pollTimeout = 50;
                         attribute = state_->requestedAttribute_;
                         state_->requestedAttribute_ = -1;
                         pet = state_->requestedPet_;

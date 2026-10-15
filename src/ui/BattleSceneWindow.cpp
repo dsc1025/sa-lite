@@ -2,7 +2,7 @@
 #include "UiText.h"
 #include "../map/ResourceDirectory.h"
 #include "../map/MapData.h"
-#include "../session/GameSession.h"
+#include "BattleControlIds.h"
 #include "../session/SessionView.h"
 #include <algorithm>
 #include <cstring>
@@ -347,30 +347,21 @@ namespace Client
     void BattleSceneWindow::OnTimer(UINT_PTR timer)
     {
         if (timer != 1) { CWnd::OnTimer(timer); return; }
-        if (!active_ || dismissed_) return;
+        if (!active_) return;
         PrepareAnimationFrames();
         Invalidate(FALSE);
     }
 
     void BattleSceneWindow::PrepareForEncounter()
     {
-        dismissed_ = false;
         active_ = false;
         unitAnimations_ = {};
     }
 
-    void BattleSceneWindow::Update(CWnd* owner, const SessionView& view, GameSession& session)
+    void BattleSceneWindow::Update(CWnd* owner, const SessionView& view, bool show)
     {
-        session_ = &session;
-        if (view.screen != Screen::Game)
-            dismissed_ = false;
-        if (dismissed_)
-        {
-            if (GetSafeHwnd())
-                ShowWindow(SW_HIDE);
-            return;
-        }
-        bool active = view.screen == Screen::Game && view.player.inBattle && !view.quickBattle;
+        ownerWindow_ = owner->GetSafeHwnd();
+        bool active = view.screen == Screen::Game && view.player.inBattle && show;
         CString roundText = L"回合：—";
         const int round = active ? view.battle.round : battle_.round;
         if (round >= 0)
@@ -383,7 +374,7 @@ namespace Client
             bool wasActive = active_;
             active_ = false;
             if (GetSafeHwnd()) KillTimer(1);
-            if (GetSafeHwnd() && (view.quickBattle || view.screen != Screen::Game))
+            if (GetSafeHwnd() && (!show || view.screen != Screen::Game))
                 ShowWindow(SW_HIDE);
             else if (GetSafeHwnd())
             {
@@ -570,11 +561,10 @@ namespace Client
 
     void BattleSceneWindow::OnClose()
     {
-        dismissed_ = true;
         active_ = false;
         KillTimer(1);
-        if (session_)
-            session_->SetEncounterEnabled(false);
         ShowWindow(SW_HIDE);
+        if (::IsWindow(ownerWindow_))
+            ::SendMessage(ownerWindow_, BattleSceneClosedMessage, 0, 0);
     }
 }

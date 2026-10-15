@@ -1,0 +1,1617 @@
+[
+  {
+    "name": "阿哥亚",
+    "petTemplateId": 61,
+    "mapName": "深红的洞窟地下６楼",
+    "mapId": 30010,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 29,
+      "y2": 49
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 489,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "阿伊萨",
+    "petTemplateId": 86,
+    "mapName": "漆黑的洞窟 地下9楼",
+    "mapId": 32009,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 59,
+      "y2": 59
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 619,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "奥卡洛斯",
+    "petTemplateId": 301,
+    "mapName": "阿斯玛鲁矿山６楼",
+    "mapId": 31806,
+    "coordinates": {
+      "x1": 36,
+      "y1": 36,
+      "x2": 39,
+      "y2": 39
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 363,
+    "priority": 10,
+    "groupCondition": null
+  },
+  {
+    "name": "巴克",
+    "petTemplateId": 182,
+    "mapName": "加鲁卡",
+    "mapId": 200,
+    "coordinates": {
+      "x1": 63,
+      "y1": 1067,
+      "x2": 112,
+      "y2": 1168
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 146,
+    "priority": 50,
+    "groupCondition": null
+  },
+  {
+    "name": "柏克尔",
+    "petTemplateId": 65,
+    "mapName": "梦幻的洞窟",
+    "mapId": 41,
+    "coordinates": {
+      "x1": 36,
+      "y1": 51,
+      "x2": 65,
+      "y2": 63
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 408,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "邦恩多斯",
+    "petTemplateId": 255,
+    "mapName": "五十年前波拉岛",
+    "mapId": 500,
+    "coordinates": {
+      "x1": 614,
+      "y1": 409,
+      "x2": 481,
+      "y2": 621
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 652,
+    "priority": 10,
+    "groupCondition": null
+  },
+  {
+    "name": "邦恩吉",
+    "petTemplateId": 224,
+    "mapName": "加鲁卡",
+    "mapId": 200,
+    "coordinates": {
+      "x1": 151,
+      "y1": 673,
+      "x2": 243,
+      "y2": 749
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 165,
+    "priority": 100,
+    "groupCondition": null
+  },
+  {
+    "name": "邦洛洛克斯",
+    "petTemplateId": 331,
+    "mapName": "萨伊那斯",
+    "mapId": 100,
+    "coordinates": {
+      "x1": 365,
+      "y1": 440,
+      "x2": 416,
+      "y2": 486
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 37,
+    "priority": 60,
+    "groupCondition": null
+  },
+  {
+    "name": "邦浦洛斯",
+    "petTemplateId": 93,
+    "mapName": "吉鲁岛",
+    "mapId": 300,
+    "coordinates": {
+      "x1": 393,
+      "y1": 267,
+      "x2": 406,
+      "y2": 280
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 332,
+    "priority": 20,
+    "groupCondition": null
+  },
+  {
+    "name": "邦奇",
+    "petTemplateId": 241,
+    "mapName": "水苍的洞窟 地下8楼",
+    "mapId": 21308,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 39,
+      "y2": 39
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 595,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "邦奇诺",
+    "petTemplateId": 94,
+    "mapName": "吉鲁岛",
+    "mapId": 300,
+    "coordinates": {
+      "x1": 427,
+      "y1": 100,
+      "x2": 459,
+      "y2": 126
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 315,
+    "priority": 50,
+    "groupCondition": null
+  },
+  {
+    "name": "鲍",
+    "petTemplateId": 183,
+    "mapName": "森林洞窟２楼",
+    "mapId": 20102,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 39,
+      "y2": 69
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 212,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "贝恩达斯",
+    "petTemplateId": 212,
+    "mapName": "萨伊那斯",
+    "mapId": 100,
+    "coordinates": {
+      "x1": 11,
+      "y1": 567,
+      "x2": 155,
+      "y2": 707
+    },
+    "levelMin": 1,
+    "levelMax": 2,
+    "areaId": 28,
+    "priority": 20,
+    "groupCondition": null
+  },
+  {
+    "name": "贝鲁卡",
+    "petTemplateId": 191,
+    "mapName": "加鲁卡",
+    "mapId": 200,
+    "coordinates": {
+      "x1": 419,
+      "y1": 619,
+      "x2": 485,
+      "y2": 644
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 150,
+    "priority": 200,
+    "groupCondition": null
+  },
+  {
+    "name": "贝鲁伊卡",
+    "petTemplateId": 192,
+    "mapName": "加鲁卡",
+    "mapId": 200,
+    "coordinates": {
+      "x1": 346,
+      "y1": 667,
+      "x2": 360,
+      "y2": 743
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 147,
+    "priority": 200,
+    "groupCondition": null
+  },
+  {
+    "name": "贝洛宝克尔",
+    "petTemplateId": 43,
+    "mapName": "阿鲁姆山的洞窟地下７楼",
+    "mapId": 20507,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 60,
+      "y2": 60
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 274,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "贝洛宝利",
+    "petTemplateId": 44,
+    "mapName": "迷幻洞窟",
+    "mapId": 10406,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 49,
+      "y2": 49
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 252,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "贝洛恩",
+    "petTemplateId": 41,
+    "mapName": "往柯尔克的道路１楼",
+    "mapId": 10101,
+    "coordinates": {
+      "x1": 1,
+      "y1": 1,
+      "x2": 49,
+      "y2": 49
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 79,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "贝洛洛克",
+    "petTemplateId": 42,
+    "mapName": "往柯尔克的道路１楼",
+    "mapId": 10101,
+    "coordinates": {
+      "x1": 1,
+      "y1": 1,
+      "x2": 49,
+      "y2": 49
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 79,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "布比",
+    "petTemplateId": 11,
+    "mapName": "萨伊那斯",
+    "mapId": 100,
+    "coordinates": {
+      "x1": 547,
+      "y1": 115,
+      "x2": 699,
+      "y2": 241
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 38,
+    "priority": 100,
+    "groupCondition": null
+  },
+  {
+    "name": "布拉奇多斯",
+    "petTemplateId": 253,
+    "mapName": "沙姆岛",
+    "mapId": 400,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 149,
+      "y2": 148
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 383,
+    "priority": 10,
+    "groupCondition": null
+  },
+  {
+    "name": "布林帖斯",
+    "petTemplateId": 252,
+    "mapName": "漆黑的洞窟 地下18楼",
+    "mapId": 32018,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 59,
+      "y2": 59
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 628,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "布鲁宝",
+    "petTemplateId": 175,
+    "mapName": "迷宫",
+    "mapId": 119,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 199,
+      "y2": 199
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 431,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "布鲁顿",
+    "petTemplateId": 95,
+    "mapName": "吉鲁岛",
+    "mapId": 300,
+    "coordinates": {
+      "x1": 403,
+      "y1": 346,
+      "x2": 418,
+      "y2": 363
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 333,
+    "priority": 20,
+    "groupCondition": null
+  },
+  {
+    "name": "布洛多斯",
+    "petTemplateId": 251,
+    "mapName": "波拉山谷",
+    "mapId": 5507,
+    "coordinates": {
+      "x1": 47,
+      "y1": 20,
+      "x2": 41,
+      "y2": 27
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 658,
+    "priority": 2,
+    "groupCondition": null
+  },
+  {
+    "name": "布伊",
+    "petTemplateId": 13,
+    "mapName": "萨伊那斯",
+    "mapId": 100,
+    "coordinates": {
+      "x1": 547,
+      "y1": 115,
+      "x2": 699,
+      "y2": 241
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 38,
+    "priority": 100,
+    "groupCondition": null
+  },
+  {
+    "name": "布伊比",
+    "petTemplateId": 14,
+    "mapName": "加鲁卡",
+    "mapId": 200,
+    "coordinates": {
+      "x1": 340,
+      "y1": 170,
+      "x2": 410,
+      "y2": 211
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 168,
+    "priority": 3,
+    "groupCondition": null
+  },
+  {
+    "name": "达克尔",
+    "petTemplateId": 64,
+    "mapName": "萨伊那斯",
+    "mapId": 100,
+    "coordinates": {
+      "x1": 180,
+      "y1": 120,
+      "x2": 315,
+      "y2": 200
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 49,
+    "priority": 100,
+    "groupCondition": null
+  },
+  {
+    "name": "多利凯拉",
+    "petTemplateId": 213,
+    "mapName": "萨伊那斯",
+    "mapId": 100,
+    "coordinates": {
+      "x1": 11,
+      "y1": 567,
+      "x2": 155,
+      "y2": 707
+    },
+    "levelMin": 1,
+    "levelMax": 2,
+    "areaId": 28,
+    "priority": 20,
+    "groupCondition": null
+  },
+  {
+    "name": "多利诺布斯",
+    "petTemplateId": 211,
+    "mapName": "加鲁卡",
+    "mapId": 200,
+    "coordinates": {
+      "x1": 384,
+      "y1": 42,
+      "x2": 605,
+      "y2": 238
+    },
+    "levelMin": 1,
+    "levelMax": 2,
+    "areaId": 90,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "多洛加",
+    "petTemplateId": 174,
+    "mapName": "迷幻洞窟",
+    "mapId": 10407,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 49,
+      "y2": 49
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 253,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "多萨金格",
+    "petTemplateId": 73,
+    "mapName": "吉鲁岛",
+    "mapId": 300,
+    "coordinates": {
+      "x1": 367,
+      "y1": 456,
+      "x2": 380,
+      "y2": 469
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 331,
+    "priority": 50,
+    "groupCondition": null
+  },
+  {
+    "name": "朵洛将恩",
+    "petTemplateId": 88,
+    "mapName": "漆黑的洞窟 地下5楼",
+    "mapId": 32005,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 59,
+      "y2": 59
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 615,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "恩摩摩",
+    "petTemplateId": 262,
+    "mapName": "吉鲁采石场５楼",
+    "mapId": 31906,
+    "coordinates": {
+      "x1": 21,
+      "y1": 25,
+      "x2": 29,
+      "y2": 33
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 380,
+    "priority": 10,
+    "groupCondition": null
+  },
+  {
+    "name": "格尔顿",
+    "petTemplateId": 141,
+    "mapName": "吉鲁岛",
+    "mapId": 300,
+    "coordinates": {
+      "x1": 161,
+      "y1": 331,
+      "x2": 191,
+      "y2": 361
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 309,
+    "priority": 5,
+    "groupCondition": null
+  },
+  {
+    "name": "格尔格",
+    "petTemplateId": 144,
+    "mapName": "没落的矿坑４楼",
+    "mapId": 31204,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 59,
+      "y2": 59
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 328,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "格鲁西斯",
+    "petTemplateId": 193,
+    "mapName": "吉鲁岛",
+    "mapId": 300,
+    "coordinates": {
+      "x1": 223,
+      "y1": 348,
+      "x2": 246,
+      "y2": 374
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 308,
+    "priority": 5,
+    "groupCondition": null
+  },
+  {
+    "name": "格洛格鲁",
+    "petTemplateId": 87,
+    "mapName": "漆黑的洞窟 地下11楼",
+    "mapId": 32011,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 59,
+      "y2": 59
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 621,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "龟之盾",
+    "petTemplateId": 51,
+    "mapName": "萨伊那斯",
+    "mapId": 100,
+    "coordinates": {
+      "x1": 541,
+      "y1": 375,
+      "x2": 592,
+      "y2": 554
+    },
+    "levelMin": 1,
+    "levelMax": 2,
+    "areaId": 24,
+    "priority": 20,
+    "groupCondition": null
+  },
+  {
+    "name": "海主人",
+    "petTemplateId": 243,
+    "mapName": "加鲁卡",
+    "mapId": 200,
+    "coordinates": {
+      "x1": 39,
+      "y1": 656,
+      "x2": 150,
+      "y2": 804
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 164,
+    "priority": 100,
+    "groupCondition": null
+  },
+  {
+    "name": "呼拔拔",
+    "petTemplateId": 72,
+    "mapName": "萨伊那斯",
+    "mapId": 100,
+    "coordinates": {
+      "x1": 434,
+      "y1": 115,
+      "x2": 547,
+      "y2": 176
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 47,
+    "priority": 100,
+    "groupCondition": null
+  },
+  {
+    "name": "火鸡",
+    "petTemplateId": 291,
+    "mapName": "萨伊那斯",
+    "mapId": 100,
+    "coordinates": {
+      "x1": 547,
+      "y1": 115,
+      "x2": 699,
+      "y2": 241
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 38,
+    "priority": 100,
+    "groupCondition": null
+  },
+  {
+    "name": "霍尔克",
+    "petTemplateId": 293,
+    "mapName": "加鲁卡",
+    "mapId": 200,
+    "coordinates": {
+      "x1": 602,
+      "y1": 616,
+      "x2": 695,
+      "y2": 722
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 138,
+    "priority": 70,
+    "groupCondition": null
+  },
+  {
+    "name": "加宝格恩",
+    "petTemplateId": 273,
+    "mapName": "地下２楼",
+    "mapId": 30702,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 59,
+      "y2": 59
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 605,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "加比",
+    "petTemplateId": 22,
+    "mapName": "拉多拉的回廊",
+    "mapId": 20301,
+    "coordinates": {
+      "x1": 140,
+      "y1": 10,
+      "x2": 210,
+      "y2": 140
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 210,
+    "priority": 10,
+    "groupCondition": null
+  },
+  {
+    "name": "加比奥",
+    "petTemplateId": 23,
+    "mapName": "拉多拉洞窟３楼",
+    "mapId": 20307,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 99,
+      "y2": 99
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 501,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "加格",
+    "petTemplateId": 223,
+    "mapName": "海底通路地下１楼",
+    "mapId": 10203,
+    "coordinates": {
+      "x1": 6,
+      "y1": 27,
+      "x2": 18,
+      "y2": 36
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 206,
+    "priority": 10,
+    "groupCondition": null
+  },
+  {
+    "name": "加克拉",
+    "petTemplateId": 222,
+    "mapName": "海底通路地下１楼",
+    "mapId": 10201,
+    "coordinates": {
+      "x1": 18,
+      "y1": 27,
+      "x2": 31,
+      "y2": 41
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 207,
+    "priority": 10,
+    "groupCondition": null
+  },
+  {
+    "name": "加美",
+    "petTemplateId": 21,
+    "mapName": "拉多拉的回廊",
+    "mapId": 20301,
+    "coordinates": {
+      "x1": 140,
+      "y1": 10,
+      "x2": 210,
+      "y2": 140
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 210,
+    "priority": 10,
+    "groupCondition": null
+  },
+  {
+    "name": "加斯",
+    "petTemplateId": 24,
+    "mapName": "拉多拉洞窟３楼",
+    "mapId": 20308,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 99,
+      "y2": 99
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 502,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "卡比特",
+    "petTemplateId": 111,
+    "mapName": "萨伊那斯",
+    "mapId": 100,
+    "coordinates": {
+      "x1": 273,
+      "y1": 282,
+      "x2": 353,
+      "y2": 366
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 58,
+    "priority": 50,
+    "groupCondition": null
+  },
+  {
+    "name": "卡达鲁卡斯",
+    "petTemplateId": 81,
+    "mapName": "东柯尔克的坑道１楼",
+    "mapId": 10601,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 49,
+      "y2": 49
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 237,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "卡卡金宝",
+    "petTemplateId": 234,
+    "mapName": "蛙洞地下1楼",
+    "mapId": 30601,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 100,
+      "y2": 100
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 673,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "卡克尔",
+    "petTemplateId": 181,
+    "mapName": "加鲁卡",
+    "mapId": 200,
+    "coordinates": {
+      "x1": 63,
+      "y1": 1067,
+      "x2": 112,
+      "y2": 1168
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 146,
+    "priority": 50,
+    "groupCondition": null
+  },
+  {
+    "name": "卡拉宝斯",
+    "petTemplateId": 172,
+    "mapName": "哥亚山洞窟４楼",
+    "mapId": 20404,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 49,
+      "y2": 49
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 219,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "卡拉卡利",
+    "petTemplateId": 184,
+    "mapName": "森林洞窟４楼",
+    "mapId": 20104,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 39,
+      "y2": 39
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 214,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "卡梅兰恩",
+    "petTemplateId": 53,
+    "mapName": "柯奥山的小洞窟３楼",
+    "mapId": 11003,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 49,
+      "y2": 49
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 234,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "凯比特",
+    "petTemplateId": 114,
+    "mapName": "萨伊那斯",
+    "mapId": 100,
+    "coordinates": {
+      "x1": 433,
+      "y1": 306,
+      "x2": 446,
+      "y2": 315
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 67,
+    "priority": 20,
+    "groupCondition": null
+  },
+  {
+    "name": "柯洛加斯",
+    "petTemplateId": 83,
+    "mapName": "盗贼的洞窟地下４楼",
+    "mapId": 10704,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 49,
+      "y2": 49
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 245,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "柯伊达",
+    "petTemplateId": 82,
+    "mapName": "东柯尔克的坑道２楼",
+    "mapId": 10602,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 49,
+      "y2": 49
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 238,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "可利多洛斯",
+    "petTemplateId": 333,
+    "mapName": "哥亚山洞窟５楼",
+    "mapId": 20405,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 49,
+      "y2": 49
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 220,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "克邦凯斯",
+    "petTemplateId": 221,
+    "mapName": "加鲁卡",
+    "mapId": 200,
+    "coordinates": {
+      "x1": 194,
+      "y1": 551,
+      "x2": 250,
+      "y2": 577
+    },
+    "levelMin": 1,
+    "levelMax": 2,
+    "areaId": 117,
+    "priority": 15,
+    "groupCondition": null
+  },
+  {
+    "name": "克克洛斯",
+    "petTemplateId": 292,
+    "mapName": "加鲁卡",
+    "mapId": 200,
+    "coordinates": {
+      "x1": 602,
+      "y1": 616,
+      "x2": 695,
+      "y2": 722
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 138,
+    "priority": 70,
+    "groupCondition": null
+  },
+  {
+    "name": "克雷尔",
+    "petTemplateId": 101,
+    "mapName": "加鲁卡",
+    "mapId": 200,
+    "coordinates": {
+      "x1": 262,
+      "y1": 565,
+      "x2": 333,
+      "y2": 686
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 95,
+    "priority": 5,
+    "groupCondition": null
+  },
+  {
+    "name": "克洛尔",
+    "petTemplateId": 103,
+    "mapName": "加鲁卡",
+    "mapId": 200,
+    "coordinates": {
+      "x1": 384,
+      "y1": 238,
+      "x2": 516,
+      "y2": 415
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 91,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "昆伊",
+    "petTemplateId": 113,
+    "mapName": "萨伊那斯",
+    "mapId": 100,
+    "coordinates": {
+      "x1": 433,
+      "y1": 306,
+      "x2": 446,
+      "y2": 315
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 67,
+    "priority": 20,
+    "groupCondition": null
+  },
+  {
+    "name": "拉可拉斯",
+    "petTemplateId": 325,
+    "mapName": "漆黑的洞窟 地下19楼",
+    "mapId": 32019,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 59,
+      "y2": 59
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 629,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "拉奇鲁哥",
+    "petTemplateId": 71,
+    "mapName": "吉鲁岛",
+    "mapId": 300,
+    "coordinates": {
+      "x1": 449,
+      "y1": 517,
+      "x2": 466,
+      "y2": 531
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 330,
+    "priority": 50,
+    "groupCondition": null
+  },
+  {
+    "name": "兰贝鲁斯",
+    "petTemplateId": 332,
+    "mapName": "盗贼的洞窟地下２楼",
+    "mapId": 10702,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 49,
+      "y2": 49
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 243,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "里昂蛙",
+    "petTemplateId": 791,
+    "mapName": "天空之岛火之界",
+    "mapId": 30693,
+    "coordinates": {
+      "x1": 1,
+      "y1": 1,
+      "x2": 80,
+      "y2": 80
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 696,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "里斯基",
+    "petTemplateId": 104,
+    "mapName": "加鲁卡",
+    "mapId": 200,
+    "coordinates": {
+      "x1": 262,
+      "y1": 565,
+      "x2": 333,
+      "y2": 686
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 95,
+    "priority": 5,
+    "groupCondition": null
+  },
+  {
+    "name": "利则诺顿",
+    "petTemplateId": 91,
+    "mapName": "琉璃的洞窟１３楼",
+    "mapId": 21013,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 39,
+      "y2": 39
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 447,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "鲁尼帖斯",
+    "petTemplateId": 74,
+    "mapName": "萨伊那斯",
+    "mapId": 100,
+    "coordinates": {
+      "x1": 434,
+      "y1": 115,
+      "x2": 547,
+      "y2": 176
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 47,
+    "priority": 100,
+    "groupCondition": null
+  },
+  {
+    "name": "绿龟",
+    "petTemplateId": 52,
+    "mapName": "萨伊那斯",
+    "mapId": 100,
+    "coordinates": {
+      "x1": 541,
+      "y1": 375,
+      "x2": 592,
+      "y2": 554
+    },
+    "levelMin": 1,
+    "levelMax": 2,
+    "areaId": 24,
+    "priority": 20,
+    "groupCondition": null
+  },
+  {
+    "name": "洛克斯",
+    "petTemplateId": 85,
+    "mapName": "天空之岛水之界",
+    "mapId": 30692,
+    "coordinates": {
+      "x1": 1,
+      "y1": 1,
+      "x2": 80,
+      "y2": 80
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 695,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "洛奇安",
+    "petTemplateId": 84,
+    "mapName": "琉璃的洞窟１３楼",
+    "mapId": 21013,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 39,
+      "y2": 39
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 447,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "玛恩摩",
+    "petTemplateId": 261,
+    "mapName": "吉鲁采石场３楼",
+    "mapId": 31904,
+    "coordinates": {
+      "x1": 18,
+      "y1": 13,
+      "x2": 24,
+      "y2": 20
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 381,
+    "priority": 10,
+    "groupCondition": null
+  },
+  {
+    "name": "玛恩摩洛斯",
+    "petTemplateId": 264,
+    "mapName": "吉鲁岛",
+    "mapId": 300,
+    "coordinates": {
+      "x1": 93,
+      "y1": 121,
+      "x2": 117,
+      "y2": 157
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 379,
+    "priority": 100,
+    "groupCondition": null
+  },
+  {
+    "name": "玛摩那斯",
+    "petTemplateId": 263,
+    "mapName": "吉鲁岛",
+    "mapId": 300,
+    "coordinates": {
+      "x1": 112,
+      "y1": 37,
+      "x2": 162,
+      "y2": 74
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 378,
+    "priority": 100,
+    "groupCondition": null
+  },
+  {
+    "name": "姆伊",
+    "petTemplateId": 242,
+    "mapName": "奇努伊的海底通路",
+    "mapId": 31401,
+    "coordinates": {
+      "x1": 45,
+      "y1": 27,
+      "x2": 52,
+      "y2": 35
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 337,
+    "priority": 10,
+    "groupCondition": null
+  },
+  {
+    "name": "尼可斯",
+    "petTemplateId": 62,
+    "mapName": "加鲁卡",
+    "mapId": 200,
+    "coordinates": {
+      "x1": 251,
+      "y1": 446,
+      "x2": 396,
+      "y2": 499
+    },
+    "levelMin": 1,
+    "levelMax": 2,
+    "areaId": 114,
+    "priority": 5,
+    "groupCondition": null
+  },
+  {
+    "name": "齐尔格尔顿",
+    "petTemplateId": 143,
+    "mapName": "吉鲁岛",
+    "mapId": 300,
+    "coordinates": {
+      "x1": 228,
+      "y1": 58,
+      "x2": 262,
+      "y2": 80
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 473,
+    "priority": 50,
+    "groupCondition": null
+  },
+  {
+    "name": "奇宝",
+    "petTemplateId": 294,
+    "mapName": "萨伊那斯",
+    "mapId": 100,
+    "coordinates": {
+      "x1": 547,
+      "y1": 115,
+      "x2": 699,
+      "y2": 241
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 38,
+    "priority": 100,
+    "groupCondition": null
+  },
+  {
+    "name": "奇卡宝斯",
+    "petTemplateId": 233,
+    "mapName": "阿斯玛鲁矿山６楼",
+    "mapId": 31806,
+    "coordinates": {
+      "x1": 3,
+      "y1": 5,
+      "x2": 7,
+      "y2": 9
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 362,
+    "priority": 10,
+    "groupCondition": null
+  },
+  {
+    "name": "奇拉顿",
+    "petTemplateId": 142,
+    "mapName": "没落的矿坑４楼",
+    "mapId": 31204,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 59,
+      "y2": 59
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 328,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "石龟",
+    "petTemplateId": 54,
+    "mapName": "柯奥山的小洞窟４楼",
+    "mapId": 11004,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 49,
+      "y2": 49
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 235,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "特洛昆",
+    "petTemplateId": 63,
+    "mapName": "萨伊那斯",
+    "mapId": 100,
+    "coordinates": {
+      "x1": 180,
+      "y1": 120,
+      "x2": 315,
+      "y2": 200
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 49,
+    "priority": 100,
+    "groupCondition": null
+  },
+  {
+    "name": "威威",
+    "petTemplateId": 32,
+    "mapName": "加鲁卡",
+    "mapId": 200,
+    "coordinates": {
+      "x1": 550,
+      "y1": 282,
+      "x2": 652,
+      "y2": 403
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 87,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "乌宝宝",
+    "petTemplateId": 31,
+    "mapName": "加鲁卡",
+    "mapId": 200,
+    "coordinates": {
+      "x1": 550,
+      "y1": 282,
+      "x2": 652,
+      "y2": 403
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 87,
+    "priority": 1,
+    "groupCondition": null
+  },
+  {
+    "name": "乌卡鲁",
+    "petTemplateId": 33,
+    "mapName": "加鲁卡",
+    "mapId": 200,
+    "coordinates": {
+      "x1": 251,
+      "y1": 327,
+      "x2": 332,
+      "y2": 446
+    },
+    "levelMin": 1,
+    "levelMax": 2,
+    "areaId": 115,
+    "priority": 5,
+    "groupCondition": null
+  },
+  {
+    "name": "乌力",
+    "petTemplateId": 1,
+    "mapName": "地图名未找到",
+    "mapId": 11304,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 49,
+      "y2": 49
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 637,
+    "priority": 1,
+    "groupCondition": "需物品ID 12636"
+  },
+  {
+    "name": "乌力斯坦",
+    "petTemplateId": 3,
+    "mapName": "地图名未找到",
+    "mapId": 11304,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 49,
+      "y2": 49
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 637,
+    "priority": 1,
+    "groupCondition": "需物品ID 12636"
+  },
+  {
+    "name": "小坦坦",
+    "petTemplateId": 717,
+    "mapName": "地图名未找到",
+    "mapId": 11304,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 49,
+      "y2": 49
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 637,
+    "priority": 1,
+    "groupCondition": "需物品ID 12636"
+  },
+  {
+    "name": "小乌乌",
+    "petTemplateId": 716,
+    "mapName": "地图名未找到",
+    "mapId": 11304,
+    "coordinates": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 49,
+      "y2": 49
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 637,
+    "priority": 1,
+    "groupCondition": "需物品ID 12636"
+  },
+  {
+    "name": "扬奇洛斯",
+    "petTemplateId": 92,
+    "mapName": "吉鲁岛",
+    "mapId": 300,
+    "coordinates": {
+      "x1": 490,
+      "y1": 78,
+      "x2": 529,
+      "y2": 108
+    },
+    "levelMin": 1,
+    "levelMax": 1,
+    "areaId": 314,
+    "priority": 50,
+    "groupCondition": null
+  }
+]
