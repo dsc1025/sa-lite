@@ -278,7 +278,7 @@ namespace Client
                 return;
             constexpr double cellScale = 24.0;
             std::vector<RGBQUAD> background(static_cast<std::size_t>(width) * height,
-                RGBQUAD{ 244, 241, 237, 0 });
+                RGBQUAD{ 64, 64, 64, 0 });
             for (int py = 0; py < height; ++py)
             {
                 double difference = view.player.mapY - view.player.mapX + (py + 0.5 - height / 2) * 2 / cellScale;
@@ -291,8 +291,13 @@ namespace Client
                         continue;
                     const auto& colour = palette_[map.colours[static_cast<std::size_t>(static_cast<int>(y)) *
                         map.width + static_cast<int>(x)]];
+                    double gray = colour.rgbRed * 0.299 + colour.rgbGreen * 0.587 + colour.rgbBlue * 0.114;
+                    auto channel = [gray](BYTE value)
+                    {
+                        return static_cast<BYTE>(value * 0.5 + gray * 0.5);
+                    };
                     background[static_cast<std::size_t>(py) * width + px] =
-                        { colour.rgbBlue, colour.rgbGreen, colour.rgbRed, 0 };
+                        { channel(colour.rgbBlue), channel(colour.rgbGreen), channel(colour.rgbRed), 0 };
                 }
             }
             background_ = std::move(background);
@@ -435,7 +440,7 @@ namespace Client
             bufferDC_.DeleteDC();
             if (!bufferDC_.CreateCompatibleDC(&paint) || !bufferBitmap_.CreateCompatibleBitmap(&paint, width, height))
             {
-                paint.FillSolidRect(area, RGB(160, 160, 160));
+                paint.FillSolidRect(area, RGB(64, 64, 64));
                 return;
             }
             previousBitmap_ = ::SelectObject(bufferDC_.GetSafeHdc(), bufferBitmap_.GetSafeHandle());
@@ -447,7 +452,7 @@ namespace Client
         if (background_.size() == canvas.size())
             std::copy(background_.begin(), background_.end(), canvas.begin());
         else
-            std::fill(canvas.begin(), canvas.end(), RGBQUAD{ 160, 160, 160, 0 });
+            std::fill(canvas.begin(), canvas.end(), RGBQUAD{ 64, 64, 64, 0 });
         const int playerSide = battle_.playerSlot >= 10 ? 1 : 0;
         const int columns[] = { 0, 1, -1, 2, -2 };
         auto position = [&](int slot)
