@@ -6,11 +6,20 @@ namespace Client
 {
     void BattleGroup::Update(const Game::BattleState& battle, int offset, bool received)
     {
+        bool changed = offset_ != offset || received_ != received;
         for (int i = 0; i < 10; ++i)
+        {
+            const auto& old = members_[i];
+            const auto& next = battle.members[offset + i];
+            changed = changed || old.present != next.present || old.name != next.name ||
+                old.level != next.level || old.hp != next.hp || old.maxHp != next.maxHp ||
+                old.rideName != next.rideName || old.rideLevel != next.rideLevel ||
+                old.rideHp != next.rideHp || old.rideMaxHp != next.rideMaxHp;
             members_[i] = battle.members[offset + i];
+        }
         offset_ = offset;
         received_ = received;
-        Invalidate(FALSE);
+        if (changed) Invalidate(FALSE);
     }
 
     void BattleGroup::DrawItem(LPDRAWITEMSTRUCT item)

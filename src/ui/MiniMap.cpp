@@ -24,6 +24,7 @@ namespace Client
 
     void MiniMap::Update(const std::filesystem::path& directory, int id, int x, int y)
     {
+        if (id == id_ && directory == directory_ && x == x_ && y == y_) return;
         x_ = x;
         y_ = y;
         if (id != id_ || directory != directory_)

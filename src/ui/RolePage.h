@@ -59,5 +59,9 @@ namespace Client
         CComboBox petState_;
         int editingPet_ = -1;
         bool refreshing_ = false;
+        int displayedTab_ = -1;
+        int detailRow_ = 0;
+        bool attributesEnabled_ = false;
+        bool attributesVisible_ = false;
     };
 }

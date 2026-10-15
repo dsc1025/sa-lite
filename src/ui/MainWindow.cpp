@@ -350,7 +350,6 @@ namespace Client
             view_.message = L"正在退出并返回账号登录…";
         }
         Refresh();
-        createCharacterWindow_->Update(view_);
         if (view_.screen == Screen::Login) creationOffered_ = false;
         if (view_.screen == Screen::Characters && firstCharacters)
         {

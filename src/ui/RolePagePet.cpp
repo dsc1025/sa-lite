@@ -156,35 +156,34 @@ namespace Client
 
     void RolePage::RefreshPets()
     {
+        ListUpdate rows(list_);
         for (std::size_t i = 0; i < view_.pets.size(); ++i)
         {
             const auto& pet = view_.pets[i];
             CString name = pet.present ? LegacyText(pet.nickname.empty() ? pet.name : pet.nickname) : CString(L"空栏位");
             if (!pet.received) name = L"等待数据…";
-            int row = list_.InsertItem(static_cast<int>(i), name);
-            list_.SetItemText(row, 1, pet.present ? Number(pet.level) : CString());
+            int row = rows.Add(i, name);
+            SetCellIfChanged(list_, row, 1, pet.present ? Number(pet.level) : CString());
             CString state;
             if (pet.received && pet.present)
             {
                 int index = PetStateIndex(view_.player, static_cast<int>(i));
                 state = PetStateNames[index];
             }
-            list_.SetItemText(row, 2, state);
-            list_.SetItemData(row, i);
+            SetCellIfChanged(list_, row, 2, state);
         }
     }
 
     void RolePage::RefreshPetStorage(bool pets)
     {
-        int storageSelection = petStorage_.GetNextItem(-1, LVNI_SELECTED);
-        DWORD_PTR storageSlot = storageSelection >= 0 ? petStorage_.GetItemData(storageSelection) : 0;
-        petStorage_.DeleteAllItems();
+        if (!pets) return;
+        ListUpdate rows(petStorage_);
         if (pets)
         {
             if (!view_.hasPetStorage)
             {
-                int row = petStorage_.InsertItem(0, view_.petStoragePending ? L"正在加载…" : L"未加载，右键刷新");
-                petStorage_.SetItemData(row, static_cast<DWORD_PTR>(-1));
+                int row = rows.Add(static_cast<DWORD_PTR>(-1), view_.petStoragePending ? L"正在加载…" : L"未加载，右键刷新");
+                SetCellIfChanged(petStorage_, row, 1, CString());
             }
             else
             {
@@ -194,11 +193,8 @@ namespace Client
                     CString name;
                     name.Format(L"%d · ", static_cast<int>(i + 1));
                     name += pet.present ? LegacyText(pet.nickname.empty() ? pet.name : pet.nickname) : CString(L"空栏位");
-                    int row = petStorage_.InsertItem(static_cast<int>(i), name);
-                    petStorage_.SetItemText(row, 1, pet.present ? Number(pet.level) : CString());
-                    petStorage_.SetItemData(row, i);
-                    if (i == storageSlot)
-                        petStorage_.SetItemState(row, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+                    int row = rows.Add(i, name);
+                    SetCellIfChanged(petStorage_, row, 1, pet.present ? Number(pet.level) : CString());
                 }
             }
         }

@@ -70,18 +70,29 @@ namespace Client
 
     void RolePage::AddRow(const wchar_t* name, const CString& value)
     {
-        int row = detail_.InsertItem(detail_.GetItemCount(), name);
-        detail_.SetItemText(row, 1, value);
+        int row = detailRow_++;
+        if (row >= detail_.GetItemCount()) detail_.InsertItem(row, name);
+        else SetCellIfChanged(detail_, row, 0, name);
+        SetCellIfChanged(detail_, row, 1, value);
     }
 
     void RolePage::RefreshDetail()
     {
-        detail_.DeleteAllItems();
         if (!IsWindowVisible() || tabs_.GetCurSel() != 0) return;
+        detailRow_ = 0;
+        bool enabled = CanIncreaseAttribute();
+        bool visible = view_.player.remainingPointsReceived && view_.player.remainingPoints > 0;
+        if (attributesEnabled_ != enabled || attributesVisible_ != visible)
+        {
+            attributesEnabled_ = enabled;
+            attributesVisible_ = visible;
+            detail_.RedrawItems(3, 6);
+        }
         const auto& p = view_.player;
         if (!p.received)
         {
             AddRow(L"状态", L"正在等待人物数据…");
+            while (detail_.GetItemCount() > detailRow_) detail_.DeleteItem(detailRow_);
             return;
         }
         AddRow(L"等级 / 转生", Ratio(p.level, p.rebirth));
@@ -97,5 +108,6 @@ namespace Client
         elements.Format(L"地 %d   水 %d   火 %d   风 %d", p.earth, p.water, p.fire, p.wind);
         AddRow(L"元素", elements); AddRow(L"经验 / 下级经验", Ratio(p.experience, p.nextExperience));
         AddRow(L"金币", Number(p.gold)); AddRow(L"决斗积分", Number(p.duelPoints));
+        while (detail_.GetItemCount() > detailRow_) detail_.DeleteItem(detailRow_);
     }
 }

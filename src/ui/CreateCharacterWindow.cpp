@@ -114,7 +114,7 @@ namespace Client
 
     void CreateCharacterWindow::Update(const SessionView& view)
     {
-        if (!GetSafeHwnd()) return;
+        if (!GetSafeHwnd() || (!IsWindowVisible() && !pending_)) return;
         bool completed = pending_ && view.createRevision != revision_;
         revision_ = view.createRevision;
         if (completed || view.screen != Screen::Characters)

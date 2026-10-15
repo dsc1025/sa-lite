@@ -133,16 +133,28 @@ namespace Client
 
     void RolePage::Refresh()
     {
+        if (view_.screen != Screen::Game || !IsWindowVisible())
+        {
+            CloseEditor();
+            return;
+        }
+        bool layoutChanged = displayedTab_ != tabs_.GetCurSel();
+        displayedTab_ = tabs_.GetCurSel();
+        if (layoutChanged)
+        {
+            CloseEditor();
+            list_.DeleteAllItems();
+        }
         refreshing_ = true;
         bool game = view_.screen == Screen::Game;
         bool role = game && IsWindowVisible();
         bool pets = role && tabs_.GetCurSel() == 1;
         bool items = role && tabs_.GetCurSel() == 2;
-        tabs_.ShowWindow(role ? SW_SHOW : SW_HIDE);
-        list_.ShowWindow(pets || items ? SW_SHOW : SW_HIDE);
-        detail_.ShowWindow(role && tabs_.GetCurSel() == 0 ? SW_SHOW : SW_HIDE);
-        petStorage_.ShowWindow(pets ? SW_SHOW : SW_HIDE);
-        itemStorage_.ShowWindow(items ? SW_SHOW : SW_HIDE);
+        ShowIfChanged(tabs_, role);
+        ShowIfChanged(list_, pets || items);
+        ShowIfChanged(detail_, role && tabs_.GetCurSel() == 0);
+        ShowIfChanged(petStorage_, pets);
+        ShowIfChanged(itemStorage_, items);
         bool petColumns = role && tabs_.GetCurSel() == 1;
         int columns = list_.GetHeaderCtrl()->GetItemCount();
         if (petColumns && columns == 2)
@@ -153,10 +165,7 @@ namespace Client
         column.mask = LVCF_TEXT | LVCF_FMT;
         column.pszText = const_cast<wchar_t*>(items ? L"分类" : L"等级");
         column.fmt = items ? LVCFMT_LEFT : LVCFMT_RIGHT;
-        list_.SetColumn(1, &column);
-        int previous = list_.GetNextItem(-1, LVNI_SELECTED);
-        DWORD_PTR previousSlot = previous >= 0 ? list_.GetItemData(previous) : 0;
-        list_.DeleteAllItems();
+        if (layoutChanged) list_.SetColumn(1, &column);
         if (role && tabs_.GetCurSel() == 1)
         {
             RefreshPets();
@@ -165,21 +174,20 @@ namespace Client
         {
             RefreshItems();
         }
-        int selection = 0;
-        for (int i = 0; i < list_.GetItemCount(); ++i)
-            if (list_.GetItemData(i) == previousSlot) selection = i;
-        if (list_.GetItemCount())
-            list_.SetItemState(selection, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+        if (list_.GetItemCount() && list_.GetNextItem(-1, LVNI_SELECTED) < 0)
+            list_.SetItemState(0, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+        if (editingPet_ >= 0 && (editingPet_ >= static_cast<int>(view_.pets.size()) ||
+            !view_.pets[editingPet_].present || view_.itemPending || view_.petStoragePending))
+            CloseEditor();
         RefreshItemStorage(items);
         RefreshPetStorage(pets);
         if (game) RefreshDetail();
         refreshing_ = false;
-        Layout();
+        if (layoutChanged) Layout();
     }
 
     void RolePage::OnTab(NMHDR*, LRESULT* result)
     {
-        list_.DeleteAllItems();
         Refresh();
         Activate();
         *result = 0;

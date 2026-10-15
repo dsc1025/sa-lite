@@ -85,5 +85,7 @@ namespace Client
         std::unique_ptr<RolePage> rolePage_;
         bool closeWindow_ = false;
         bool expanded_ = false;
+        int displayedScreen_ = -1;
+        int displayedTab_ = -1;
     };
 }

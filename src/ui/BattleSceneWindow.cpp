@@ -333,14 +333,15 @@ namespace Client
             view.player.hp, view.player.maxHp, view.player.mp, view.player.maxMp, roundText.GetString());
         if (!active)
         {
+            bool wasActive = active_;
             active_ = false;
             if (GetSafeHwnd()) KillTimer(1);
             if (GetSafeHwnd() && (view.quickBattle || view.screen != Screen::Game))
                 ShowWindow(SW_HIDE);
             else if (GetSafeHwnd())
             {
-                SetWindowText(title);
-                Invalidate(FALSE);
+                SetTextIfChanged(*this, title);
+                if (wasActive) Invalidate(FALSE);
             }
             return;
         }
@@ -371,7 +372,7 @@ namespace Client
         if (!IsWindowVisible())
             ShowWindow(SW_SHOWNOACTIVATE);
         Invalidate(FALSE);
-        SetWindowText(title);
+        SetTextIfChanged(*this, title);
     }
 
     void BattleSceneWindow::OnPaint()

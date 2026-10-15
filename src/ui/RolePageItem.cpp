@@ -68,6 +68,7 @@ namespace Client
 
     void RolePage::RefreshItems()
     {
+        ListUpdate rows(list_);
         const wchar_t* equipment[] = { L"头部", L"身体", L"武器", L"饰品1", L"饰品2" };
         for (std::size_t i = 0; i < view_.items.size(); ++i)
         {
@@ -76,35 +77,32 @@ namespace Client
             if (i < 5) name = equipment[i];
             else name.Format(L"背包 %d", static_cast<int>(i - 4));
             name += L" · "; name += LegacyText(view_.items[i].name);
-            int row = list_.InsertItem(list_.GetItemCount(), name);
-            list_.SetItemText(row, 1, view_.items[i].type == 20 ? L"食物" : L"未分类");
-            list_.SetItemData(row, i);
+            int row = rows.Add(i, name);
+            SetCellIfChanged(list_, row, 1, view_.items[i].type == 20 ? L"食物" : L"未分类");
         }
     }
 
     void RolePage::RefreshItemStorage(bool items)
     {
-        int previousStorage = itemStorage_.GetNextItem(-1, LVNI_SELECTED);
-        DWORD_PTR previousStorageSlot = previousStorage >= 0 ? itemStorage_.GetItemData(previousStorage) : 0;
-        itemStorage_.DeleteAllItems();
+        if (!items) return;
+        ListUpdate rows(itemStorage_);
+        bool any = false;
         if (items && view_.hasItemStorage)
         {
             for (std::size_t i = 0; i < view_.itemStorage.size(); ++i)
             {
                 const auto& item = view_.itemStorage[i];
                 if (!item.present) continue;
-                int row = itemStorage_.InsertItem(itemStorage_.GetItemCount(), LegacyText(item.name));
-                itemStorage_.SetItemText(row, 1, item.type == 20 ? L"食物" : L"未分类");
-                itemStorage_.SetItemData(row, i);
-                if (i == previousStorageSlot)
-                    itemStorage_.SetItemState(row, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+                int row = rows.Add(i, LegacyText(item.name));
+                SetCellIfChanged(itemStorage_, row, 1, item.type == 20 ? L"食物" : L"未分类");
+                any = true;
             }
         }
-        if (items && !itemStorage_.GetItemCount())
+        if (!any)
         {
-            int row = itemStorage_.InsertItem(0, view_.hasItemStorage ? L"仓库为空" :
+            int row = rows.Add(static_cast<DWORD_PTR>(-1), view_.hasItemStorage ? L"仓库为空" :
                 view_.itemPending ? L"正在加载…" : L"未加载，右键刷新");
-            itemStorage_.SetItemData(row, static_cast<DWORD_PTR>(-1));
+            SetCellIfChanged(itemStorage_, row, 1, CString());
         }
     }
 }

@@ -10,6 +10,10 @@ namespace Client
 {
     void MainWindow::Refresh()
     {
+        bool layoutChanged = displayedScreen_ != static_cast<int>(view_.screen) ||
+            displayedTab_ != mainTabs_.GetCurSel();
+        displayedScreen_ = static_cast<int>(view_.screen);
+        displayedTab_ = mainTabs_.GetCurSel();
         createCharacterWindow_->Update(view_);
         bool login = view_.screen == Screen::Login || view_.screen == Screen::Connecting;
         bool characters = view_.screen == Screen::Characters || view_.screen == Screen::Entering;
@@ -27,45 +31,45 @@ namespace Client
             CenterWindow();
         }
         for (auto& label : labels_)
-            label.ShowWindow(login ? SW_SHOW : SW_HIDE);
+            ShowIfChanged(label, login);
         CEdit* edits[] = { &address_, &port_, &account_, &password_ };
         for (auto edit : edits)
         {
-            edit->ShowWindow(login ? SW_SHOW : SW_HIDE);
-            edit->EnableWindow(view_.screen == Screen::Login);
+            ShowIfChanged(*edit, login);
+            EnableIfChanged(*edit, view_.screen == Screen::Login);
         }
-        login_.ShowWindow(login ? SW_SHOW : SW_HIDE);
-        login_.EnableWindow(view_.screen == Screen::Login);
-        enter_.ShowWindow(characters ? SW_SHOW : SW_HIDE);
-        enter_.EnableWindow(view_.screen == Screen::Characters && !view_.characters.empty() && !view_.createPending);
-        createCharacter_.ShowWindow(characters ? SW_SHOW : SW_HIDE);
-        createCharacter_.EnableWindow(view_.screen == Screen::Characters && view_.characters.size() < 2 && !view_.createPending);
+        ShowIfChanged(login_, login);
+        EnableIfChanged(login_, view_.screen == Screen::Login);
+        ShowIfChanged(enter_, characters);
+        EnableIfChanged(enter_, view_.screen == Screen::Characters && !view_.characters.empty() && !view_.createPending);
+        ShowIfChanged(createCharacter_, characters);
+        EnableIfChanged(createCharacter_, view_.screen == Screen::Characters && view_.characters.size() < 2 && !view_.createPending);
         bool role = game && mainTabs_.GetCurSel() == 0;
-        mainTabs_.ShowWindow(game ? SW_SHOW : SW_HIDE);
+        ShowIfChanged(mainTabs_, game);
         bool mapPage = game && mainTabs_.GetCurSel() == 1;
         bool battle = game && mainTabs_.GetCurSel() == 2;
         bool shop = game && mainTabs_.GetCurSel() == 3;
-        developing_.ShowWindow(game && !role && !mapPage && !battle ? SW_SHOW : SW_HIDE);
+        ShowIfChanged(developing_, game && !role && !mapPage && (!battle || battleTabs_.GetCurSel() != 0));
         RefreshBattle(battle);
         battleSceneWindow_->Update(this, view_, session_);
         if (!game && battleSettingsWindow_->GetSafeHwnd())
             battleSettingsWindow_->ShowWindow(SW_HIDE);
-        miniMap_->ShowWindow(mapPage ? SW_SHOW : SW_HIDE);
-        mapPosition_.ShowWindow(mapPage ? SW_SHOW : SW_HIDE);
-        mapRegion_.ShowWindow(mapPage ? SW_SHOW : SW_HIDE);
+        ShowIfChanged(*miniMap_, mapPage);
+        ShowIfChanged(mapPosition_, mapPage);
+        ShowIfChanged(mapRegion_, mapPage);
         if (mapPage)
         {
             miniMap_->Update(mapDirectory_, view_.player.mapId, view_.player.mapX, view_.player.mapY);
         }
-        rolePage_->ShowWindow(role ? SW_SHOW : SW_HIDE);
+        ShowIfChanged(*rolePage_, role);
         rolePage_->Refresh();
-        shopTabs_.ShowWindow(shop ? SW_SHOW : SW_HIDE);
-        list_.ShowWindow(characters ? SW_SHOW : SW_HIDE);
-        exit_.EnableWindow(view_.screen != Screen::Closing);
-        exit_.SetWindowText(game ? L"退出登录" : L"退出");
-        SetWindowText(login ? L"登录" : characters ? L"选择角色" : L"SA25_#1");
-        summary_.ShowWindow(login ? SW_HIDE : SW_SHOW);
-        footer_.SetWindowText(view_.message.c_str());
+        ShowIfChanged(shopTabs_, shop);
+        ShowIfChanged(list_, characters);
+        EnableIfChanged(exit_, view_.screen != Screen::Closing);
+        SetTextIfChanged(exit_, game ? L"退出登录" : L"退出");
+        SetTextIfChanged(*this, login ? L"登录" : characters ? L"选择角色" : L"SA25_#1");
+        ShowIfChanged(summary_, !login);
+        SetTextIfChanged(footer_, view_.message.c_str());
         CString summary = game ? CString(view_.characterName.c_str()) : CString();
         if (game && view_.player.received)
         {
@@ -87,28 +91,23 @@ namespace Client
                 summary += position;
             }
         }
-        summary_.SetWindowText(characters ? CString(view_.characters.empty() ? L"暂无角色，请创建角色" : L"选择角色后进入游戏") : summary);
-        int previous = list_.GetNextItem(-1, LVNI_SELECTED);
-        DWORD_PTR previousSlot = previous >= 0 ? list_.GetItemData(previous) : 0;
-        list_.DeleteAllItems();
+        SetTextIfChanged(summary_, characters ? CString(view_.characters.empty() ? L"暂无角色，请创建角色" : L"选择角色后进入游戏") : summary);
         if (characters)
         {
+            ListUpdate rows(list_);
             for (std::size_t i = 0; i < view_.characters.size(); ++i)
             {
-                int row = list_.InsertItem(static_cast<int>(i), LegacyText(view_.characters[i].name));
-                list_.SetItemText(row, 1, Number(view_.characters[i].level));
-                list_.SetItemData(row, i);
+                int row = rows.Add(i, LegacyText(view_.characters[i].name));
+                SetCellIfChanged(list_, row, 1, Number(view_.characters[i].level));
             }
         }
-        int selection = 0;
-        for (int i = 0; i < list_.GetItemCount(); ++i)
-            if (list_.GetItemData(i) == previousSlot) selection = i;
+        int selection = list_.GetNextItem(-1, LVNI_SELECTED);
         if (!view_.createdCharacter.empty() && selectedCreationRevision_ != view_.createRevision)
             for (std::size_t i = 0; i < view_.characters.size(); ++i)
                 if (view_.characters[i].name == view_.createdCharacter) selection = static_cast<int>(i);
         selectedCreationRevision_ = view_.createRevision;
-        if (list_.GetItemCount())
-            list_.SetItemState(selection, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
-        Layout();
+        if (characters && list_.GetItemCount() && (selection < 0 || selection != list_.GetNextItem(-1, LVNI_SELECTED)))
+            list_.SetItemState(selection < 0 ? 0 : selection, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+        if (layoutChanged) Layout();
     }
 }
