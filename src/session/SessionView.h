@@ -6,6 +6,7 @@
 #include "../game/ItemTypes.h"
 #include "../game/MagicStatus.h"
 #include "../game/Battle.h"
+#include "../game/BattleSettings.h"
 #include <string>
 #include <vector>
 
@@ -22,6 +23,7 @@ namespace Client
         Game::PlayerStatus player;
         Game::BattleState battle;
         Game::BattleResult battleResult;
+        Game::CaptureStatistics captureStatistics;
         std::vector<Game::PetStatus> pets;
         std::vector<Game::ItemStatus> items;
         std::vector<Game::MagicStatus> magic;

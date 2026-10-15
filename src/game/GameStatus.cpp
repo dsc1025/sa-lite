@@ -344,6 +344,7 @@ bool LoginClient::ApplyPetStatus(const std::vector<std::string>& values)
     {
         pets_[slot] = {};
         pets_[slot].received = true;
+        captureNames_[slot] = {};
         return true;
     }
     auto pet = values[1] == "1" ? PetStatus{} : pets_[slot];
@@ -363,6 +364,19 @@ bool LoginClient::ApplyPetStatus(const std::vector<std::string>& values)
     pet.present = true;
     if (full)
         pet.received = true;
+    auto& captureName = captureNames_[slot];
+    if (full && captureName.expected && !pets_[slot].present && pet.level == 1)
+    {
+        ++captureStatistics_.capturedLevelOne;
+        captureName.uniqueCode = pet.uniqueCode;
+        captureName.nickname = std::to_string(pet.maxHp) + "/" + std::to_string(pet.attack) + "/" +
+            std::to_string(pet.defence) + "/" + std::to_string(pet.quick) + "/" + std::to_string(pet.perception);
+        captureName.expected = false;
+        const int attributes[] = { pet.maxHp, pet.attack, pet.defence, pet.quick, pet.perception };
+        for (std::size_t i = 0; i < capture_.minimums.size(); ++i)
+            if (capture_.minimums[i] >= 0 && attributes[i] < capture_.minimums[i])
+                captureName.discard = true;
+    }
     pets_[slot] = pet;
     return true;
 }

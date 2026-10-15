@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 #include <windows.h>
 #include <cstdint>
 #include <memory>
@@ -45,8 +47,9 @@ namespace Client
         bool RequestFood(int slot, std::uint32_t revision, int petSlot);
         bool RequestItemStorage(Game::ItemStorageAction action, int slot = -1,
             std::uint32_t revision = 0, const std::string& uniqueCode = {});
-        void SetEncounterEnabled(bool enabled, bool capture = false);
+        void SetEncounterEnabled(bool enabled, bool capture = false, int sourceInstanceId = -1);
         void SetCaptureSettings(const Game::CaptureSettings& settings);
+        void SetCaptureMinimums(const std::array<int, 5>& minimums);
         void SetHealingSettings(const Game::HealingSettings& settings);
 
     private:

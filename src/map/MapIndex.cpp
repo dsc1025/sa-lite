@@ -327,6 +327,7 @@ namespace Client
             reader.Object([&](const std::wstring& key)
             {
                 if (key == L"name") pet.name = reader.String();
+                else if (key == L"enemyId") pet.sourceInstanceId = MapNumber(reader.Number());
                 else if (key == L"mapName") location.mapName = reader.String();
                 else if (key == L"mapId") location.mapId = MapNumber(reader.Number());
                 else if (key == L"coordinates")
@@ -342,6 +343,8 @@ namespace Client
             });
             if (pet.name.empty())
                 throw std::runtime_error("一级宠物索引缺少宠物名称");
+            if (pet.sourceInstanceId < 0)
+                throw std::runtime_error("一级宠物索引缺少实例模板 ID");
             if (location.mapId < 0 || location.x < 0 || location.y < 0 || location.x2 < 0 || location.y2 < 0)
                 throw std::runtime_error("一级宠物索引缺少地图或范围坐标");
             pet.locations.push_back(std::move(location));

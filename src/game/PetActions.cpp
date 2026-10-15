@@ -6,6 +6,90 @@
 
 using namespace Protocol;
 
+bool LoginClient::IsCaptureFull() const noexcept
+{
+    return std::all_of(pets_.begin(), pets_.end(),
+        [](const PetStatus& pet) { return pet.received && pet.present; });
+}
+
+bool LoginClient::HasPendingCaptureNames() const noexcept
+{
+    return std::any_of(captureNames_.begin(), captureNames_.end(),
+        [](const CaptureName& name) { return !name.nickname.empty(); });
+}
+
+bool LoginClient::HasRejectedCapture() const noexcept
+{
+    return std::any_of(captureNames_.begin(), captureNames_.end(),
+        [](const CaptureName& name) { return name.discard && !name.nickname.empty(); });
+}
+
+bool LoginClient::PollCaptureNames()
+{
+    if (playerStatus_.inBattle)
+        return false;
+    bool pending = false;
+    for (std::size_t slot = 0; slot < captureNames_.size(); ++slot)
+    {
+        auto& name = captureNames_[slot];
+        name.expected = false;
+        if (name.nickname.empty())
+            continue;
+        const auto& pet = pets_[slot];
+        if (!pet.present || pet.uniqueCode != name.uniqueCode ||
+            (!name.discard && pet.nickname == name.nickname))
+        {
+            name = {};
+            continue;
+        }
+        if (name.discard)
+        {
+            if (name.uniqueCode.empty() || !pet.received || !playerStatus_.received ||
+                !playerStatus_.battleReceived || playerStatus_.battlePet == static_cast<int>(slot) ||
+                playerStatus_.ridePet == static_cast<int>(slot))
+            {
+                name = {};
+                throw std::runtime_error("捕获宠物自动丢弃条件不满足，抓宠已停止，请检查宠物状态");
+            }
+            const auto now = GetTickCount64();
+            if (name.deadline == 0)
+            {
+                SendNumbers("21", { playerStatus_.mapX, playerStatus_.mapY, static_cast<int>(slot) }, now + 2000);
+                name.deadline = now + 2000;
+            }
+            else if (now >= name.deadline)
+            {
+                name = {};
+                throw std::runtime_error("服务器未确认不合格宠物自动丢弃，抓宠已停止，请检查宠物栏");
+            }
+            pending = true;
+            continue;
+        }
+        if (name.uniqueCode.empty() || name.nickname.size() > 16)
+        {
+            name = {};
+            throw std::runtime_error("捕获宠物无法自动改名：缺少唯一编码或五项数值名称超过 16 字节，抓宠已停止");
+        }
+        const auto now = GetTickCount64();
+        if (name.deadline == 0)
+        {
+            auto number = static_cast<std::uint32_t>(slot);
+            auto length = static_cast<std::uint32_t>(name.nickname.size());
+            connection_.Send(EncodePacket("&;65;" + EncodeInteger(number, sessionKey_) + ";" +
+                Encode64(name.nickname, sessionKey_, -1) + ";" +
+                EncodeInteger(number + length, sessionKey_) + ";#;"), now + 2000);
+            name.deadline = now + 2000;
+        }
+        else if (now >= name.deadline)
+        {
+            name = {};
+            throw std::runtime_error("服务器未确认捕获宠物自动改名，抓宠已停止，请检查宠物昵称");
+        }
+        pending = true;
+    }
+    return pending;
+}
+
 std::string LoginClient::DropPet(int slot, const std::string& uniqueCode)
 {
     if (!inGame_ || !playerStatus_.received || playerStatus_.inBattle ||

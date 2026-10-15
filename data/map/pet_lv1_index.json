@@ -1,6 +1,8 @@
 [
   {
     "name": "阿哥亚",
+    "enemyId": 1203,
+    "imageId": 100275,
     "petTemplateId": 61,
     "mapName": "深红的洞窟地下６楼",
     "mapId": 30010,
@@ -18,6 +20,8 @@
   },
   {
     "name": "阿伊萨",
+    "enemyId": 1386,
+    "imageId": 100390,
     "petTemplateId": 86,
     "mapName": "漆黑的洞窟 地下9楼",
     "mapId": 32009,
@@ -35,6 +39,8 @@
   },
   {
     "name": "奥卡洛斯",
+    "enemyId": 1037,
+    "imageId": 100371,
     "petTemplateId": 301,
     "mapName": "阿斯玛鲁矿山６楼",
     "mapId": 31806,
@@ -52,6 +58,8 @@
   },
   {
     "name": "巴克",
+    "enemyId": 410,
+    "imageId": 100324,
     "petTemplateId": 182,
     "mapName": "加鲁卡",
     "mapId": 200,
@@ -69,6 +77,8 @@
   },
   {
     "name": "柏克尔",
+    "enemyId": 1092,
+    "imageId": 100393,
     "petTemplateId": 65,
     "mapName": "梦幻的洞窟",
     "mapId": 41,
@@ -86,6 +96,8 @@
   },
   {
     "name": "邦恩多斯",
+    "enemyId": 1451,
+    "imageId": 100396,
     "petTemplateId": 255,
     "mapName": "五十年前波拉岛",
     "mapId": 500,
@@ -103,6 +115,8 @@
   },
   {
     "name": "邦恩吉",
+    "enemyId": 396,
+    "imageId": 100342,
     "petTemplateId": 224,
     "mapName": "加鲁卡",
     "mapId": 200,
@@ -120,6 +134,8 @@
   },
   {
     "name": "邦洛洛克斯",
+    "enemyId": 153,
+    "imageId": 100384,
     "petTemplateId": 331,
     "mapName": "萨伊那斯",
     "mapId": 100,
@@ -137,6 +153,8 @@
   },
   {
     "name": "邦浦洛斯",
+    "enemyId": 979,
+    "imageId": 100289,
     "petTemplateId": 93,
     "mapName": "吉鲁岛",
     "mapId": 300,
@@ -154,6 +172,8 @@
   },
   {
     "name": "邦奇",
+    "enemyId": 1346,
+    "imageId": 100347,
     "petTemplateId": 241,
     "mapName": "水苍的洞窟 地下8楼",
     "mapId": 21308,
@@ -171,6 +191,8 @@
   },
   {
     "name": "邦奇诺",
+    "enemyId": 985,
+    "imageId": 100290,
     "petTemplateId": 94,
     "mapName": "吉鲁岛",
     "mapId": 300,
@@ -188,6 +210,8 @@
   },
   {
     "name": "鲍",
+    "enemyId": 459,
+    "imageId": 100325,
     "petTemplateId": 183,
     "mapName": "森林洞窟２楼",
     "mapId": 20102,
@@ -205,6 +229,8 @@
   },
   {
     "name": "贝恩达斯",
+    "enemyId": 149,
+    "imageId": 100336,
     "petTemplateId": 212,
     "mapName": "萨伊那斯",
     "mapId": 100,
@@ -222,6 +248,8 @@
   },
   {
     "name": "贝鲁卡",
+    "enemyId": 414,
+    "imageId": 100327,
     "petTemplateId": 191,
     "mapName": "加鲁卡",
     "mapId": 200,
@@ -239,6 +267,8 @@
   },
   {
     "name": "贝鲁伊卡",
+    "enemyId": 418,
+    "imageId": 100328,
     "petTemplateId": 192,
     "mapName": "加鲁卡",
     "mapId": 200,
@@ -256,6 +286,8 @@
   },
   {
     "name": "贝洛宝克尔",
+    "enemyId": 726,
+    "imageId": 100269,
     "petTemplateId": 43,
     "mapName": "阿鲁姆山的洞窟地下７楼",
     "mapId": 20507,
@@ -273,6 +305,8 @@
   },
   {
     "name": "贝洛宝利",
+    "enemyId": 530,
+    "imageId": 100270,
     "petTemplateId": 44,
     "mapName": "迷幻洞窟",
     "mapId": 10406,
@@ -290,6 +324,8 @@
   },
   {
     "name": "贝洛恩",
+    "enemyId": 266,
+    "imageId": 100267,
     "petTemplateId": 41,
     "mapName": "往柯尔克的道路１楼",
     "mapId": 10101,
@@ -307,6 +343,8 @@
   },
   {
     "name": "贝洛洛克",
+    "enemyId": 271,
+    "imageId": 100268,
     "petTemplateId": 42,
     "mapName": "往柯尔克的道路１楼",
     "mapId": 10101,
@@ -324,6 +362,8 @@
   },
   {
     "name": "布比",
+    "enemyId": 156,
+    "imageId": 100254,
     "petTemplateId": 11,
     "mapName": "萨伊那斯",
     "mapId": 100,
@@ -341,6 +381,8 @@
   },
   {
     "name": "布拉奇多斯",
+    "enemyId": 1065,
+    "imageId": 100353,
     "petTemplateId": 253,
     "mapName": "沙姆岛",
     "mapId": 400,
@@ -358,6 +400,8 @@
   },
   {
     "name": "布林帖斯",
+    "enemyId": 1397,
+    "imageId": 100352,
     "petTemplateId": 252,
     "mapName": "漆黑的洞窟 地下18楼",
     "mapId": 32018,
@@ -375,6 +419,8 @@
   },
   {
     "name": "布鲁宝",
+    "enemyId": 1169,
+    "imageId": 100395,
     "petTemplateId": 175,
     "mapName": "迷宫",
     "mapId": 119,
@@ -392,6 +438,8 @@
   },
   {
     "name": "布鲁顿",
+    "enemyId": 981,
+    "imageId": 100394,
     "petTemplateId": 95,
     "mapName": "吉鲁岛",
     "mapId": 300,
@@ -409,6 +457,8 @@
   },
   {
     "name": "布洛多斯",
+    "enemyId": 1557,
+    "imageId": 100351,
     "petTemplateId": 251,
     "mapName": "波拉山谷",
     "mapId": 5507,
@@ -426,6 +476,8 @@
   },
   {
     "name": "布伊",
+    "enemyId": 160,
+    "imageId": 100256,
     "petTemplateId": 13,
     "mapName": "萨伊那斯",
     "mapId": 100,
@@ -443,6 +495,8 @@
   },
   {
     "name": "布伊比",
+    "enemyId": 433,
+    "imageId": 100257,
     "petTemplateId": 14,
     "mapName": "加鲁卡",
     "mapId": 200,
@@ -460,6 +514,8 @@
   },
   {
     "name": "达克尔",
+    "enemyId": 178,
+    "imageId": 100278,
     "petTemplateId": 64,
     "mapName": "萨伊那斯",
     "mapId": 100,
@@ -477,6 +533,8 @@
   },
   {
     "name": "多利凯拉",
+    "enemyId": 146,
+    "imageId": 100337,
     "petTemplateId": 213,
     "mapName": "萨伊那斯",
     "mapId": 100,
@@ -494,6 +552,8 @@
   },
   {
     "name": "多利诺布斯",
+    "enemyId": 375,
+    "imageId": 100335,
     "petTemplateId": 211,
     "mapName": "加鲁卡",
     "mapId": 200,
@@ -511,6 +571,8 @@
   },
   {
     "name": "多洛加",
+    "enemyId": 534,
+    "imageId": 100322,
     "petTemplateId": 174,
     "mapName": "迷幻洞窟",
     "mapId": 10407,
@@ -528,6 +590,8 @@
   },
   {
     "name": "多萨金格",
+    "enemyId": 999,
+    "imageId": 100281,
     "petTemplateId": 73,
     "mapName": "吉鲁岛",
     "mapId": 300,
@@ -545,6 +609,8 @@
   },
   {
     "name": "朵洛将恩",
+    "enemyId": 1382,
+    "imageId": 100392,
     "petTemplateId": 88,
     "mapName": "漆黑的洞窟 地下5楼",
     "mapId": 32005,
@@ -562,6 +628,8 @@
   },
   {
     "name": "恩摩摩",
+    "enemyId": 1056,
+    "imageId": 100356,
     "petTemplateId": 262,
     "mapName": "吉鲁采石场５楼",
     "mapId": 31906,
@@ -579,6 +647,8 @@
   },
   {
     "name": "格尔顿",
+    "enemyId": 976,
+    "imageId": 100307,
     "petTemplateId": 141,
     "mapName": "吉鲁岛",
     "mapId": 300,
@@ -596,6 +666,8 @@
   },
   {
     "name": "格尔格",
+    "enemyId": 994,
+    "imageId": 100310,
     "petTemplateId": 144,
     "mapName": "没落的矿坑４楼",
     "mapId": 31204,
@@ -613,6 +685,8 @@
   },
   {
     "name": "格鲁西斯",
+    "enemyId": 973,
+    "imageId": 100329,
     "petTemplateId": 193,
     "mapName": "吉鲁岛",
     "mapId": 300,
@@ -630,6 +704,8 @@
   },
   {
     "name": "格洛格鲁",
+    "enemyId": 1390,
+    "imageId": 100391,
     "petTemplateId": 87,
     "mapName": "漆黑的洞窟 地下11楼",
     "mapId": 32011,
@@ -647,6 +723,8 @@
   },
   {
     "name": "龟之盾",
+    "enemyId": 125,
+    "imageId": 100271,
     "petTemplateId": 51,
     "mapName": "萨伊那斯",
     "mapId": 100,
@@ -664,6 +742,8 @@
   },
   {
     "name": "海主人",
+    "enemyId": 438,
+    "imageId": 100349,
     "petTemplateId": 243,
     "mapName": "加鲁卡",
     "mapId": 200,
@@ -681,6 +761,8 @@
   },
   {
     "name": "呼拔拔",
+    "enemyId": 165,
+    "imageId": 100280,
     "petTemplateId": 72,
     "mapName": "萨伊那斯",
     "mapId": 100,
@@ -698,6 +780,8 @@
   },
   {
     "name": "火鸡",
+    "enemyId": 190,
+    "imageId": 100367,
     "petTemplateId": 291,
     "mapName": "萨伊那斯",
     "mapId": 100,
@@ -715,6 +799,8 @@
   },
   {
     "name": "霍尔克",
+    "enemyId": 402,
+    "imageId": 100369,
     "petTemplateId": 293,
     "mapName": "加鲁卡",
     "mapId": 200,
@@ -732,6 +818,8 @@
   },
   {
     "name": "加宝格恩",
+    "enemyId": 1368,
+    "imageId": 100361,
     "petTemplateId": 273,
     "mapName": "地下２楼",
     "mapId": 30702,
@@ -749,6 +837,8 @@
   },
   {
     "name": "加比",
+    "enemyId": 457,
+    "imageId": 100260,
     "petTemplateId": 22,
     "mapName": "拉多拉的回廊",
     "mapId": 20301,
@@ -766,6 +856,8 @@
   },
   {
     "name": "加比奥",
+    "enemyId": 1230,
+    "imageId": 100261,
     "petTemplateId": 23,
     "mapName": "拉多拉洞窟３楼",
     "mapId": 20307,
@@ -783,6 +875,8 @@
   },
   {
     "name": "加格",
+    "enemyId": 446,
+    "imageId": 100341,
     "petTemplateId": 223,
     "mapName": "海底通路地下１楼",
     "mapId": 10203,
@@ -800,6 +894,8 @@
   },
   {
     "name": "加克拉",
+    "enemyId": 442,
+    "imageId": 100340,
     "petTemplateId": 222,
     "mapName": "海底通路地下１楼",
     "mapId": 10201,
@@ -817,6 +913,8 @@
   },
   {
     "name": "加美",
+    "enemyId": 455,
+    "imageId": 100259,
     "petTemplateId": 21,
     "mapName": "拉多拉的回廊",
     "mapId": 20301,
@@ -834,6 +932,8 @@
   },
   {
     "name": "加斯",
+    "enemyId": 1231,
+    "imageId": 100262,
     "petTemplateId": 24,
     "mapName": "拉多拉洞窟３楼",
     "mapId": 20308,
@@ -851,6 +951,8 @@
   },
   {
     "name": "卡比特",
+    "enemyId": 257,
+    "imageId": 100295,
     "petTemplateId": 111,
     "mapName": "萨伊那斯",
     "mapId": 100,
@@ -868,6 +970,8 @@
   },
   {
     "name": "卡达鲁卡斯",
+    "enemyId": 505,
+    "imageId": 100283,
     "petTemplateId": 81,
     "mapName": "东柯尔克的坑道１楼",
     "mapId": 10601,
@@ -885,6 +989,8 @@
   },
   {
     "name": "卡卡金宝",
+    "enemyId": 1682,
+    "imageId": 100346,
     "petTemplateId": 234,
     "mapName": "蛙洞地下1楼",
     "mapId": 30601,
@@ -902,6 +1008,8 @@
   },
   {
     "name": "卡克尔",
+    "enemyId": 406,
+    "imageId": 100323,
     "petTemplateId": 181,
     "mapName": "加鲁卡",
     "mapId": 200,
@@ -919,6 +1027,8 @@
   },
   {
     "name": "卡拉宝斯",
+    "enemyId": 465,
+    "imageId": 100320,
     "petTemplateId": 172,
     "mapName": "哥亚山洞窟４楼",
     "mapId": 20404,
@@ -936,6 +1046,8 @@
   },
   {
     "name": "卡拉卡利",
+    "enemyId": 462,
+    "imageId": 100326,
     "petTemplateId": 184,
     "mapName": "森林洞窟４楼",
     "mapId": 20104,
@@ -953,6 +1065,8 @@
   },
   {
     "name": "卡梅兰恩",
+    "enemyId": 499,
+    "imageId": 100273,
     "petTemplateId": 53,
     "mapName": "柯奥山的小洞窟３楼",
     "mapId": 11003,
@@ -970,6 +1084,8 @@
   },
   {
     "name": "凯比特",
+    "enemyId": 122,
+    "imageId": 100298,
     "petTemplateId": 114,
     "mapName": "萨伊那斯",
     "mapId": 100,
@@ -987,6 +1103,8 @@
   },
   {
     "name": "柯洛加斯",
+    "enemyId": 520,
+    "imageId": 100285,
     "petTemplateId": 83,
     "mapName": "盗贼的洞窟地下４楼",
     "mapId": 10704,
@@ -1004,6 +1122,8 @@
   },
   {
     "name": "柯伊达",
+    "enemyId": 509,
+    "imageId": 100284,
     "petTemplateId": 82,
     "mapName": "东柯尔克的坑道２楼",
     "mapId": 10602,
@@ -1021,6 +1141,8 @@
   },
   {
     "name": "可利多洛斯",
+    "enemyId": 469,
+    "imageId": 100386,
     "petTemplateId": 333,
     "mapName": "哥亚山洞窟５楼",
     "mapId": 20405,
@@ -1038,6 +1160,8 @@
   },
   {
     "name": "克邦凯斯",
+    "enemyId": 394,
+    "imageId": 100339,
     "petTemplateId": 221,
     "mapName": "加鲁卡",
     "mapId": 200,
@@ -1055,6 +1179,8 @@
   },
   {
     "name": "克克洛斯",
+    "enemyId": 398,
+    "imageId": 100368,
     "petTemplateId": 292,
     "mapName": "加鲁卡",
     "mapId": 200,
@@ -1072,6 +1198,8 @@
   },
   {
     "name": "克雷尔",
+    "enemyId": 382,
+    "imageId": 100291,
     "petTemplateId": 101,
     "mapName": "加鲁卡",
     "mapId": 200,
@@ -1089,6 +1217,8 @@
   },
   {
     "name": "克洛尔",
+    "enemyId": 378,
+    "imageId": 100293,
     "petTemplateId": 103,
     "mapName": "加鲁卡",
     "mapId": 200,
@@ -1106,6 +1236,8 @@
   },
   {
     "name": "昆伊",
+    "enemyId": 119,
+    "imageId": 100297,
     "petTemplateId": 113,
     "mapName": "萨伊那斯",
     "mapId": 100,
@@ -1123,6 +1255,8 @@
   },
   {
     "name": "拉可拉斯",
+    "enemyId": 1395,
+    "imageId": 100383,
     "petTemplateId": 325,
     "mapName": "漆黑的洞窟 地下19楼",
     "mapId": 32019,
@@ -1140,6 +1274,8 @@
   },
   {
     "name": "拉奇鲁哥",
+    "enemyId": 997,
+    "imageId": 100279,
     "petTemplateId": 71,
     "mapName": "吉鲁岛",
     "mapId": 300,
@@ -1157,6 +1293,8 @@
   },
   {
     "name": "兰贝鲁斯",
+    "enemyId": 523,
+    "imageId": 100385,
     "petTemplateId": 332,
     "mapName": "盗贼的洞窟地下２楼",
     "mapId": 10702,
@@ -1174,6 +1312,8 @@
   },
   {
     "name": "里昂蛙",
+    "enemyId": 1624,
+    "imageId": 100886,
     "petTemplateId": 791,
     "mapName": "天空之岛火之界",
     "mapId": 30693,
@@ -1191,6 +1331,8 @@
   },
   {
     "name": "里斯基",
+    "enemyId": 385,
+    "imageId": 100294,
     "petTemplateId": 104,
     "mapName": "加鲁卡",
     "mapId": 200,
@@ -1208,6 +1350,8 @@
   },
   {
     "name": "利则诺顿",
+    "enemyId": 1138,
+    "imageId": 100287,
     "petTemplateId": 91,
     "mapName": "琉璃的洞窟１３楼",
     "mapId": 21013,
@@ -1225,6 +1369,8 @@
   },
   {
     "name": "鲁尼帖斯",
+    "enemyId": 170,
+    "imageId": 100282,
     "petTemplateId": 74,
     "mapName": "萨伊那斯",
     "mapId": 100,
@@ -1242,6 +1388,8 @@
   },
   {
     "name": "绿龟",
+    "enemyId": 128,
+    "imageId": 100272,
     "petTemplateId": 52,
     "mapName": "萨伊那斯",
     "mapId": 100,
@@ -1259,6 +1407,8 @@
   },
   {
     "name": "洛克斯",
+    "enemyId": 477,
+    "imageId": 100389,
     "petTemplateId": 85,
     "mapName": "天空之岛水之界",
     "mapId": 30692,
@@ -1276,6 +1426,8 @@
   },
   {
     "name": "洛奇安",
+    "enemyId": 1136,
+    "imageId": 100286,
     "petTemplateId": 84,
     "mapName": "琉璃的洞窟１３楼",
     "mapId": 21013,
@@ -1293,6 +1445,8 @@
   },
   {
     "name": "玛恩摩",
+    "enemyId": 1052,
+    "imageId": 100355,
     "petTemplateId": 261,
     "mapName": "吉鲁采石场３楼",
     "mapId": 31904,
@@ -1310,6 +1464,8 @@
   },
   {
     "name": "玛恩摩洛斯",
+    "enemyId": 989,
+    "imageId": 100358,
     "petTemplateId": 264,
     "mapName": "吉鲁岛",
     "mapId": 300,
@@ -1327,6 +1483,8 @@
   },
   {
     "name": "玛摩那斯",
+    "enemyId": 987,
+    "imageId": 100357,
     "petTemplateId": 263,
     "mapName": "吉鲁岛",
     "mapId": 300,
@@ -1344,6 +1502,8 @@
   },
   {
     "name": "姆伊",
+    "enemyId": 1009,
+    "imageId": 100348,
     "petTemplateId": 242,
     "mapName": "奇努伊的海底通路",
     "mapId": 31401,
@@ -1361,6 +1521,8 @@
   },
   {
     "name": "尼可斯",
+    "enemyId": 391,
+    "imageId": 100276,
     "petTemplateId": 62,
     "mapName": "加鲁卡",
     "mapId": 200,
@@ -1378,6 +1540,8 @@
   },
   {
     "name": "齐尔格尔顿",
+    "enemyId": 1188,
+    "imageId": 100309,
     "petTemplateId": 143,
     "mapName": "吉鲁岛",
     "mapId": 300,
@@ -1395,6 +1559,8 @@
   },
   {
     "name": "奇宝",
+    "enemyId": 194,
+    "imageId": 100370,
     "petTemplateId": 294,
     "mapName": "萨伊那斯",
     "mapId": 100,
@@ -1412,6 +1578,8 @@
   },
   {
     "name": "奇卡宝斯",
+    "enemyId": 1035,
+    "imageId": 100345,
     "petTemplateId": 233,
     "mapName": "阿斯玛鲁矿山６楼",
     "mapId": 31806,
@@ -1429,6 +1597,8 @@
   },
   {
     "name": "奇拉顿",
+    "enemyId": 991,
+    "imageId": 100308,
     "petTemplateId": 142,
     "mapName": "没落的矿坑４楼",
     "mapId": 31204,
@@ -1446,6 +1616,8 @@
   },
   {
     "name": "石龟",
+    "enemyId": 502,
+    "imageId": 100274,
     "petTemplateId": 54,
     "mapName": "柯奥山的小洞窟４楼",
     "mapId": 11004,
@@ -1463,6 +1635,8 @@
   },
   {
     "name": "特洛昆",
+    "enemyId": 174,
+    "imageId": 100277,
     "petTemplateId": 63,
     "mapName": "萨伊那斯",
     "mapId": 100,
@@ -1480,6 +1654,8 @@
   },
   {
     "name": "威威",
+    "enemyId": 372,
+    "imageId": 100264,
     "petTemplateId": 32,
     "mapName": "加鲁卡",
     "mapId": 200,
@@ -1497,6 +1673,8 @@
   },
   {
     "name": "乌宝宝",
+    "enemyId": 369,
+    "imageId": 100263,
     "petTemplateId": 31,
     "mapName": "加鲁卡",
     "mapId": 200,
@@ -1514,6 +1692,8 @@
   },
   {
     "name": "乌卡鲁",
+    "enemyId": 388,
+    "imageId": 100265,
     "petTemplateId": 33,
     "mapName": "加鲁卡",
     "mapId": 200,
@@ -1531,6 +1711,8 @@
   },
   {
     "name": "乌力",
+    "enemyId": 9,
+    "imageId": 100250,
     "petTemplateId": 1,
     "mapName": "地图名未找到",
     "mapId": 11304,
@@ -1548,6 +1730,8 @@
   },
   {
     "name": "乌力斯坦",
+    "enemyId": 11,
+    "imageId": 100252,
     "petTemplateId": 3,
     "mapName": "地图名未找到",
     "mapId": 11304,
@@ -1565,6 +1749,8 @@
   },
   {
     "name": "小坦坦",
+    "enemyId": 1477,
+    "imageId": 100252,
     "petTemplateId": 717,
     "mapName": "地图名未找到",
     "mapId": 11304,
@@ -1582,6 +1768,8 @@
   },
   {
     "name": "小乌乌",
+    "enemyId": 1476,
+    "imageId": 100250,
     "petTemplateId": 716,
     "mapName": "地图名未找到",
     "mapId": 11304,
@@ -1599,6 +1787,8 @@
   },
   {
     "name": "扬奇洛斯",
+    "enemyId": 983,
+    "imageId": 100288,
     "petTemplateId": 92,
     "mapName": "吉鲁岛",
     "mapId": 300,

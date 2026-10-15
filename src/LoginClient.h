@@ -9,6 +9,7 @@
 #include "game/BattleSettings.h"
 #include "game/Battle.h"
 #include "game/Encounter.h"
+#include <array>
 #include <cstdint>
 #include <initializer_list>
 #include <string>
@@ -56,6 +57,10 @@ public:
     void PollEncounter();
     void SetHealingSettings(const Game::HealingSettings& settings) { healing_ = settings; }
     void SetCaptureSettings(const Game::CaptureSettings& settings, bool enabled) { capture_ = settings; captureEnabled_ = enabled; }
+    bool IsCaptureFull() const noexcept;
+    bool HasPendingCaptureNames() const noexcept;
+    bool HasRejectedCapture() const noexcept;
+    const Game::CaptureStatistics& GetCaptureStatistics() const noexcept { return captureStatistics_; }
     bool IsEncounterEnabled() const noexcept { return encounter_.enabled; }
     bool IsEncounterStopping() const noexcept { return encounter_.stopPending; }
     bool IsEncounterWaiting() const noexcept { return encounter_.requestPending; }
@@ -93,6 +98,7 @@ private:
     void SendNumbers(const char* function, std::initializer_list<int> numbers, ULONGLONG deadline);
     void RefreshPosition(ULONGLONG deadline);
     bool HandleEncounterReply(const std::vector<std::string>& fields);
+    bool PollCaptureNames();
 
     SocketConnection connection_;
     bool loggedIn_ = false;
@@ -104,6 +110,14 @@ private:
     Game::HealingSettings healing_;
     Game::CaptureSettings capture_;
     bool captureEnabled_ = false;
+    Game::CaptureStatistics captureStatistics_;
+    struct CaptureName
+    {
+        bool expected = false, discard = false;
+        std::string uniqueCode, nickname;
+        std::uint64_t deadline = 0;
+    };
+    std::array<CaptureName, 5> captureNames_;
     Game::BattleState battle_;
     Game::BattleResult battleResult_;
     std::vector<PetStatus> pets_ = std::vector<PetStatus>(5);

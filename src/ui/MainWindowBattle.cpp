@@ -26,6 +26,19 @@ namespace Client
         battleExperience_.Create(L"经验获得：人物 —    宠物 —", WS_CHILD, empty, this);
         capturePet_.Create(L"选择宠物 ▾", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, empty, this, IDC_CAPTURE_PET);
         captureDestination_.Create(L"选择宠物和地点后，直接移动到捕捉起点", WS_CHILD, empty, this);
+        captureStatistics_.Create(L"遇敌次数：0    遇到 LV1：0    捕获 LV1：0", WS_CHILD, empty, this);
+        const wchar_t* attributes[] = { L"生命≥", L"攻击≥", L"防御≥", L"敏捷≥", L"感知≥" };
+        for (int i = 0; i < 5; ++i)
+        {
+            captureFilterLabels_[i].Create(attributes[i], WS_CHILD, empty, this);
+            captureMinimums_[i].Create(WS_CHILD | WS_TABSTOP | WS_BORDER | ES_NUMBER, empty, this, 136 + i);
+            captureMinimums_[i].SetLimitText(10);
+            if (i == 4)
+            {
+                captureMinimums_[i].SetWindowText(L"0");
+                captureMinimums_[i].EnableWindow(FALSE);
+            }
+        }
     }
 
     void MainWindow::LayoutBattle(const CRect& mainPage)
@@ -43,6 +56,21 @@ namespace Client
         battleStart_.MoveWindow(battlePage.left, buttonTop, 70, 26);
         battleSettings_.MoveWindow(battlePage.left + 156, buttonTop, 70, 26);
         battleDisplay_.MoveWindow(battlePage.left + 78, buttonTop, 70, 26);
+        captureStatistics_.MoveWindow(battlePage.left, buttonTop + 34, battleWidth, 22);
+        CClientDC dc(this);
+        CFont* previousFont = dc.SelectObject(&font_);
+        int filterX = battlePage.left;
+        for (int i = 0; i < 5; ++i)
+        {
+            CString caption;
+            captureFilterLabels_[i].GetWindowText(caption);
+            int width = dc.GetTextExtent(caption).cx;
+            captureFilterLabels_[i].MoveWindow(filterX, buttonTop + 63, width, 19);
+            filterX += width + 4;
+            captureMinimums_[i].MoveWindow(filterX, buttonTop + 60, 48, 22);
+            filterX += 48 + 8;
+        }
+        dc.SelectObject(previousFont);
         int sideTop = battlePage.top + 34;
         int sideBottom = std::max<LONG>(sideTop + 24, battlePage.bottom - 30);
         int sideWidth = std::max(0, (battleWidth - 12) / 2);
@@ -64,6 +92,20 @@ namespace Client
         bool capturing = visible && battleTabs_.GetCurSel() == 1;
         ShowIfChanged(capturePet_, capturing);
         ShowIfChanged(captureDestination_, capturing);
+        ShowIfChanged(captureStatistics_, capturing);
+        for (int i = 0; i < 5; ++i)
+        {
+            ShowIfChanged(captureFilterLabels_[i], capturing);
+            ShowIfChanged(captureMinimums_[i], capturing);
+            EnableIfChanged(captureMinimums_[i], i != 4 && capturing && !view_.player.inBattle &&
+                !view_.encounterEnabled && !view_.encounterPending);
+        }
+        CString statistics;
+        statistics.Format(L"遇敌次数：%llu    遇到 LV1：%llu    捕获 LV1：%llu",
+            static_cast<unsigned long long>(view_.captureStatistics.encounters),
+            static_cast<unsigned long long>(view_.captureStatistics.levelOneEncounters),
+            static_cast<unsigned long long>(view_.captureStatistics.capturedLevelOne));
+        SetTextIfChanged(captureStatistics_, statistics);
         EnableIfChanged(capturePet_, capturing && view_.screen == Screen::Game &&
             !view_.player.inBattle && !view_.encounterEnabled && !view_.encounterPending &&
             !view_.petStoragePending && !view_.itemPending);
@@ -159,12 +201,31 @@ namespace Client
             session_.SetEncounterEnabled(false);
         else
         {
+            if (battleTabs_.GetCurSel() == 1)
+            {
+                std::array<int, 5> minimums{ -1, -1, -1, -1, 0 };
+                for (int i = 0; i < 4; ++i)
+                {
+                    CString text;
+                    captureMinimums_[i].GetWindowText(text);
+                    if (text.IsEmpty()) continue;
+                    if (text.SpanIncluding(L"0123456789") != text || _wtoi64(text) > INT32_MAX)
+                    {
+                        MessageBox(L"筛选下限请输入有效的非负整数，留空表示不限制。",
+                            L"抓宠筛选", MB_OK | MB_ICONWARNING);
+                        captureMinimums_[i].SetFocus();
+                        return;
+                    }
+                    minimums[i] = static_cast<int>(_wtoi64(text));
+                }
+                session_.SetCaptureMinimums(minimums);
+            }
             if (battleSettingsWindow_->GetSafeHwnd())
                 battleSettingsWindow_->ShowWindow(SW_HIDE);
             if (captureSettingsWindow_->GetSafeHwnd())
                 captureSettingsWindow_->ShowWindow(SW_HIDE);
             battleSceneWindow_->PrepareForEncounter();
-            session_.SetEncounterEnabled(true, battleTabs_.GetCurSel() == 1);
+            session_.SetEncounterEnabled(true, battleTabs_.GetCurSel() == 1, captureSourceInstanceId_);
         }
     }
 
@@ -201,7 +262,7 @@ namespace Client
             {
                 CString label;
                 label.Format(L"%s [%d] (%d,%d ~ %d,%d)", location.mapName.c_str(),
-                    location.mapId, location.x, location.y, location.x2, location.y2);
+                    pet.sourceInstanceId, location.x, location.y, location.x2, location.y2);
                 label.Replace(L"&", L"&&");
                 commands.push_back({ &pet, &location });
                 if (!locations.AppendMenu(MF_STRING, static_cast<UINT_PTR>(commands.size()), label))
@@ -224,11 +285,12 @@ namespace Client
             return;
         const auto& selection = commands[command - 1];
         const auto& location = *selection.location;
+        captureSourceInstanceId_ = selection.pet->sourceInstanceId;
         CString label;
         label.Format(L"%s ▾", selection.pet->name.c_str());
         capturePet_.SetWindowText(label);
         label.Format(L"%s：%s [%d] (%d,%d ~ %d,%d)", selection.pet->name.c_str(),
-            location.mapName.c_str(), location.mapId, location.x, location.y, location.x2, location.y2);
+            location.mapName.c_str(), selection.pet->sourceInstanceId, location.x, location.y, location.x2, location.y2);
         captureDestination_.SetWindowText(label);
         session_.RequestMove(location.mapId, location.x, location.y);
     }

@@ -284,6 +284,7 @@ namespace Client
                 state_->shared_.player = client->GetPlayerStatus();
                 state_->shared_.battle = client->GetBattle();
                 state_->shared_.battleResult = client->GetBattleResult();
+                state_->shared_.captureStatistics = client->GetCaptureStatistics();
                 state_->shared_.pets = client->GetPets();
                 state_->shared_.items = client->GetItems();
                 state_->shared_.magic = client->GetMagic();

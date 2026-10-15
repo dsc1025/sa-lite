@@ -273,7 +273,7 @@ namespace Client
         captureHp_.SetWindowText(Number(capturePercent_));
         magicHp_.SetWindowText(Number(magicPercent_));
         skills_.ResetContent();
-        skills_.AddString(L"请选择技能");
+        skills_.AddString(L"不使用技能");
         skills_.SetItemData(0, static_cast<DWORD_PTR>(-1));
         int selected = 0;
         for (std::size_t slot = 0; slot < magic.size(); ++slot)
@@ -289,6 +289,13 @@ namespace Client
         }
         skills_.SetCurSel(selected);
         skills_.EnableWindow(skills_.GetCount() > 1);
+        magicHp_.EnableWindow(selected > 0);
+        if (selected == 0)
+        {
+            magicSlot_ = -1;
+            magicName_.Empty();
+            ApplySettings();
+        }
         updating_ = false;
         ShowWindow(SW_SHOW);
         SetForegroundWindow();
@@ -304,7 +311,7 @@ namespace Client
         fleeOption_.Create(L"遇敌逃跑", labelStyle | WS_TABSTOP | BS_AUTOCHECKBOX,
             CRect(10, 10, 150, 32), this, 2);
         labels_[0].Create(L"抓取", labelStyle, CRect(10, 43, 46, 62), this);
-        labels_[1].Create(L"敌方HP<", labelStyle, CRect(50, 43, 112, 62), this);
+        labels_[1].Create(L"敌方HP<=", labelStyle, CRect(50, 43, 112, 62), this);
         captureHp_.Create(editStyle, CRect(116, 40, 158, 62), this, 3);
         labels_[2].Create(L"%", labelStyle, CRect(162, 43, 178, 62), this);
         labels_[3].Create(L"使用", labelStyle, CRect(10, 73, 46, 92), this);
@@ -320,9 +327,48 @@ namespace Client
             control->SetFont(&font_);
         for (auto& label : labels_)
             label.SetFont(&font_);
-        CRect window(0, 0, 350, 102);
-        AdjustWindowRectEx(&window, GetStyle(), FALSE, GetExStyle());
-        SetWindowPos(nullptr, 0, 0, window.Width(), window.Height(), SWP_NOMOVE | SWP_NOZORDER);
+        CClientDC dc(this);
+        CFont* previousFont = dc.SelectObject(&font_);
+        const int margin = 10, gap = 4, height = 22;
+        auto captionWidth = [&](CWnd& control)
+        {
+            CString caption;
+            control.GetWindowText(caption);
+            return dc.GetTextExtent(caption).cx;
+        };
+        fleeOption_.MoveWindow(margin, margin,
+            captionWidth(fleeOption_) + GetSystemMetrics(SM_CXMENUCHECK) + gap, height);
+        int contentRight = 0;
+        for (int row = 0; row < 2; ++row)
+        {
+            int x = margin, y = margin + (row + 1) * (height + gap);
+            CStatic& action = labels_[row * 3];
+            int width = captionWidth(action);
+            action.MoveWindow(x, y + 3, width, height - 3);
+            x += width + gap;
+            if (row == 1)
+            {
+                skills_.MoveWindow(x, y, 138, 164);
+                x += 138 + gap;
+            }
+            CStatic& hp = labels_[row * 3 + 1];
+            width = captionWidth(hp);
+            hp.MoveWindow(x, y + 3, width, height - 3);
+            x += width + gap;
+            CEdit& input = row == 0 ? captureHp_ : magicHp_;
+            input.MoveWindow(x, y, 42, height);
+            x += 42 + gap;
+            CStatic& percent = labels_[row * 3 + 2];
+            width = captionWidth(percent);
+            percent.MoveWindow(x, y + 3, width, height - 3);
+            contentRight = std::max(contentRight, x + width);
+        }
+        dc.SelectObject(previousFont);
+        CRect area, window;
+        GetClientRect(&area);
+        GetWindowRect(&window);
+        SetWindowPos(nullptr, 0, 0, window.Width() + contentRight + margin - area.Width(),
+            window.Height() + margin * 2 + 3 * height + 2 * gap - area.Height(), SWP_NOMOVE | SWP_NOZORDER);
         return 0;
     }
 
@@ -360,11 +406,12 @@ namespace Client
             magicSlot_ = static_cast<int>(skills_.GetItemData(row));
             skills_.GetLBText(row, magicName_);
         }
-        else if (row == 0 && skills_.GetCount() > 1)
+        else
         {
             magicSlot_ = -1;
             magicName_.Empty();
         }
+        magicHp_.EnableWindow(row > 0);
         ApplySettings();
         const wchar_t* keys[] = { L"Flee", L"CapturePercent", L"MagicPercent", L"MagicSlot", L"MagicName" };
         CString values[] = { Number(flee_ ? 1 : 0), Number(capturePercent_), Number(magicPercent_),

@@ -36,6 +36,8 @@ void LoginClient::Disconnect() noexcept
     characters_.clear();
     playerStatus_ = {};
     encounter_ = {};
+    captureStatistics_ = {};
+    captureNames_ = {};
     battle_ = {};
     battleResult_ = {};
     positionSerial_ = 0;

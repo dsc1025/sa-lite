@@ -30,6 +30,7 @@ namespace Client
     struct PetLv1Entry
     {
         std::wstring name;
+        int sourceInstanceId = -1;
         std::vector<PetLv1Location> locations;
     };
 

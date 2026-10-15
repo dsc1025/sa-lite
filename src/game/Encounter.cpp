@@ -2,6 +2,7 @@
 #include "../protocol/ProtocolCodec.h"
 #include "BattleTiming.h"
 #include <stdexcept>
+#include <algorithm>
 
 using namespace Protocol;
 
@@ -35,6 +36,16 @@ void LoginClient::SetEncounterEnabled(bool enabled)
     RefreshPosition(GetTickCount64() + 2000);
     if (playerStatus_.mapId < 0 || playerStatus_.mapX < 0 || playerStatus_.mapY < 0)
         throw std::runtime_error("尚未收到有效地图位置，无法设置遇敌");
+    if (captureEnabled_)
+    {
+        if (capture_.sourceInstanceId < 0)
+            throw std::runtime_error("请先选择要捕捉的一级宠物");
+        if (std::any_of(pets_.begin(), pets_.end(), [](const PetStatus& pet) { return !pet.received; }))
+            throw std::runtime_error("请等待宠物栏数据加载完成");
+        if (IsCaptureFull())
+            throw std::runtime_error("携带宠物已满，抓宠已停止");
+        captureStatistics_ = {};
+    }
     encounter_.map = playerStatus_.mapId;
     encounter_.nextRequest = 0;
     encounter_.enabled = true;
@@ -71,6 +82,8 @@ void LoginClient::PollEncounter()
         else
             return;
     }
+    if (PollCaptureNames())
+        return;
     if (encounter_.stopPending)
     {
         if (!playerStatus_.inBattle)
@@ -83,6 +96,11 @@ void LoginClient::PollEncounter()
     {
         SetEncounterEnabled(false);
         throw std::runtime_error("地图已改变，原地遇敌已停止");
+    }
+    if (captureEnabled_ && IsCaptureFull())
+    {
+        SetEncounterEnabled(false);
+        throw std::runtime_error("携带宠物已满，抓宠已停止");
     }
     SendNumbers("118", { 0 }, now + 2000);
     encounter_.requestPending = true;

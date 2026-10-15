@@ -86,8 +86,10 @@ namespace Client
         std::unique_ptr<BattleSceneWindow> battleSceneWindow_;
         CStatic battleRound_, battleExperience_;
         CButton capturePet_;
-        CStatic captureDestination_;
+        CStatic captureDestination_, captureStatistics_, captureFilterLabels_[5];
+        CEdit captureMinimums_[5];
         std::vector<PetLv1Entry> capturePets_;
+        int captureSourceInstanceId_ = -1;
         CListCtrl list_;
         SessionView view_;
         GameSession session_;

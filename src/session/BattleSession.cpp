@@ -14,17 +14,30 @@ namespace Client
     void GameSession::SetCaptureSettings(const Game::CaptureSettings& settings)
     {
         std::lock_guard<std::mutex> lock(state_->mutex_);
+        int sourceInstanceId = state_->capture_.sourceInstanceId;
+        auto minimums = state_->capture_.minimums;
         state_->capture_ = settings;
+        state_->capture_.sourceInstanceId = sourceInstanceId;
+        state_->capture_.minimums = minimums;
     }
 
-    void GameSession::SetEncounterEnabled(bool enabled, bool capture)
+    void GameSession::SetCaptureMinimums(const std::array<int, 5>& minimums)
+    {
+        std::lock_guard<std::mutex> lock(state_->mutex_);
+        state_->capture_.minimums = minimums;
+    }
+
+    void GameSession::SetEncounterEnabled(bool enabled, bool capture, int sourceInstanceId)
     {
         {
             std::lock_guard<std::mutex> lock(state_->mutex_);
             if (state_->stop_ || state_->done_ || state_->shared_.screen != Screen::Game || (enabled && (state_->shared_.petStoragePending || state_->shared_.itemPending)))
                 return;
             if (enabled && !state_->encounterRequested_)
+            {
                 state_->captureEnabled_ = capture;
+                state_->capture_.sourceInstanceId = capture ? sourceInstanceId : -1;
+            }
             state_->encounterRequested_ = enabled;
             if (enabled)
                 state_->requestedMap_ = -1;
@@ -44,13 +57,20 @@ namespace Client
             if (state_->stop_) return;
             requested = state_->encounterRequested_;
             if (!requested && !client.IsEncounterEnabled() && !client.IsEncounterStopping() &&
-                !state_->shared_.encounterPending)
+                !state_->shared_.encounterPending && !client.HasPendingCaptureNames())
                 return;
         }
         std::wstring message;
         bool failed = false;
         try
         {
+            bool capturing;
+            {
+                std::lock_guard<std::mutex> lock(state_->mutex_);
+                capturing = state_->captureEnabled_;
+            }
+            if (requested && capturing && client.IsCaptureFull() && !client.HasRejectedCapture())
+                throw std::runtime_error("携带宠物已满，抓宠已停止");
             if (requested != client.IsEncounterEnabled())
                 client.SetEncounterEnabled(requested);
             {
@@ -61,7 +81,8 @@ namespace Client
             client.PollEncounter();
             message = !requested && client.GetPlayerStatus().inBattle ? L"等待战斗结束，结束后停止自动战斗" :
                 client.IsEncounterStopping() ? L"等待开战请求完成，完成后停止自动战斗" :
-                !client.IsEncounterEnabled() ? L"自动战斗已停止" :
+                !client.IsEncounterEnabled() ? (capturing && client.IsCaptureFull() ?
+                    L"携带宠物已满，抓宠已停止" : L"自动战斗已停止") :
                 client.GetPlayerStatus().inBattle ? L"战斗中，结束后继续遇敌" :
                 client.IsEncounterWaiting() ? L"等待服务器原地开战" : L"原地遇敌中";
         }
@@ -85,7 +106,8 @@ namespace Client
             if (failed)
                 state_->encounterRequested_ = false;
             bool enabled = client.IsEncounterEnabled();
-            bool pending = !requested && (client.GetPlayerStatus().inBattle || client.IsEncounterStopping());
+            bool pending = !enabled && (client.GetPlayerStatus().inBattle || client.IsEncounterStopping() ||
+                client.HasPendingCaptureNames());
             changed = state_->shared_.encounterEnabled != enabled || state_->shared_.encounterPending != pending ||
                 state_->shared_.encounterMessage != message;
             state_->shared_.encounterEnabled = enabled;

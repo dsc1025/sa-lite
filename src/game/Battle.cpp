@@ -58,6 +58,24 @@ bool LoginClient::HandleBattlePacket(const std::vector<std::string>& fields)
         battle_.roundReceived = true;
         return true;
     }
+    if (values[0] == "BI1")
+    {
+        if (values.size() < 2 || !values.back().empty() || (values.size() - 2) % 2 != 0)
+            throw std::runtime_error("Invalid battle instance IDs");
+        auto members = battle_.members;
+        std::array<bool, 20> received{};
+        for (std::size_t i = 1; i + 2 < values.size(); i += 2)
+        {
+            auto slot = BattleNumber(values[i]);
+            auto id = BattleNumber(values[i + 1]);
+            if (slot >= members.size() || !members[slot].present || received[slot] || id > INT32_MAX)
+                throw std::runtime_error("Invalid battle instance ID");
+            members[slot].sourceInstanceId = static_cast<int>(id);
+            received[slot] = true;
+        }
+        battle_.members = members;
+        return true;
+    }
     if (values[0] != "BC")
         return false;
     // BC carries a field attribute, then thirteen fields per occupied battle slot.
@@ -184,12 +202,27 @@ bool LoginClient::PollBattle()
             if (member.present && member.level == 1 && member.hp > 0 &&
                 !(member.flags & (Game::BATTLE_MEMBER_DEAD | Game::BATTLE_MEMBER_HIDDEN)))
             {
-                captureTarget = slot;
-                break;
+                if (captureTarget < 0 && capture_.sourceInstanceId >= 0 &&
+                    member.sourceInstanceId == capture_.sourceInstanceId)
+                    captureTarget = slot;
             }
         }
     }
-    bool flee = captureEnabled_ && capture_.flee && captureTarget < 0 && target >= 0;
+    if (captureEnabled_)
+    {
+        if (!battle_.captureCounted)
+        {
+            ++captureStatistics_.encounters;
+            battle_.captureCounted = true;
+        }
+        if (captureTarget >= 0 && !battle_.captureLevelOneCounted)
+        {
+            ++captureStatistics_.levelOneEncounters;
+            battle_.captureLevelOneCounted = true;
+        }
+    }
+    bool full = captureEnabled_ && IsCaptureFull();
+    bool flee = captureEnabled_ && (full || (capture_.flee && captureTarget < 0)) && target >= 0;
     std::string packets;
     auto append = [&](const std::string& command)
     {
@@ -286,8 +319,11 @@ bool LoginClient::PollBattle()
             return;
         }
         auto hp = static_cast<std::int64_t>(enemy.hp) * 100;
-        if (hp < static_cast<std::int64_t>(enemy.maxHp) * capture_.capturePercent)
+        if (hp <= static_cast<std::int64_t>(enemy.maxHp) * capture_.capturePercent)
         {
+            for (std::size_t slot = 0; slot < pets_.size(); ++slot)
+                if (pets_[slot].received && !pets_[slot].present)
+                    captureNames_[slot].expected = true;
             std::snprintf(command, sizeof(command), "T|%X", captureTarget);
             append(command);
             return;
@@ -326,10 +362,10 @@ bool LoginClient::PollBattle()
         if (target >= 0 && character.present && character.hp > 0 &&
             !(battle_.menuFlags & Game::BATTLE_PLAYER_MENU_OFF))
         {
-            if (captureTarget >= 0)
-                capture();
-            else if (flee)
+            if (flee)
                 append("E");
+            else if (captureTarget >= 0)
+                capture();
             else if (!heal())
             {
                 std::snprintf(command, sizeof(command), "H|%X", target);
