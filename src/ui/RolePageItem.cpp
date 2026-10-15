@@ -5,6 +5,20 @@
 
 namespace Client
 {
+    namespace
+    {
+        CString ItemTypeName(int type)
+        {
+            const wchar_t* names[] = {
+                L"拳", L"斧头", L"棍棒", L"枪／矛", L"弓", L"盾", L"头盔", L"铠甲",
+                L"手镯", L"乐器", L"项链", L"戒指", L"腰带", L"耳环", L"鼻环", L"护身符",
+                L"素材", L"回旋镖", L"投掷斧头", L"投掷石", L"料理", L"金属", L"宝石", L"货物"
+            };
+            return type >= 0 && type < static_cast<int>(sizeof(names) / sizeof(names[0])) ?
+                CString(names[type]) : Number(type);
+        }
+    }
+
     void RolePage::ShowItemProperties(CListCtrl& list, int row)
     {
         if (view_.screen != Screen::Game || !IsWindowVisible() || tabs_.GetCurSel() != 2 ||
@@ -19,7 +33,7 @@ namespace Client
         const auto item = items[slot];
         CString text;
         text.Format(L"名称：%s\r\n分类：%s\r\n", LegacyText(item.name).GetString(),
-            item.type == 20 ? L"食物" : L"未分类");
+            ItemTypeName(item.type).GetString());
         if (item.levelKnown)
         {
             CString level;
@@ -78,7 +92,7 @@ namespace Client
             else name.Format(L"背包 %d", static_cast<int>(i - 4));
             name += L" · "; name += LegacyText(view_.items[i].name);
             int row = rows.Add(i, name);
-            SetCellIfChanged(list_, row, 1, view_.items[i].type == 20 ? L"食物" : L"未分类");
+            SetCellIfChanged(list_, row, 1, ItemTypeName(view_.items[i].type));
         }
     }
 
@@ -94,7 +108,7 @@ namespace Client
                 const auto& item = view_.itemStorage[i];
                 if (!item.present) continue;
                 int row = rows.Add(i, LegacyText(item.name));
-                SetCellIfChanged(itemStorage_, row, 1, item.type == 20 ? L"食物" : L"未分类");
+                SetCellIfChanged(itemStorage_, row, 1, ItemTypeName(item.type));
                 any = true;
             }
         }

@@ -52,7 +52,12 @@ namespace
         item.levelKnown = true;
         item.useField = ParseNumber(values[start + 5]);
         item.target = ParseNumber(values[start + 6]);
-        if (ParseNumber(values[start + 8]) & 4) item.type = 20;
+        int flags = ParseNumber(values[start + 8]);
+        // Bit 6 marks an exact type in bits 8-30; older servers only send legacy flags.
+        if (flags >= 0 && (flags & 64)) item.type = flags >> 8;
+        else if (flags & 4) item.type = 20;
+        else if (flags & 8) item.type = 21;
+        else if (flags & 16) item.type = 22;
         return item;
     }
 }
