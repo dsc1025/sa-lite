@@ -11,6 +11,7 @@ namespace Game
 {
     struct NewCharacter;
     struct HealingSettings;
+    struct CaptureSettings;
     enum class PetStorageAction;
     enum class ItemStorageAction;
 }
@@ -44,7 +45,8 @@ namespace Client
         bool RequestFood(int slot, std::uint32_t revision, int petSlot);
         bool RequestItemStorage(Game::ItemStorageAction action, int slot = -1,
             std::uint32_t revision = 0, const std::string& uniqueCode = {});
-        void SetEncounterEnabled(bool enabled);
+        void SetEncounterEnabled(bool enabled, bool capture = false);
+        void SetCaptureSettings(const Game::CaptureSettings& settings);
         void SetHealingSettings(const Game::HealingSettings& settings);
 
     private:

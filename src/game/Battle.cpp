@@ -175,9 +175,28 @@ bool LoginClient::PollBattle()
             break;
         }
     }
+    int captureTarget = -1;
+    if (captureEnabled_)
+    {
+        for (int slot = enemyOffset; slot < enemyOffset + 10; ++slot)
+        {
+            const auto& member = battle_.members[slot];
+            if (member.present && member.level == 1 && member.hp > 0 &&
+                !(member.flags & (Game::BATTLE_MEMBER_DEAD | Game::BATTLE_MEMBER_HIDDEN)))
+            {
+                captureTarget = slot;
+                break;
+            }
+        }
+    }
+    bool flee = captureEnabled_ && capture_.flee && captureTarget < 0 && target >= 0;
     std::string packets;
     auto append = [&](const std::string& command)
     {
+        if (command.compare(0, 2, "W|") == 0)
+            battle_.petAction = command.compare(0, 4, "W|0|") == 0 ? 0 : 3;
+        else
+            battle_.playerAction = command.compare(0, 2, "H|") == 0 ? 0 : 3;
         packets += EncodePacket("&;14;" + Encode64(command, sessionKey_, -1) + ";" +
             EncodeInteger(static_cast<std::uint32_t>(command.size()), sessionKey_) + ";#;");
     };
@@ -258,13 +277,60 @@ bool LoginClient::PollBattle()
         }
         return false;
     };
+    auto capture = [&]()
+    {
+        const auto& enemy = battle_.members[captureTarget];
+        if (enemy.maxHp <= 0)
+        {
+            append("G");
+            return;
+        }
+        auto hp = static_cast<std::int64_t>(enemy.hp) * 100;
+        if (hp < static_cast<std::int64_t>(enemy.maxHp) * capture_.capturePercent)
+        {
+            std::snprintf(command, sizeof(command), "T|%X", captureTarget);
+            append(command);
+            return;
+        }
+        if (hp > static_cast<std::int64_t>(enemy.maxHp) * capture_.magicPercent &&
+            !capture_.magicName.empty())
+        {
+            int slot = capture_.magicSlot;
+            if (slot < 0 || slot >= static_cast<int>(magic_.size()) ||
+                !magic_[slot].received || !magic_[slot].present || magic_[slot].name != capture_.magicName)
+            {
+                slot = -1;
+                for (std::size_t i = 0; i < magic_.size(); ++i)
+                    if (magic_[i].received && magic_[i].present && magic_[i].name == capture_.magicName)
+                    {
+                        slot = static_cast<int>(i);
+                        break;
+                    }
+            }
+            if (slot >= 0)
+            {
+                const auto& magic = magic_[slot];
+                if (magic.useField != 2 && magic.mp >= 0 && playerStatus_.mp >= magic.mp)
+                {
+                    std::snprintf(command, sizeof(command), "J|%X|%X", slot, captureTarget);
+                    append(command);
+                    return;
+                }
+            }
+        }
+        append("G");
+    };
     const auto& character = battle_.members[player];
     if (!(battle_.readyMask & (std::uint32_t{1} << player)))
     {
         if (target >= 0 && character.present && character.hp > 0 &&
             !(battle_.menuFlags & Game::BATTLE_PLAYER_MENU_OFF))
         {
-            if (!heal())
+            if (captureTarget >= 0)
+                capture();
+            else if (flee)
+                append("E");
+            else if (!heal())
             {
                 std::snprintf(command, sizeof(command), "H|%X", target);
                 append(command);
@@ -279,7 +345,7 @@ bool LoginClient::PollBattle()
     {
         if (!pet.present)
             append("W|FF|FF");
-        else if (target < 0 || pet.hp <= 0 || (battle_.menuFlags & Game::BATTLE_PET_MENU_OFF))
+        else if (captureEnabled_ || target < 0 || pet.hp <= 0 || (battle_.menuFlags & Game::BATTLE_PET_MENU_OFF))
             append("W|1|FF");
         else
         {

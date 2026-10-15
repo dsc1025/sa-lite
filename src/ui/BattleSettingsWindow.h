@@ -37,4 +37,28 @@ namespace Client
         std::vector<Game::MagicStatus> currentMagic_;
     };
 
+    class CaptureSettingsWindow : public CWnd
+    {
+    public:
+        void LoadSettings(const CString& path, GameSession& session);
+        void Show(CWnd* owner, const std::vector<Game::MagicStatus>& magic, GameSession& session);
+
+    protected:
+        afx_msg int OnCreate(LPCREATESTRUCT create);
+        afx_msg void OnSave();
+        afx_msg void OnClose();
+        DECLARE_MESSAGE_MAP()
+
+    private:
+        void ApplySettings();
+        CString configPath_, magicName_;
+        GameSession* session_ = nullptr;
+        bool updating_ = false, flee_ = true;
+        int capturePercent_ = 40, magicPercent_ = 60, magicSlot_ = -1;
+        CFont font_;
+        CButton fleeOption_;
+        CEdit captureHp_, magicHp_;
+        CComboBox skills_;
+        CStatic labels_[6];
+    };
 }

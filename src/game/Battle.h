@@ -28,6 +28,7 @@ namespace Game
         bool roundReceived = false;
         bool endPending = false;
         int sentRound = -1;
+        int playerAction = 3, petAction = 3;
         std::uint64_t nextAction = 0;
         std::array<BattleMember, 20> members;
     };

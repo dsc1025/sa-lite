@@ -55,6 +55,7 @@ public:
     void SetEncounterEnabled(bool enabled);
     void PollEncounter();
     void SetHealingSettings(const Game::HealingSettings& settings) { healing_ = settings; }
+    void SetCaptureSettings(const Game::CaptureSettings& settings, bool enabled) { capture_ = settings; captureEnabled_ = enabled; }
     bool IsEncounterEnabled() const noexcept { return encounter_.enabled; }
     bool IsEncounterStopping() const noexcept { return encounter_.stopPending; }
     bool IsEncounterWaiting() const noexcept { return encounter_.requestPending; }
@@ -101,6 +102,8 @@ private:
     PlayerStatus playerStatus_;
     Game::EncounterState encounter_;
     Game::HealingSettings healing_;
+    Game::CaptureSettings capture_;
+    bool captureEnabled_ = false;
     Game::BattleState battle_;
     Game::BattleResult battleResult_;
     std::vector<PetStatus> pets_ = std::vector<PetStatus>(5);

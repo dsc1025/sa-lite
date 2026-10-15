@@ -38,10 +38,11 @@ namespace Client
             developing_.MoveWindow(battlePage);
         int battleWidth = std::max(0, battlePage.Width());
         capturePet_.MoveWindow(battlePage.left, battlePage.top, 180, 26);
-        captureDestination_.MoveWindow(battlePage.left, battlePage.top + 36, battleWidth, 60);
-        battleStart_.MoveWindow(battlePage.left, battlePage.top, 70, 26);
-        battleSettings_.MoveWindow(battlePage.left + 156, battlePage.top, 70, 26);
-        battleDisplay_.MoveWindow(battlePage.left + 78, battlePage.top, 70, 26);
+        captureDestination_.MoveWindow(battlePage.left, battlePage.top + 34, battleWidth, 22);
+        int buttonTop = battlePage.top + (battleTabs_.GetCurSel() == 1 ? 64 : 0);
+        battleStart_.MoveWindow(battlePage.left, buttonTop, 70, 26);
+        battleSettings_.MoveWindow(battlePage.left + 156, buttonTop, 70, 26);
+        battleDisplay_.MoveWindow(battlePage.left + 78, buttonTop, 70, 26);
         int sideTop = battlePage.top + 34;
         int sideBottom = std::max<LONG>(sideTop + 24, battlePage.bottom - 30);
         int sideWidth = std::max(0, (battleWidth - 12) / 2);
@@ -66,7 +67,10 @@ namespace Client
         EnableIfChanged(capturePet_, capturing && view_.screen == Screen::Game &&
             !view_.player.inBattle && !view_.encounterEnabled && !view_.encounterPending &&
             !view_.petStoragePending && !view_.itemPending);
-        CWnd* battleControls[] = { &battleStart_, &battleSettings_, &battleDisplay_, &battleRound_,
+        CWnd* actions[] = { &battleStart_, &battleDisplay_, &battleSettings_ };
+        for (auto control : actions)
+            ShowIfChanged(*control, leveling || capturing);
+        CWnd* battleControls[] = { &battleRound_,
             battleSides_[0].get(), battleSides_[1].get(), &battleExperience_ };
         for (auto control : battleControls)
             ShowIfChanged(*control, leveling);
@@ -86,11 +90,14 @@ namespace Client
             round.Format(L"第%d回合", view_.battle.round);
         SetTextIfChanged(battleRound_, round);
         ShowIfChanged(battleTabs_, visible);
-        EnableIfChanged(battleSettings_, leveling && !view_.encounterEnabled && !view_.encounterPending && !view_.player.inBattle);
+        EnableIfChanged(battleSettings_, (leveling || capturing) && !view_.encounterEnabled && !view_.encounterPending && !view_.player.inBattle);
         if ((view_.encounterEnabled || view_.encounterPending || view_.player.inBattle) &&
             battleSettingsWindow_->GetSafeHwnd())
             battleSettingsWindow_->ShowWindow(SW_HIDE);
-        EnableIfChanged(battleStart_, leveling && !view_.encounterPending);
+        if ((view_.encounterEnabled || view_.encounterPending || view_.player.inBattle) &&
+            captureSettingsWindow_->GetSafeHwnd())
+            captureSettingsWindow_->ShowWindow(SW_HIDE);
+        EnableIfChanged(battleStart_, (leveling || capturing) && !view_.encounterPending);
         bool started = view_.encounterEnabled || view_.encounterPending;
         if ((battleStart_.GetCheck() == BST_CHECKED) != started)
             battleStart_.SetCheck(started ? BST_CHECKED : BST_UNCHECKED);
@@ -130,7 +137,18 @@ namespace Client
     {
         if (view_.screen != Screen::Game || view_.encounterEnabled || view_.encounterPending || view_.player.inBattle)
             return;
-        battleSettingsWindow_->Show(this, view_.magic, session_);
+        if (battleTabs_.GetCurSel() == 1)
+        {
+            if (battleSettingsWindow_->GetSafeHwnd())
+                battleSettingsWindow_->ShowWindow(SW_HIDE);
+            captureSettingsWindow_->Show(this, view_.magic, session_);
+        }
+        else
+        {
+            if (captureSettingsWindow_->GetSafeHwnd())
+                captureSettingsWindow_->ShowWindow(SW_HIDE);
+            battleSettingsWindow_->Show(this, view_.magic, session_);
+        }
     }
 
     void MainWindow::OnBattleStart()
@@ -143,8 +161,10 @@ namespace Client
         {
             if (battleSettingsWindow_->GetSafeHwnd())
                 battleSettingsWindow_->ShowWindow(SW_HIDE);
+            if (captureSettingsWindow_->GetSafeHwnd())
+                captureSettingsWindow_->ShowWindow(SW_HIDE);
             battleSceneWindow_->PrepareForEncounter();
-            session_.SetEncounterEnabled(true);
+            session_.SetEncounterEnabled(true, battleTabs_.GetCurSel() == 1);
         }
     }
 

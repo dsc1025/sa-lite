@@ -11,12 +11,20 @@ namespace Client
         state_->healing_ = settings;
     }
 
-    void GameSession::SetEncounterEnabled(bool enabled)
+    void GameSession::SetCaptureSettings(const Game::CaptureSettings& settings)
+    {
+        std::lock_guard<std::mutex> lock(state_->mutex_);
+        state_->capture_ = settings;
+    }
+
+    void GameSession::SetEncounterEnabled(bool enabled, bool capture)
     {
         {
             std::lock_guard<std::mutex> lock(state_->mutex_);
             if (state_->stop_ || state_->done_ || state_->shared_.screen != Screen::Game || (enabled && (state_->shared_.petStoragePending || state_->shared_.itemPending)))
                 return;
+            if (enabled && !state_->encounterRequested_)
+                state_->captureEnabled_ = capture;
             state_->encounterRequested_ = enabled;
             if (enabled)
                 state_->requestedMap_ = -1;

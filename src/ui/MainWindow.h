@@ -16,6 +16,7 @@ namespace Client
     class MiniMap;
     class CreateCharacterWindow;
     class BattleSettingsWindow;
+    class CaptureSettingsWindow;
     class BattleSceneWindow;
     class RolePage;
     class BattleGroup;
@@ -81,6 +82,7 @@ namespace Client
         CButton battleStart_, battleSettings_, battleDisplay_;
         bool showBattle_ = false;
         std::unique_ptr<BattleSettingsWindow> battleSettingsWindow_;
+        std::unique_ptr<CaptureSettingsWindow> captureSettingsWindow_;
         std::unique_ptr<BattleSceneWindow> battleSceneWindow_;
         CStatic battleRound_, battleExperience_;
         CButton capturePet_;

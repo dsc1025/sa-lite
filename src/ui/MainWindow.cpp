@@ -365,6 +365,7 @@ namespace Client
     {
         rolePage_->CloseEditor();
         Refresh();
+        Layout();
         if (view_.screen == Screen::Game && mainTabs_.GetCurSel() == 0)
             rolePage_->Activate();
         *result = 0;

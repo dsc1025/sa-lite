@@ -307,6 +307,16 @@ namespace Client
         }
     }
 
+    int BattleSceneWindow::MemberAction(int slot) const
+    {
+        if (slot == battle_.playerSlot)
+            return battle_.playerAction;
+        if (slot == battle_.playerSlot + 5)
+            return battle_.petAction;
+        const int playerSide = battle_.playerSlot >= 10 ? 1 : 0;
+        return slot / 10 == playerSide ? 0 : 3;
+    }
+
     void BattleSceneWindow::PrepareAnimationFrames()
     {
         const auto now = GetTickCount64();
@@ -318,7 +328,7 @@ namespace Client
             auto& unit = unitAnimations_[slot];
             if (unit.started == 0) unit.started = now;
             const int direction = slot / 10 == playerSide ? 3 : 7;
-            const int action = slot / 10 == playerSide ? 0 : 3;
+            const int action = MemberAction(slot);
             InspectImage(member.image, direction, action, 0);
             auto first = staticSprites_.find(SpriteKey(member.image, direction, action, 0));
             if (first == staticSprites_.end()) { unit.frame = 0; continue; }
@@ -332,11 +342,15 @@ namespace Client
     void BattleSceneWindow::ApplyBattleState(const Game::BattleState& state)
     {
         auto previous = battle_.members;
+        std::array<int, 20> previousActions;
+        for (int slot = 0; slot < 20; ++slot)
+            previousActions[slot] = MemberAction(slot);
         battle_ = state;
         for (int slot = 0; slot < 20; ++slot)
         {
             if (previous[slot].image != battle_.members[slot].image ||
-                previous[slot].present != battle_.members[slot].present)
+                previous[slot].present != battle_.members[slot].present ||
+                previousActions[slot] != MemberAction(slot))
             {
                 unitAnimations_[slot] = {};
                 unitAnimations_[slot].started = GetTickCount64();
@@ -467,7 +481,7 @@ namespace Client
             if (!member.present)
                 continue;
             bool ally = slot / 10 == playerSide;
-            const std::uint64_t key = SpriteKey(member.image, ally ? 3 : 7, ally ? 0 : 3, unitAnimations_[slot].frame);
+            const std::uint64_t key = SpriteKey(member.image, ally ? 3 : 7, MemberAction(slot), unitAnimations_[slot].frame);
             auto found = staticSprites_.find(key);
             if (found == staticSprites_.end())
                 continue;
@@ -507,7 +521,7 @@ namespace Client
             CPoint anchor = position(slot);
             int x = anchor.x - 56;
             int y = anchor.y;
-            const std::uint64_t key = SpriteKey(member.image, ally ? 3 : 7, ally ? 0 : 3, unitAnimations_[slot].frame);
+            const std::uint64_t key = SpriteKey(member.image, ally ? 3 : 7, MemberAction(slot), unitAnimations_[slot].frame);
             if (staticSprites_.find(key) == staticSprites_.end())
             {
                 CRect box(x, y - 58, x + 112, y);

@@ -54,6 +54,8 @@ namespace Client
         battleSceneWindow_->Update(this, view_, showBattle_);
         if (!game && battleSettingsWindow_->GetSafeHwnd())
             battleSettingsWindow_->ShowWindow(SW_HIDE);
+        if (!game && captureSettingsWindow_->GetSafeHwnd())
+            captureSettingsWindow_->ShowWindow(SW_HIDE);
         ShowIfChanged(*miniMap_, mapPage);
         ShowIfChanged(mapPosition_, mapPage);
         ShowIfChanged(mapRegion_, mapPage);

@@ -33,6 +33,7 @@ namespace Client
         void InspectImage(std::uint32_t image, int direction, int action = 3, std::uint32_t frame = 0);
         static std::uint64_t SpriteKey(std::uint32_t image, int direction, int action, std::uint32_t frame);
         void PrepareBackground(const SessionView& view);
+        int MemberAction(int slot) const;
         void PrepareAnimationFrames();
         void ApplyBattleState(const Game::BattleState& state);
         struct UnitAnimation

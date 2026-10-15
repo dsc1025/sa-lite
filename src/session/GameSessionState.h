@@ -25,6 +25,8 @@ namespace Client
         bool stop_ = false, done_ = true;
         bool encounterRequested_ = false;
         Game::HealingSettings healing_;
+        Game::CaptureSettings capture_;
+        bool captureEnabled_ = false;
         int requestedCharacter_ = -1;
         bool createRequested_ = false;
         Game::NewCharacter requestedCreation_;

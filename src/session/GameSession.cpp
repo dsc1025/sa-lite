@@ -39,6 +39,7 @@ namespace Client
                 state_->requestedItemStorageCode_.clear();
                 state_->requestedMap_ = -1;
                 state_->encounterRequested_ = false;
+                state_->captureEnabled_ = false;
                 state_->shared_ = {};
                 state_->shared_.screen = Screen::Connecting;
                 state_->shared_.message = L"正在连接并登录…";
@@ -269,6 +270,7 @@ namespace Client
             if (screen != Screen::Game)
             {
                 state_->encounterRequested_ = false;
+                state_->captureEnabled_ = false;
                 state_->shared_.encounterEnabled = false;
                 state_->shared_.encounterPending = false;
                 state_->shared_.encounterMessage = L"遇敌未开始";
@@ -354,6 +356,7 @@ namespace Client
                 {
                     std::lock_guard<std::mutex> lock(state_->mutex_);
                     client.SetHealingSettings(state_->healing_);
+                    client.SetCaptureSettings(state_->capture_, state_->captureEnabled_);
                 }
                 client.EnterGame(characters.at(selection));
                 entered = true;
@@ -541,6 +544,7 @@ namespace Client
                     {
                         std::lock_guard<std::mutex> lock(state_->mutex_);
                         client.SetHealingSettings(state_->healing_);
+                        client.SetCaptureSettings(state_->capture_, state_->captureEnabled_);
                     }
                     if (client.PollGame(pollTimeout))
                     {

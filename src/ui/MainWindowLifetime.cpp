@@ -13,6 +13,7 @@ namespace Client
           createCharacterWindow_(std::make_unique<CreateCharacterWindow>()),
           battleSides_{ std::make_unique<BattleGroup>(), std::make_unique<BattleGroup>() },
           battleSettingsWindow_(std::make_unique<BattleSettingsWindow>()),
+          captureSettingsWindow_(std::make_unique<CaptureSettingsWindow>()),
           battleSceneWindow_(std::make_unique<BattleSceneWindow>()),
           rolePage_(std::make_unique<RolePage>(view_, session_, footer_))
     {

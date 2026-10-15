@@ -19,6 +19,7 @@ namespace Client
         showBattle_ = GetPrivateProfileIntW(L"Battle", L"ShowBattle", 0, configPath_) != 0;
         battleDisplay_.SetCheck(showBattle_ ? BST_CHECKED : BST_UNCHECKED);
         battleSettingsWindow_->LoadSettings(configPath_, session_);
+        captureSettingsWindow_->LoadSettings(configPath_, session_);
         battleSceneWindow_->LoadResources(configPath_);
         wchar_t value[256];
         GetPrivateProfileStringW(L"Login", L"Server", L"", value, 256, configPath_);
