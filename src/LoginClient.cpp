@@ -272,6 +272,8 @@ void LoginClient::EnterGame(const Character& character, int timeoutMs)
         auto reply = WaitReply("78", deadline);
         if (reply[0] != "successful")
             throw std::runtime_error("Character login rejected: " + reply[1]);
+        connection_.Send(EncodePacket("&;120;" + Encode64("", sessionKey_, -1) + ";"
+            + EncodeInteger(0, sessionKey_) + ";#;"), deadline);
         inGame_ = true;
         nextHeartbeat_ = GetTickCount64() + 30000;
     }

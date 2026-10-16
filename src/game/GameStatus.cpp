@@ -103,7 +103,7 @@ bool LoginClient::HandleGamePacket(const std::vector<std::string>& fields)
         return HandleEncounterReply(fields);
     if (fields[1] == "12")
         return HandleBattleResult(fields);
-    if (fields[1] == "15")
+    if (fields[1] == "121")
         return HandleBattlePacket(fields);
     if (fields[1] == "2" || fields[1] == "7")
         return HandlePositionPacket(fields);

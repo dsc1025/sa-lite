@@ -58,33 +58,15 @@ bool LoginClient::HandleBattlePacket(const std::vector<std::string>& fields)
         battle_.roundReceived = true;
         return true;
     }
-    if (values[0] == "BI1")
-    {
-        if (values.size() < 2 || !values.back().empty() || (values.size() - 2) % 2 != 0)
-            throw std::runtime_error("Invalid battle instance IDs");
-        auto members = battle_.members;
-        std::array<bool, 20> received{};
-        for (std::size_t i = 1; i + 2 < values.size(); i += 2)
-        {
-            auto slot = BattleNumber(values[i]);
-            auto id = BattleNumber(values[i + 1]);
-            if (slot >= members.size() || !members[slot].present || received[slot] || id > INT32_MAX)
-                throw std::runtime_error("Invalid battle instance ID");
-            members[slot].sourceInstanceId = static_cast<int>(id);
-            received[slot] = true;
-        }
-        battle_.members = members;
-        return true;
-    }
-    if (values[0] != "BC")
+    if (values[0] != "BC2")
         return false;
-    // BC carries a field attribute, then thirteen fields per occupied battle slot.
-    if (values.size() < 3 || !values.back().empty() || (values.size() - 3) % 13 != 0)
+    // BC2 adds a source instance ID after the thirteen legacy fields of each slot.
+    if (values.size() < 3 || !values.back().empty() || (values.size() - 3) % 14 != 0)
         throw std::runtime_error("Incomplete battle members");
     auto updated = battle_;
     BattleNumber(values[1]);
     updated.members = {};
-    for (std::size_t i = 2; i + 13 < values.size(); i += 13)
+    for (std::size_t i = 2; i + 14 < values.size(); i += 14)
     {
         auto slot = BattleNumber(values[i]);
         if (slot >= updated.members.size() || updated.members[slot].present)
@@ -107,6 +89,10 @@ bool LoginClient::HandleBattlePacket(const std::vector<std::string>& fields)
         }
         if (member.level < 0 || member.hp < 0 || member.maxHp < 0)
             throw std::runtime_error("Invalid battle member status");
+        auto instanceId = BattleNumber(values[i + 13]);
+        if (instanceId != UINT32_MAX && instanceId > INT32_MAX)
+            throw std::runtime_error("Invalid battle instance ID");
+        member.sourceInstanceId = instanceId == UINT32_MAX ? -1 : static_cast<int>(instanceId);
         member.present = true;
     }
     updated.received = true;
@@ -230,7 +216,7 @@ bool LoginClient::PollBattle()
             battle_.petAction = command.compare(0, 4, "W|0|") == 0 ? 0 : 3;
         else
             battle_.playerAction = command.compare(0, 2, "H|") == 0 ? 0 : 3;
-        packets += EncodePacket("&;14;" + Encode64(command, sessionKey_, -1) + ";" +
+        packets += EncodePacket("&;120;" + Encode64(command, sessionKey_, -1) + ";" +
             EncodeInteger(static_cast<std::uint32_t>(command.size()), sessionKey_) + ";#;");
     };
     char command[32];
