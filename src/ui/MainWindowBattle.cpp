@@ -79,7 +79,7 @@ namespace Client
         battleSides_[0]->MoveWindow(battlePage.left, sideTop, sideWidth,
             std::max(0, sideBottom - sideTop));
         battleSides_[1]->MoveWindow(rightLeft, sideTop + 24,
-            std::max<LONG>(0, battlePage.right - rightLeft), std::max(0, sideBottom - sideTop));
+            std::max<LONG>(0, battlePage.right - rightLeft), std::max(0, sideBottom - sideTop - 24));
         battleRound_.MoveWindow(rightLeft, sideTop,
             std::max<LONG>(0, battlePage.right - rightLeft - 8), 22);
         battleExperience_.MoveWindow(battlePage.left, sideBottom + 8, battleWidth, 22);

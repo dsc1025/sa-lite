@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "../AppInfo.h"
 #include "ChatWindow.h"
 #include "MiniMap.h"
 #include "CreateCharacterWindow.h"
@@ -71,7 +72,9 @@ namespace Client
         ShowIfChanged(list_, characters);
         EnableIfChanged(exit_, view_.screen != Screen::Closing);
         SetTextIfChanged(exit_, game ? L"退出登录" : L"退出");
-        SetTextIfChanged(*this, login ? L"登录" : characters ? L"选择角色" : L"SA25 lite client | ver 0.1.34");
+        CString title;
+        title.Format(L"%s v%s", AppInfo::Name, AppInfo::Version);
+        SetTextIfChanged(*this, login ? L"登录" : characters ? L"选择角色" : title.GetString());
         ShowIfChanged(summary_, !login);
         SetTextIfChanged(footer_, view_.message.c_str());
         CString summary = game ? CString(view_.characterName.c_str()) : CString();
