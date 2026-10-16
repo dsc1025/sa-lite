@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "ChatWindow.h"
 #include "MiniMap.h"
 #include "CreateCharacterWindow.h"
 #include "BattleGroup.h"
@@ -10,6 +11,7 @@ namespace Client
 {
     MainWindow::MainWindow()
         : miniMap_(std::make_unique<MiniMap>()),
+          chatWindow_(std::make_unique<ChatWindow>()),
           createCharacterWindow_(std::make_unique<CreateCharacterWindow>()),
           battleSides_{ std::make_unique<BattleGroup>(), std::make_unique<BattleGroup>() },
           battleSettingsWindow_(std::make_unique<BattleSettingsWindow>()),

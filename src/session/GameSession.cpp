@@ -38,6 +38,7 @@ namespace Client
                 state_->itemStorageRequested_ = false;
                 state_->requestedItemStorageCode_.clear();
                 state_->requestedMap_ = -1;
+                state_->requestedChat_.clear();
                 state_->encounterRequested_ = false;
                 state_->captureEnabled_ = false;
                 state_->shared_ = {};
@@ -100,6 +101,17 @@ namespace Client
         }
         state_->wake_.notify_all();
         ::PostMessage(state_->window_, state_->message_, 0, 0);
+        return true;
+    }
+
+    bool GameSession::RequestChat(const std::string& text)
+    {
+        std::lock_guard<std::mutex> lock(state_->mutex_);
+        if (state_->stop_ || state_->done_ || state_->shared_.screen != Screen::Game ||
+            text.empty() || text.size() > 200 || text.find_first_of("\r\n") != std::string::npos ||
+            text.find('\0') != std::string::npos || state_->requestedChat_.size() >= 8)
+            return false;
+        state_->requestedChat_.push_back(text);
         return true;
     }
 
@@ -282,6 +294,7 @@ namespace Client
             if (client)
             {
                 state_->shared_.player = client->GetPlayerStatus();
+                state_->shared_.chatMessages = client->GetChatMessages();
                 state_->shared_.battle = client->GetBattle();
                 state_->shared_.battleResult = client->GetBattleResult();
                 state_->shared_.captureStatistics = client->GetCaptureStatistics();
@@ -387,9 +400,11 @@ namespace Client
                     bool storage;
                     Game::PetStorageAction storageAction;
                     std::string storageCode;
+                    std::vector<std::string> chat;
                     {
                         std::lock_guard<std::mutex> lock(state_->mutex_);
                         if (state_->stop_) break;
+                        chat.swap(state_->requestedChat_);
                         pollTimeout = state_->encounterRequested_ || client.GetPlayerStatus().inBattle ? Game::BATTLE_DELAY_MS : 100;
                         attribute = state_->requestedAttribute_;
                         state_->requestedAttribute_ = -1;
@@ -425,6 +440,8 @@ namespace Client
                             movementMessage = L"已连接";
                         }
                     }
+                    for (const auto& text : chat)
+                        client.SendChat(text);
                     if (attribute >= 0)
                     {
                         std::wstring message;

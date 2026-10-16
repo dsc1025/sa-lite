@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "ChatWindow.h"
 #include "MiniMap.h"
 #include "CreateCharacterWindow.h"
 #include "BattleSettingsWindow.h"
@@ -10,6 +11,7 @@ namespace Client
 {
     void MainWindow::Refresh()
     {
+        chatWindow_->Update(view_);
         bool layoutChanged = displayedScreen_ != static_cast<int>(view_.screen) ||
             displayedTab_ != mainTabs_.GetCurSel();
         displayedScreen_ = static_cast<int>(view_.screen);

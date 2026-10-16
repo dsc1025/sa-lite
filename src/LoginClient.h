@@ -39,6 +39,8 @@ public:
     bool CreateCharacter(const NewCharacter& character, std::string& error, int timeoutMs = 10000);
     void EnterGame(const Character& character, int timeoutMs = 10000);
     bool PollGame(int timeoutMs = 100);
+    void SendChat(const std::string& text);
+    const std::vector<std::string>& GetChatMessages() const noexcept { return chatMessages_; }
     bool MoveTo(int map, int x, int y, int timeoutMs = 2000);
     void SetPetState(int slot, PetState state);
     void IncreaseAttribute(int attribute);
@@ -101,6 +103,7 @@ private:
     bool PollCaptureNames();
 
     SocketConnection connection_;
+    std::vector<std::string> chatMessages_;
     bool loggedIn_ = false;
     bool inGame_ = false;
     std::string sessionKey_;

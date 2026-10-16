@@ -107,7 +107,7 @@ bool LoginClient::HandleGamePacket(const std::vector<std::string>& fields)
         return HandleBattlePacket(fields);
     if (fields[1] == "2" || fields[1] == "7")
         return HandlePositionPacket(fields);
-    if (fields[1] == "36" && (waitingRide_ || waitingFood_))
+    if (fields[1] == "36")
         return HandleServerMessage(fields);
     if (fields[1] == "55" || fields[1] == "115")
         return HandlePetStateReply(fields);
@@ -181,6 +181,10 @@ bool LoginClient::HandleServerMessage(const std::vector<std::string>& fields)
     auto checksum = ReadInteger(Decode64(fields[5], sessionKey_, -1), { 2, 4, 1, 3 });
     if (checksum != sender + static_cast<std::uint32_t>(message.size()) + color)
         throw std::runtime_error("Invalid server message checksum");
+    auto body = message.size() >= 2 && message[1] == '|' ? message.substr(2) : message;
+    chatMessages_.push_back(UnescapeLegacy(body));
+    if (chatMessages_.size() > 500)
+        chatMessages_.erase(chatMessages_.begin());
     if (sender == static_cast<std::uint32_t>(-1) && message.compare(0, 2, "P|") == 0)
     {
         auto text = UnescapeLegacy(message.substr(2));
@@ -193,7 +197,7 @@ bool LoginClient::HandleServerMessage(const std::vector<std::string>& fields)
             wide.find(L"模型不匹配") != std::wstring::npos)
             rideError_ = text;
     }
-    return false;
+    return true;
 }
 
 bool LoginClient::HandlePetStateReply(const std::vector<std::string>& fields)

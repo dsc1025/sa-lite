@@ -14,6 +14,7 @@
 namespace Client
 {
     class MiniMap;
+    class ChatWindow;
     class CreateCharacterWindow;
     class BattleSettingsWindow;
     class CaptureSettingsWindow;
@@ -71,6 +72,7 @@ namespace Client
         const MapNode* selectedMap_ = nullptr;
         std::filesystem::path mapDirectory_;
         std::unique_ptr<MiniMap> miniMap_;
+        std::unique_ptr<ChatWindow> chatWindow_;
         CEdit address_, port_, account_, password_;
         CButton login_, enter_, exit_;
         CButton createCharacter_;

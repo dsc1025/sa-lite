@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "ChatWindow.h"
 #include "BattleControlIds.h"
 #include "MiniMap.h"
 #include "CreateCharacterWindow.h"
@@ -264,6 +265,16 @@ namespace Client
 
     BOOL MainWindow::PreTranslateMessage(MSG* message)
     {
+        if ((message->message == WM_KEYDOWN || message->message == WM_SYSKEYDOWN) &&
+            message->wParam == VK_F10 && (GetKeyState(VK_CONTROL) & 0x8000) &&
+            (GetKeyState(VK_SHIFT) & 0x8000))
+        {
+            chatWindow_->Show(this, &session_, view_);
+            return TRUE;
+        }
+        if (chatWindow_->GetSafeHwnd() &&
+            (message->hwnd == chatWindow_->GetSafeHwnd() || chatWindow_->IsChild(CWnd::FromHandle(message->hwnd))))
+            return CFrameWnd::PreTranslateMessage(message);
         if ((message->hwnd == mapPosition_.GetSafeHwnd() || message->hwnd == mapRegion_.GetSafeHwnd()) &&
             message->message == WM_KEYDOWN &&
             (message->wParam == VK_RETURN || message->wParam == VK_ESCAPE))

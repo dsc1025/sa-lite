@@ -28,6 +28,7 @@ namespace Client
         Game::CaptureSettings capture_;
         bool captureEnabled_ = false;
         int requestedCharacter_ = -1;
+        std::vector<std::string> requestedChat_;
         bool createRequested_ = false;
         Game::NewCharacter requestedCreation_;
         int requestedPet_ = -1, requestedPetState_ = 0;

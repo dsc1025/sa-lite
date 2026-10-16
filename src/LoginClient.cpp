@@ -34,6 +34,7 @@ void LoginClient::Disconnect() noexcept
     inGame_ = false;
     sessionKey_.clear();
     characters_.clear();
+    chatMessages_.clear();
     playerStatus_ = {};
     encounter_ = {};
     captureStatistics_ = {};
@@ -305,6 +306,39 @@ bool LoginClient::PollGame(int timeoutMs)
         Disconnect();
         throw;
     }
+}
+
+void LoginClient::SendChat(const std::string& text)
+{
+    if (!inGame_ || text.empty() || text.size() > 200 ||
+        text.find_first_of("\r\n") != std::string::npos || text.find('\0') != std::string::npos)
+        throw std::invalid_argument("聊天内容必须为 1 至 200 字节的单行文字");
+    std::string message = "P|";
+    for (std::size_t i = 0; i < text.size(); ++i)
+    {
+        if (static_cast<unsigned char>(text[i]) >= 128 && i + 1 < text.size())
+        {
+            message += text[i];
+            message += text[++i];
+        }
+        else
+        {
+            switch (text[i])
+            {
+            case '\\': message += "\\y"; break;
+            case '|': message += "\\z"; break;
+            case ',': message += "\\c"; break;
+            default: message += text[i]; break;
+            }
+        }
+    }
+    int x = playerStatus_.mapX, y = playerStatus_.mapY;
+    std::uint32_t checksum = static_cast<std::uint32_t>(x) + static_cast<std::uint32_t>(y) +
+        static_cast<std::uint32_t>(message.size());
+    connection_.Send(EncodePacket("&;35;" + EncodeInteger(x, sessionKey_) + ";" +
+        EncodeInteger(y, sessionKey_) + ";" + Encode64(message, sessionKey_, -1) + ";" +
+        EncodeInteger(0, sessionKey_) + ";" + EncodeInteger(0, sessionKey_) + ";" +
+        EncodeInteger(checksum, sessionKey_) + ";#;"), GetTickCount64() + 10000);
 }
 
 void LoginClient::SendNumbers(const char* function, std::initializer_list<int> numbers, ULONGLONG deadline)

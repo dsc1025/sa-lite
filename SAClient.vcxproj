@@ -66,6 +66,7 @@
     <ClInclude Include="src\map\MapData.h" />
     <ClInclude Include="src\text\TextEncoding.h" />
     <ClInclude Include="src\ui\MainWindow.h" />
+    <ClInclude Include="src\ui\ChatWindow.h" />
     <ClInclude Include="src\ui\CreateCharacterWindow.h" />
     <ClInclude Include="src\ui\PropertiesWindow.h" />
     <ClInclude Include="src\ui\RolePage.h" />
@@ -98,6 +99,7 @@
     <ClCompile Include="src\map\MapIndex.cpp" />
     <ClCompile Include="src\text\TextEncoding.cpp" />
     <ClCompile Include="src\ui\MainWindow.cpp" />
+    <ClCompile Include="src\ui\ChatWindow.cpp" />
     <ClCompile Include="src\ui\CreateCharacterWindow.cpp" />
     <ClCompile Include="src\ui\PropertiesWindow.cpp" />
     <ClCompile Include="src\ui\RolePage.cpp" />

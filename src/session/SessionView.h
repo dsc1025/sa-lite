@@ -19,6 +19,7 @@ namespace Client
         Screen screen = Screen::Login;
         std::wstring message = L"请输入服务器和账号信息";
         std::wstring characterName;
+        std::vector<std::string> chatMessages;
         std::vector<Game::Character> characters;
         Game::PlayerStatus player;
         Game::BattleState battle;
