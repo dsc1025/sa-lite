@@ -34,11 +34,13 @@ namespace Client
         afx_msg int OnCreate(LPCREATESTRUCT create);
         afx_msg void OnSize(UINT type, int width, int height);
         afx_msg void OnShowWindow(BOOL show, UINT status);
+        afx_msg void OnTimer(UINT_PTR timer);
         afx_msg void OnDestroy();
         DECLARE_MESSAGE_MAP()
 
     private:
         PetAppearanceWindow appearance_;
+        int pendingPetImage_ = -1;
         CFont font_;
         CEdit text_;
     };

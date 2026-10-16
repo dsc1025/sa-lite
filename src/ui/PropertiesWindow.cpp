@@ -7,6 +7,7 @@ namespace Client
         ON_WM_CREATE()
         ON_WM_SIZE()
         ON_WM_SHOWWINDOW()
+        ON_WM_TIMER()
         ON_WM_DESTROY()
     END_MESSAGE_MAP()
 
@@ -21,6 +22,10 @@ namespace Client
                 return;
             CenterWindow(owner);
         }
+        KillTimer(1);
+        pendingPetImage_ = -1;
+        if (appearance_.GetSafeHwnd())
+            appearance_.DestroyWindow();
         SetWindowText(title);
         text_.SetWindowText(text);
         text_.SetSel(0, 0);
@@ -29,8 +34,8 @@ namespace Client
         text_.SetFocus();
         if (petImage >= 0)
         {
-            RedrawWindow(nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN | RDW_FRAME);
-            appearance_.Show(this, petImage);
+            pendingPetImage_ = petImage;
+            SetTimer(1, 200, nullptr);
         }
     }
 
@@ -109,12 +114,33 @@ namespace Client
     void ItemPropertiesWindow::OnShowWindow(BOOL show, UINT status)
     {
         CWnd::OnShowWindow(show, status);
-        if (!show && appearance_.GetSafeHwnd())
-            appearance_.DestroyWindow();
+        if (!show)
+        {
+            KillTimer(1);
+            pendingPetImage_ = -1;
+            if (appearance_.GetSafeHwnd())
+                appearance_.DestroyWindow();
+        }
+    }
+
+    void ItemPropertiesWindow::OnTimer(UINT_PTR timer)
+    {
+        if (timer != 1)
+        {
+            CWnd::OnTimer(timer);
+            return;
+        }
+        KillTimer(1);
+        const int image = pendingPetImage_;
+        pendingPetImage_ = -1;
+        if (image >= 0 && IsWindowVisible())
+            appearance_.Show(this, image);
     }
 
     void ItemPropertiesWindow::OnDestroy()
     {
+        KillTimer(1);
+        pendingPetImage_ = -1;
         if (appearance_.GetSafeHwnd())
             appearance_.DestroyWindow();
         CWnd::OnDestroy();
@@ -151,8 +177,12 @@ namespace Client
             text_.SetSel(0, -1);
             return TRUE;
         }
-        if (message->message == WM_KEYDOWN &&
-            (message->wParam == VK_RETURN || message->wParam == VK_ESCAPE))
+        if (message->message == WM_KEYDOWN && message->wParam == VK_ESCAPE)
+        {
+            SendMessage(WM_CLOSE);
+            return TRUE;
+        }
+        if (message->message == WM_KEYDOWN && message->wParam == VK_RETURN)
             return TRUE;
         return CWnd::PreTranslateMessage(message);
     }
