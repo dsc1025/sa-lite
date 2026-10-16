@@ -75,7 +75,7 @@ namespace Client
         images_.open(resourceDirectory_ / L"real_lite.bin", std::ios::binary | std::ios::ate);
         spriteSize_ = sprites_ ? static_cast<std::uint64_t>(sprites_.tellg()) : 0;
         imageSize_ = images_ ? static_cast<std::uint64_t>(images_.tellg()) : 0;
-        std::ifstream paletteFile(resourceDirectory_ / L"Palet_1.sap", std::ios::binary | std::ios::ate);
+        std::ifstream paletteFile(resourceDirectory_ / L"pal" / L"Palet_1.sap", std::ios::binary | std::ios::ate);
         std::array<unsigned char, 708> raw{};
         if (paletteFile && paletteFile.tellg() == 708)
         {
