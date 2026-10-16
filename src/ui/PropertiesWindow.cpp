@@ -39,6 +39,21 @@ namespace Client
         }
     }
 
+    void ItemPropertiesWindow::UpdateText(const CString& text)
+    {
+        if (!text_.GetSafeHwnd())
+            return;
+        int firstLine = text_.GetFirstVisibleLine();
+        int start = 0, end = 0;
+        text_.GetSel(start, end);
+        text_.SetRedraw(FALSE);
+        text_.SetWindowText(text);
+        text_.SetSel(start, end, TRUE);
+        text_.LineScroll(firstLine - text_.GetFirstVisibleLine());
+        text_.SetRedraw(TRUE);
+        text_.Invalidate(FALSE);
+    }
+
     BEGIN_MESSAGE_MAP(PetAppearanceWindow, CWnd)
         ON_WM_PAINT()
         ON_WM_TIMER()
@@ -67,7 +82,7 @@ namespace Client
         started_ = GetTickCount64();
         CRect rect;
         owner->GetWindowRect(&rect);
-        SetWindowPos(&CWnd::wndTop, rect.left + 300, rect.top + 50, 0, 0,
+        SetWindowPos(&CWnd::wndTop, rect.right - 100, rect.top + 56, 0, 0,
             SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
         SetTimer(1, 33, nullptr);
         Invalidate(FALSE);

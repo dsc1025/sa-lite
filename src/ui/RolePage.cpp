@@ -133,6 +133,7 @@ namespace Client
 
     void RolePage::Refresh()
     {
+        RefreshPetProperties();
         if (view_.screen != Screen::Game || !IsWindowVisible())
         {
             CloseEditor();

@@ -3,5 +3,5 @@
 namespace Client::AppInfo
 {
     inline constexpr wchar_t Name[] = L"SA25 lite client";
-    inline constexpr wchar_t Version[] = L"0.1.35";
+    inline constexpr wchar_t Version[] = L"0.32.1";
 }

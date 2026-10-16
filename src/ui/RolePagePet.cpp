@@ -3,9 +3,92 @@
 #include "../session/SessionView.h"
 #include "UiText.h"
 #include "PetUi.h"
+#include <charconv>
+#include <string_view>
 
 namespace Client
 {
+    namespace
+    {
+        bool ParsePetInitialAttributes(const std::string& nickname, int (&attributes)[5])
+        {
+            std::string_view values(nickname);
+            if (values.size() >= 2 && values.front() == '[' && values.back() == ']')
+                values = values.substr(1, values.size() - 2);
+            for (int i = 0; i < 5; ++i)
+            {
+                auto end = values.find('/');
+                if ((i < 4 && end == std::string_view::npos) ||
+                    (i == 4 && end != std::string_view::npos))
+                    return false;
+                auto value = values.substr(0, end);
+                if (value.empty() || value.front() < '0' || value.front() > '9')
+                    return false;
+                auto parsed = std::from_chars(value.data(), value.data() + value.size(), attributes[i]);
+                if (parsed.ec != std::errc() || parsed.ptr != value.data() + value.size())
+                    return false;
+                if (i < 4)
+                    values.remove_prefix(end + 1);
+            }
+            return true;
+        }
+
+        CString PetPropertiesText(const Game::PetStatus& pet)
+        {
+            CString text;
+            text.Format(L"名称：%s\r\n昵称：%s\r\n转生：%d\r\n等级：%d\r\n"
+                L"生命：%d / %d\r\n"
+                // L"魔力：%d / %d\r\n"
+                L"攻击：%d\r\n防御：%d\r\n敏捷：%d\r\n"
+                // L"感知：%d\r\n"
+                L"忠诚：%d\r\n技能栏：%d\r\n元素：地 %d  水 %d  火 %d  风 %d\r\n"
+                L"经验 / 下级经验：%d / %d",
+                LegacyText(pet.name).GetString(), LegacyText(pet.nickname).GetString(), pet.rebirth, pet.level,
+                pet.hp, pet.maxHp, /* pet.mp, pet.maxMp, */ pet.attack, pet.defence, pet.quick,
+                /* pet.perception, */ pet.loyalty, pet.skillSlots, pet.earth, pet.water, pet.fire, pet.wind,
+                pet.experience, pet.nextExperience);
+            int initialAttributes[5];
+            if (pet.level >= 1 && ParsePetInitialAttributes(pet.nickname, initialAttributes))
+            {
+                const int attributes[] = { pet.maxHp, pet.attack, pet.defence, pet.quick, pet.perception };
+                double growth[5] = {};
+                if (pet.level > 1)
+                {
+                    for (int i = 0; i < 5; ++i)
+                        growth[i] = (static_cast<double>(attributes[i]) - initialAttributes[i]) / (pet.level - 1);
+                }
+                CString line;
+                line.Format(L"\r\n\r\n成长计算:\r\n生命:%.3f 攻击:%.3f 防御:%.3f 敏捷:%.3f" /* L" 感知:%.3f" */ L" 合计:%.3f",
+                    growth[0], growth[1], growth[2], growth[3] /* , growth[4] */, growth[1] + growth[2] + growth[3]);
+                text += line;
+            }
+            text += L"\r\n\r\n宠物技能：";
+            if (!pet.skillsReceived)
+                text += L"\r\n等待技能数据…";
+            else
+            {
+                bool hasSkills = false;
+                for (std::size_t i = 0; i < pet.skills.size(); ++i)
+                {
+                    const auto& skill = pet.skills[i];
+                    if (!skill.present)
+                        continue;
+                    CString line;
+                    line.Format(L"\r\n%d. %s", static_cast<int>(i + 1), LegacyText(skill.name).GetString());
+                    text += line;
+                    if (!skill.description.empty())
+                    {
+                        text += L"  ";
+                        text += LegacyText(skill.description);
+                    }
+                    hasSkills = true;
+                }
+                if (!hasSkills)
+                    text += L"\r\n无";
+            }
+            return text;
+        }
+    }
     void RolePage::OnPetClick(NMHDR* header, LRESULT* result)
     {
         *result = 0;
@@ -45,6 +128,7 @@ namespace Client
         {
             if (!view_.hasPetStorage || slot >= view_.petStorage.size() || !view_.petStorage[slot].present)
                 return;
+            propertiesPetSlot_ = -1;
             const auto& pet = view_.petStorage[slot];
             text.Format(L"名称：%s\r\n昵称：%s\r\n等级：%d",
                 LegacyText(pet.name).GetString(), LegacyText(pet.nickname).GetString(), pet.level);
@@ -55,40 +139,35 @@ namespace Client
                 return;
             const auto& pet = view_.pets[slot];
             image = pet.image;
-            text.Format(L"名称：%s\r\n昵称：%s\r\n等级 / 转生：%d / %d\r\n"
-                L"生命：%d / %d\r\n魔力：%d / %d\r\n攻击：%d\r\n防御：%d\r\n敏捷：%d\r\n"
-                L"感知：%d\r\n忠诚：%d\r\n技能栏：%d\r\n元素：地 %d  水 %d  火 %d  风 %d\r\n"
-                L"经验 / 下级经验：%d / %d",
-                LegacyText(pet.name).GetString(), LegacyText(pet.nickname).GetString(), pet.level, pet.rebirth,
-                pet.hp, pet.maxHp, pet.mp, pet.maxMp, pet.attack, pet.defence, pet.quick,
-                pet.perception, pet.loyalty, pet.skillSlots, pet.earth, pet.water, pet.fire, pet.wind,
-                pet.experience, pet.nextExperience);
-            text += L"\r\n\r\n宠物技能：";
-            if (!pet.skillsReceived)
-                text += L"\r\n等待技能数据…";
-            else
-            {
-                bool hasSkills = false;
-                for (std::size_t i = 0; i < pet.skills.size(); ++i)
-                {
-                    const auto& skill = pet.skills[i];
-                    if (!skill.present)
-                        continue;
-                    CString line;
-                    line.Format(L"\r\n%d. %s", static_cast<int>(i + 1), LegacyText(skill.name).GetString());
-                    text += line;
-                    if (!skill.description.empty())
-                    {
-                        text += L"  ";
-                        text += LegacyText(skill.description);
-                    }
-                    hasSkills = true;
-                }
-                if (!hasSkills)
-                    text += L"\r\n无";
-            }
+            text = PetPropertiesText(pet);
+            propertiesPetSlot_ = static_cast<int>(slot);
+            propertiesPetLevel_ = pet.level;
+            propertiesPetCode_ = pet.uniqueCode;
         }
         petProperties_.Show(GetTopLevelParent(), text, L"宠物属性", image);
+    }
+
+    void RolePage::RefreshPetProperties()
+    {
+        if (propertiesPetSlot_ < 0)
+            return;
+        if (view_.screen != Screen::Game || !petProperties_.GetSafeHwnd() ||
+            !petProperties_.IsWindowVisible() || propertiesPetSlot_ >= static_cast<int>(view_.pets.size()))
+        {
+            propertiesPetSlot_ = -1;
+            return;
+        }
+        const auto& pet = view_.pets[propertiesPetSlot_];
+        if (!pet.received || !pet.present || pet.uniqueCode != propertiesPetCode_)
+        {
+            propertiesPetSlot_ = -1;
+            return;
+        }
+        if (pet.level > propertiesPetLevel_)
+        {
+            petProperties_.UpdateText(PetPropertiesText(pet));
+            propertiesPetLevel_ = pet.level;
+        }
     }
 
     void RolePage::OnPetStorageRightClick(NMHDR* header, LRESULT* result)

@@ -28,6 +28,7 @@ namespace Client
     {
     public:
         void Show(CWnd* owner, const CString& text, const wchar_t* title = L"道具属性", int petImage = -1);
+        void UpdateText(const CString& text);
 
     protected:
         BOOL PreTranslateMessage(MSG* message) override;

@@ -2,6 +2,7 @@
 
 #include <afxwin.h>
 #include <afxcmn.h>
+#include <string>
 #include "PropertiesWindow.h"
 
 namespace Client
@@ -43,6 +44,7 @@ namespace Client
         bool CanIncreaseAttribute() const;
         bool AttributeButtonRect(int row, CRect& rect) const;
         void RefreshPets();
+        void RefreshPetProperties();
         void RefreshItems();
         void RefreshPetStorage(bool visible);
         void RefreshItemStorage(bool visible);
@@ -58,6 +60,8 @@ namespace Client
         ItemPropertiesWindow itemProperties_, petProperties_;
         CComboBox petState_;
         int editingPet_ = -1;
+        int propertiesPetSlot_ = -1, propertiesPetLevel_ = 0;
+        std::string propertiesPetCode_;
         bool refreshing_ = false;
         int displayedTab_ = -1;
         int detailRow_ = 0;
