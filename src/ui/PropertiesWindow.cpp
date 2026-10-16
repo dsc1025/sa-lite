@@ -6,9 +6,11 @@ namespace Client
     BEGIN_MESSAGE_MAP(ItemPropertiesWindow, CWnd)
         ON_WM_CREATE()
         ON_WM_SIZE()
+        ON_WM_SHOWWINDOW()
+        ON_WM_DESTROY()
     END_MESSAGE_MAP()
 
-    void ItemPropertiesWindow::Show(CWnd* owner, const CString& text, const wchar_t* title)
+    void ItemPropertiesWindow::Show(CWnd* owner, const CString& text, const wchar_t* title, int petImage)
     {
         if (!GetSafeHwnd())
         {
@@ -25,6 +27,97 @@ namespace Client
         ShowWindow(SW_SHOW);
         SetForegroundWindow();
         text_.SetFocus();
+        if (petImage >= 0)
+        {
+            RedrawWindow(nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN | RDW_FRAME);
+            appearance_.Show(this, petImage);
+        }
+    }
+
+    BEGIN_MESSAGE_MAP(PetAppearanceWindow, CWnd)
+        ON_WM_PAINT()
+        ON_WM_TIMER()
+        ON_WM_DESTROY()
+        ON_WM_ERASEBKGND()
+    END_MESSAGE_MAP()
+
+    void PetAppearanceWindow::Show(CWnd* owner, int image)
+    {
+        if (!loaded_)
+        {
+            std::vector<wchar_t> path(32768);
+            DWORD length = GetModuleFileNameW(nullptr, path.data(), static_cast<DWORD>(path.size()));
+            if (length > 0 && length < path.size())
+            {
+                auto config = std::filesystem::path(path.data()).parent_path() / L"config.ini";
+                renderer_.LoadResources(CString(config.c_str()));
+                loaded_ = true;
+            }
+        }
+        if (!GetSafeHwnd() && !CreateEx(WS_EX_DLGMODALFRAME,
+            AfxRegisterWndClass(0, LoadCursor(nullptr, IDC_ARROW)), L"宠物形象",
+            WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU, CRect(0, 0, 280, 280), owner, 0))
+            return;
+        image_ = image;
+        started_ = GetTickCount64();
+        CRect rect;
+        owner->GetWindowRect(&rect);
+        SetWindowPos(&CWnd::wndTop, rect.left + 300, rect.top + 50, 0, 0,
+            SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        SetTimer(1, 33, nullptr);
+        Invalidate(FALSE);
+    }
+
+    void PetAppearanceWindow::OnPaint()
+    {
+        CPaintDC dc(this);
+        CRect area;
+        GetClientRect(&area);
+        if (area.IsRectEmpty())
+            return;
+        CDC buffer;
+        CBitmap bitmap;
+        if (!buffer.CreateCompatibleDC(&dc) ||
+            !bitmap.CreateCompatibleBitmap(&dc, area.Width(), area.Height()))
+        {
+            renderer_.DrawPet(dc, area, image_, GetTickCount64() - started_);
+            return;
+        }
+        CBitmap* previous = buffer.SelectObject(&bitmap);
+        renderer_.DrawPet(buffer, area, image_, GetTickCount64() - started_);
+        dc.BitBlt(0, 0, area.Width(), area.Height(), &buffer, 0, 0, SRCCOPY);
+        buffer.SelectObject(previous);
+    }
+
+    void PetAppearanceWindow::OnTimer(UINT_PTR timer)
+    {
+        if (timer == 1) Invalidate(FALSE);
+        else CWnd::OnTimer(timer);
+    }
+
+    void PetAppearanceWindow::OnDestroy()
+    {
+        KillTimer(1);
+        CWnd::OnDestroy();
+    }
+
+    BOOL PetAppearanceWindow::OnEraseBkgnd(CDC*)
+    {
+        return TRUE;
+    }
+
+    void ItemPropertiesWindow::OnShowWindow(BOOL show, UINT status)
+    {
+        CWnd::OnShowWindow(show, status);
+        if (!show && appearance_.GetSafeHwnd())
+            appearance_.DestroyWindow();
+    }
+
+    void ItemPropertiesWindow::OnDestroy()
+    {
+        if (appearance_.GetSafeHwnd())
+            appearance_.DestroyWindow();
+        CWnd::OnDestroy();
     }
 
     int ItemPropertiesWindow::OnCreate(LPCREATESTRUCT create)

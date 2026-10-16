@@ -17,6 +17,7 @@ namespace Client
     {
     public:
         void LoadResources(const CString& configPath);
+        void DrawPet(CDC& dc, const CRect& area, int image, ULONGLONG elapsed);
         void PrepareForEncounter();
         void Update(CWnd* owner, const SessionView& view, bool show);
 

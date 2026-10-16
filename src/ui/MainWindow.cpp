@@ -305,10 +305,7 @@ namespace Client
                 return TRUE;
             }
             if (message->wParam == VK_ESCAPE)
-            {
-                OnExit();
                 return TRUE;
-            }
             if (message->wParam == VK_TAB && IsDialogMessage(message))
                 return TRUE;
         }

@@ -40,6 +40,7 @@ namespace Client
             return;
         auto slot = static_cast<std::size_t>(list.GetItemData(row));
         CString text;
+        int image = 0;
         if (&list == &petStorage_)
         {
             if (!view_.hasPetStorage || slot >= view_.petStorage.size() || !view_.petStorage[slot].present)
@@ -53,6 +54,7 @@ namespace Client
             if (slot >= view_.pets.size() || !view_.pets[slot].received || !view_.pets[slot].present)
                 return;
             const auto& pet = view_.pets[slot];
+            image = pet.image;
             text.Format(L"名称：%s\r\n昵称：%s\r\n等级 / 转生：%d / %d\r\n"
                 L"生命：%d / %d\r\n魔力：%d / %d\r\n攻击：%d\r\n防御：%d\r\n敏捷：%d\r\n"
                 L"感知：%d\r\n忠诚：%d\r\n技能栏：%d\r\n元素：地 %d  水 %d  火 %d  风 %d\r\n"
@@ -86,7 +88,7 @@ namespace Client
                     text += L"\r\n无";
             }
         }
-        petProperties_.Show(GetTopLevelParent(), text, L"宠物属性");
+        petProperties_.Show(GetTopLevelParent(), text, L"宠物属性", image);
     }
 
     void RolePage::OnPetStorageRightClick(NMHDR* header, LRESULT* result)

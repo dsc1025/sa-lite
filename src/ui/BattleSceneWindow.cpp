@@ -261,6 +261,58 @@ namespace Client
         }
     }
 
+    void BattleSceneWindow::DrawPet(CDC& dc, const CRect& area, int image, ULONGLONG elapsed)
+    {
+        const auto colour = GetSysColor(COLOR_BTNFACE);
+        dc.FillSolidRect(area, colour);
+        InspectImage(image, 7, 3, 0);
+        InspectImage(image, 7, 0, 0);
+        auto attack = staticSprites_.find(SpriteKey(image, 7, 3, 0));
+        auto idle = staticSprites_.find(SpriteKey(image, 7, 0, 0));
+        if (image <= 0 || attack == staticSprites_.end() || idle == staticSprites_.end())
+        {
+            CRect caption = area;
+            dc.SetBkMode(TRANSPARENT);
+            dc.DrawText(image <= 0 ? L"暂无形象数据" : L"形象素材未载入", caption,
+                DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+            return;
+        }
+        const int centerX = attack->second.x + attack->second.width / 2;
+        const int centerY = attack->second.y + attack->second.height / 2;
+        const auto attackDuration = attack->second.duration;
+        const auto idleDuration = idle->second.duration;
+        const auto phase = elapsed % (static_cast<ULONGLONG>(attackDuration) + idleDuration);
+        const int action = phase < attackDuration ? 3 : 0;
+        const auto duration = action == 3 ? attackDuration : idleDuration;
+        const auto frames = action == 3 ? attack->second.frames : idle->second.frames;
+        const auto time = action == 3 ? phase : phase - attackDuration;
+        const auto frame = static_cast<std::uint32_t>(time * frames / duration);
+        InspectImage(image, 7, action, frame);
+        auto found = staticSprites_.find(SpriteKey(image, 7, action, frame));
+        if (found == staticSprites_.end()) return;
+        const auto& sprite = found->second;
+        std::vector<RGBQUAD> pixels(static_cast<std::size_t>(area.Width()) * area.Height(),
+            RGBQUAD{ GetBValue(colour), GetGValue(colour), GetRValue(colour), 0 });
+        const int left = area.Width() / 2 - centerX + sprite.x;
+        const int top = area.Height() / 2 - centerY + sprite.y;
+        for (int y = std::max(0, -top); y < sprite.height && top + y < area.Height(); ++y)
+            for (int x = std::max(0, -left); x < sprite.width && left + x < area.Width(); ++x)
+            {
+                const auto& pixel = sprite.pixels[(sprite.height - 1 - y) * sprite.width + x];
+                if (pixel.rgbReserved)
+                    pixels[(top + y) * area.Width() + left + x] = pixel;
+            }
+        BITMAPINFO info{};
+        info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+        info.bmiHeader.biWidth = area.Width();
+        info.bmiHeader.biHeight = -area.Height();
+        info.bmiHeader.biPlanes = 1;
+        info.bmiHeader.biBitCount = 32;
+        info.bmiHeader.biCompression = BI_RGB;
+        ::SetDIBitsToDevice(dc.GetSafeHdc(), area.left, area.top, area.Width(), area.Height(),
+            0, 0, 0, area.Height(), pixels.data(), &info, DIB_RGB_COLORS);
+    }
+
     void BattleSceneWindow::PrepareBackground(const SessionView& view)
     {
         background_.clear();
