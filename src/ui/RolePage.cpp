@@ -13,6 +13,8 @@ namespace Client
         ON_NOTIFY(TCN_SELCHANGE, Tabs, &RolePage::OnTab)
         ON_NOTIFY(LVN_ITEMCHANGED, List, &RolePage::OnSelect)
         ON_NOTIFY(NM_CLICK, List, &RolePage::OnPetClick)
+        ON_NOTIFY(LVN_BEGINLABELEDIT, List, &RolePage::OnPetRenameBegin)
+        ON_NOTIFY(LVN_ENDLABELEDIT, List, &RolePage::OnPetRenameEnd)
         ON_NOTIFY(NM_CUSTOMDRAW, Detail, &RolePage::OnDetailDraw)
         ON_NOTIFY(NM_CLICK, Detail, &RolePage::OnDetailClick)
         ON_NOTIFY(NM_RCLICK, List, &RolePage::OnListRightClick)
@@ -39,7 +41,7 @@ namespace Client
         tabs_.InsertItem(1, L"宠物");
         tabs_.InsertItem(2, L"道具");
         DWORD listStyle = WS_CHILD | WS_TABSTOP | WS_CLIPSIBLINGS | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS;
-        list_.Create(listStyle, empty, this, List);
+        list_.Create(listStyle | LVS_EDITLABELS, empty, this, List);
         detail_.Create(listStyle, empty, this, Detail);
         petStorage_.Create(listStyle | WS_VSCROLL, empty, this, PetStorageList);
         itemStorage_.Create(listStyle, empty, this, ItemStorageList);
@@ -207,6 +209,10 @@ namespace Client
 
     void RolePage::CloseEditor()
     {
+        if (list_.GetSafeHwnd() && list_.GetEditControl())
+            list_.SendMessage(LVM_CANCELEDITLABEL);
+        renamingPet_ = -1;
+        renamingPetCode_.clear();
         if (petState_.GetSafeHwnd())
             petState_.ShowDropDown(FALSE);
         OnPetStateClose();

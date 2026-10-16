@@ -34,6 +34,8 @@ namespace Client
         afx_msg void OnItemStorageRightClick(NMHDR* header, LRESULT* result);
         afx_msg void OnDetailDraw(NMHDR* header, LRESULT* result);
         afx_msg void OnDetailClick(NMHDR* header, LRESULT* result);
+        afx_msg void OnPetRenameBegin(NMHDR* header, LRESULT* result);
+        afx_msg void OnPetRenameEnd(NMHDR* header, LRESULT* result);
         afx_msg void OnPetState();
         afx_msg void OnPetStateClose();
         DECLARE_MESSAGE_MAP()
@@ -59,6 +61,8 @@ namespace Client
         CListCtrl list_, detail_, petStorage_, itemStorage_;
         ItemPropertiesWindow itemProperties_, petProperties_;
         CComboBox petState_;
+        int renamingPet_ = -1;
+        std::string renamingPetCode_;
         int editingPet_ = -1;
         int propertiesPetSlot_ = -1, propertiesPetLevel_ = 0;
         std::string propertiesPetCode_;

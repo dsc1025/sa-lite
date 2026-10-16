@@ -44,6 +44,7 @@ public:
     bool MoveTo(int map, int x, int y, int timeoutMs = 2000);
     void SetPetState(int slot, PetState state);
     void IncreaseAttribute(int attribute);
+    std::string RenamePet(int slot, const std::string& uniqueCode, const std::string& nickname);
     std::string DropPet(int slot, const std::string& uniqueCode);
     std::string DropItem(int slot, std::uint32_t revision);
     std::string UseFood(int slot, std::uint32_t revision, int petSlot);

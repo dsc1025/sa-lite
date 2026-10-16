@@ -90,6 +90,33 @@ bool LoginClient::PollCaptureNames()
     return pending;
 }
 
+std::string LoginClient::RenamePet(int slot, const std::string& uniqueCode, const std::string& nickname)
+{
+    if (!inGame_ || playerStatus_.inBattle || IsEncounterEnabled() || IsEncounterStopping() || HasPendingCaptureNames())
+        throw std::runtime_error("请先停止遇敌并结束战斗，再重命名宠物");
+    if (slot < 0 || slot >= static_cast<int>(pets_.size()) || !pets_[slot].received ||
+        !pets_[slot].present || uniqueCode.empty() || pets_[slot].uniqueCode != uniqueCode)
+        throw std::runtime_error("宠物数据已变化，请重新选择");
+    if (!pets_[slot].canRename)
+        throw std::runtime_error("该宠物不允许重命名");
+    if (nickname.empty() || nickname.size() > 16 ||
+        std::any_of(nickname.begin(), nickname.end(), [](unsigned char c) { return c < 32 || c == 127 || c == '|'; }))
+        throw std::runtime_error("宠物昵称须为 1 至 16 字节，不能包含控制字符或竖线");
+    if (pets_[slot].nickname == nickname)
+        return "宠物昵称未变化";
+    auto deadline = GetTickCount64() + 2000;
+    auto number = static_cast<std::uint32_t>(slot);
+    connection_.Send(EncodePacket("&;65;" + EncodeInteger(number, sessionKey_) + ";" +
+        Encode64(nickname, sessionKey_, -1) + ";" +
+        EncodeInteger(number + static_cast<std::uint32_t>(nickname.size()), sessionKey_) + ";#;"), deadline);
+    while (pets_[slot].present && pets_[slot].uniqueCode == uniqueCode &&
+        pets_[slot].nickname != nickname && GetTickCount64() < deadline)
+        PollGame(100);
+    if (pets_[slot].present && pets_[slot].uniqueCode == uniqueCode && pets_[slot].nickname == nickname)
+        return "宠物已重命名";
+    return "服务器未确认宠物重命名，请检查宠物昵称及改名权限";
+}
+
 std::string LoginClient::DropPet(int slot, const std::string& uniqueCode)
 {
     if (!inGame_ || !playerStatus_.received || playerStatus_.inBattle ||

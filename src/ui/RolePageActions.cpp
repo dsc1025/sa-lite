@@ -75,11 +75,24 @@ namespace Client
             menu.AppendMenu(MF_POPUP | (canUse ? MF_ENABLED : MF_GRAYED),
                 reinterpret_cast<UINT_PTR>(useMenu.Detach()), L"使用");
         }
+        if (pet)
+            menu.AppendMenu(MF_STRING | (idle && view_.pets[slot].canRename && !uniqueCode.empty() ? MF_ENABLED : MF_GRAYED), 10, L"重命名");
         menu.AppendMenu(MF_STRING, 3, L"属性");
         CPoint point = click->ptAction;
         list_.ClientToScreen(&point);
         UINT command = menu.TrackPopupMenu(TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON,
             point.x, point.y, this);
+        if (command == 10 && pet && idle && view_.pets[slot].canRename && !uniqueCode.empty())
+        {
+            renamingPet_ = slot;
+            renamingPetCode_ = uniqueCode;
+            if (!list_.EditLabel(click->iItem))
+            {
+                renamingPet_ = -1;
+                renamingPetCode_.clear();
+            }
+            return;
+        }
         if (command == 3)
         {
             if (pet) ShowPetProperties(list_, click->iItem);

@@ -29,6 +29,7 @@ namespace Client
                 state_->stop_ = false; state_->done_ = false; state_->requestedCharacter_ = -1;
                 state_->createRequested_ = false;
                 state_->requestedPet_ = -1;
+                state_->requestedRename_ = -1;
                 state_->requestedAttribute_ = -1;
                 state_->storageRequested_ = false;
                 state_->requestedFood_ = -1;
@@ -141,6 +142,28 @@ namespace Client
             state_->requestedAttribute_ = attribute;
             state_->shared_.attributePending = true;
             state_->shared_.message = L"正在加点…";
+        }
+        ::PostMessage(state_->window_, state_->message_, 0, 0);
+        return true;
+    }
+
+    bool GameSession::RequestPetRename(int slot, const std::string& uniqueCode, const std::string& nickname)
+    {
+        {
+            std::lock_guard<std::mutex> lock(state_->mutex_);
+            if (state_->stop_ || state_->done_ || state_->shared_.screen != Screen::Game ||
+                state_->shared_.itemPending || state_->shared_.petStoragePending || state_->requestedPet_ >= 0 ||
+                state_->encounterRequested_ || state_->shared_.encounterEnabled || state_->shared_.encounterPending ||
+                state_->shared_.player.inBattle || slot < 0 || slot >= static_cast<int>(state_->shared_.pets.size()))
+                return false;
+            const auto& pet = state_->shared_.pets[slot];
+            if (!pet.received || !pet.present || !pet.canRename || uniqueCode.empty() || pet.uniqueCode != uniqueCode)
+                return false;
+            state_->requestedRename_ = slot;
+            state_->requestedRenameCode_ = uniqueCode;
+            state_->requestedNickname_ = nickname;
+            state_->shared_.itemPending = true;
+            state_->shared_.message = L"正在重命名宠物…";
         }
         ::PostMessage(state_->window_, state_->message_, 0, 0);
         return true;
@@ -392,6 +415,8 @@ namespace Client
                     bool discardPet;
                     std::uint32_t discardRevision;
                     std::string discardCode;
+                    int renamePet;
+                    std::string renameCode, nickname;
                     std::uint32_t foodRevision, itemStorageRevision;
                     bool itemStorage;
                     int itemStorageSlot;
@@ -406,6 +431,10 @@ namespace Client
                         if (state_->stop_) break;
                         chat.swap(state_->requestedChat_);
                         pollTimeout = state_->encounterRequested_ || client.GetPlayerStatus().inBattle ? Game::BATTLE_DELAY_MS : 100;
+                        renamePet = state_->requestedRename_;
+                        renameCode = state_->requestedRenameCode_;
+                        nickname = state_->requestedNickname_;
+                        state_->requestedRename_ = -1;
                         attribute = state_->requestedAttribute_;
                         state_->requestedAttribute_ = -1;
                         pet = state_->requestedPet_;
@@ -514,6 +543,22 @@ namespace Client
                         }
                         if (!client.IsConnected())
                             throw std::runtime_error(failure);
+                        movementMessage = message;
+                        Publish(Screen::Game, message, &client);
+                    }
+                    if (renamePet >= 0)
+                    {
+                        std::wstring message;
+                        try { message = TextEncoding::ErrorText(client.RenamePet(renamePet, renameCode, nickname).c_str()); }
+                        catch (const std::exception& error)
+                        {
+                            if (!client.IsConnected()) throw;
+                            message = TextEncoding::ErrorText(error.what());
+                        }
+                        {
+                            std::lock_guard<std::mutex> lock(state_->mutex_);
+                            state_->shared_.itemPending = false;
+                        }
                         movementMessage = message;
                         Publish(Screen::Game, message, &client);
                     }

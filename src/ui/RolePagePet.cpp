@@ -89,6 +89,51 @@ namespace Client
             return text;
         }
     }
+    void RolePage::OnPetRenameBegin(NMHDR* header, LRESULT* result)
+    {
+        auto edit = reinterpret_cast<NMLVDISPINFO*>(header);
+        *result = TRUE;
+        if (view_.screen != Screen::Game || tabs_.GetCurSel() != 1 || renamingPet_ < 0 ||
+            edit->item.iItem < 0 || static_cast<int>(list_.GetItemData(edit->item.iItem)) != renamingPet_)
+            return;
+        *result = FALSE;
+        if (auto control = list_.GetEditControl())
+            control->SetLimitText(16);
+    }
+
+    void RolePage::OnPetRenameEnd(NMHDR* header, LRESULT* result)
+    {
+        *result = FALSE;
+        auto edit = reinterpret_cast<NMLVDISPINFO*>(header);
+        int slot = renamingPet_;
+        std::string code = renamingPetCode_;
+        renamingPet_ = -1;
+        renamingPetCode_.clear();
+        if (!edit->item.pszText || slot < 0 || view_.screen != Screen::Game || tabs_.GetCurSel() != 1)
+            return;
+        CString text(edit->item.pszText);
+        BOOL substituted = FALSE;
+        int length = WideCharToMultiByte(936, WC_NO_BEST_FIT_CHARS, text.GetString(), text.GetLength(),
+            nullptr, 0, nullptr, &substituted);
+        if (length <= 0 || length > 16 || substituted)
+        {
+            MessageBox(L"昵称须为 1 至 16 字节（通常最多 8 个汉字），且字符必须受服务端编码支持。",
+                L"无法重命名", MB_OK | MB_ICONWARNING);
+            return;
+        }
+        std::string nickname(length, '\0');
+        if (!WideCharToMultiByte(936, WC_NO_BEST_FIT_CHARS, text.GetString(), text.GetLength(),
+            nickname.data(), length, nullptr, &substituted) || substituted)
+            return;
+        if (nickname.find_first_of("\r\n\t|") != std::string::npos)
+        {
+            MessageBox(L"昵称不能包含控制字符或竖线。", L"无法重命名", MB_OK | MB_ICONWARNING);
+            return;
+        }
+        footer_.SetWindowText(session_.RequestPetRename(slot, code, nickname) ?
+            L"正在重命名宠物…" : L"当前状态或宠物数据已变化，请重新选择后重命名");
+    }
+
     void RolePage::OnPetClick(NMHDR* header, LRESULT* result)
     {
         *result = 0;
@@ -237,6 +282,7 @@ namespace Client
 
     void RolePage::RefreshPets()
     {
+        if (list_.GetEditControl()) return;
         ListUpdate rows(list_);
         for (std::size_t i = 0; i < view_.pets.size(); ++i)
         {

@@ -41,6 +41,7 @@ namespace Client
         bool RequestCreateCharacter(const Game::NewCharacter& character);
         void RequestMove(int map, int x, int y);
         bool RequestChat(const std::string& text);
+        bool RequestPetRename(int slot, const std::string& uniqueCode, const std::string& nickname);
         bool RequestPetState(int slot, int state);
         bool RequestIncreaseAttribute(int attribute);
         bool RequestPetStorage(Game::PetStorageAction action, int slot = -1, const std::string& uniqueCode = {});
