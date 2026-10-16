@@ -71,7 +71,7 @@ namespace Client
         ShowIfChanged(list_, characters);
         EnableIfChanged(exit_, view_.screen != Screen::Closing);
         SetTextIfChanged(exit_, game ? L"退出登录" : L"退出");
-        SetTextIfChanged(*this, login ? L"登录" : characters ? L"选择角色" : L"SA25_#1");
+        SetTextIfChanged(*this, login ? L"登录" : characters ? L"选择角色" : L"SA25 lite client | ver 0.1.34");
         ShowIfChanged(summary_, !login);
         SetTextIfChanged(footer_, view_.message.c_str());
         CString summary = game ? CString(view_.characterName.c_str()) : CString();
