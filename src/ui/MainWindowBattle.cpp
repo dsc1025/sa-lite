@@ -50,9 +50,10 @@ namespace Client
         if (mainTabs_.GetCurSel() == 2)
             developing_.MoveWindow(battlePage);
         int battleWidth = std::max(0, battlePage.Width());
-        capturePet_.MoveWindow(battlePage.left, battlePage.top, 180, 26);
-        captureDestination_.MoveWindow(battlePage.left, battlePage.top + 34, battleWidth, 22);
-        int buttonTop = battlePage.top + (battleTabs_.GetCurSel() == 1 ? 64 : 0);
+        capturePet_.MoveWindow(battlePage.left, battlePage.top, 110, 26);
+        captureDestination_.MoveWindow(battlePage.left + 118, battlePage.top + 4,
+            std::max(0, battleWidth - 118), 22);
+        int buttonTop = battlePage.top + (battleTabs_.GetCurSel() == 1 ? 34 : 0);
         battleStart_.MoveWindow(battlePage.left, buttonTop, 70, 26);
         battleSettings_.MoveWindow(battlePage.left + 156, buttonTop, 70, 26);
         battleDisplay_.MoveWindow(battlePage.left + 78, buttonTop, 70, 26);
