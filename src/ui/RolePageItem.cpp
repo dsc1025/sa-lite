@@ -12,7 +12,7 @@ namespace Client
             const wchar_t* names[] = {
                 L"拳", L"斧头", L"棍棒", L"枪／矛", L"弓", L"盾", L"头盔", L"铠甲",
                 L"手镯", L"乐器", L"项链", L"戒指", L"腰带", L"耳环", L"鼻环", L"护身符",
-                L"素材", L"回旋镖", L"投掷斧头", L"投掷石", L"料理", L"金属", L"宝石", L"货物"
+                L"道具", L"回旋镖", L"投掷斧头", L"投掷石", L"料理", L"金属", L"宝石", L"货物"
             };
             return type >= 0 && type < static_cast<int>(sizeof(names) / sizeof(names[0])) ?
                 CString(names[type]) : Number(type);

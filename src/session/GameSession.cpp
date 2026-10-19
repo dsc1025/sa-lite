@@ -232,7 +232,7 @@ namespace Client
         return true;
     }
 
-    bool GameSession::RequestFood(int slot, std::uint32_t revision, int petSlot)
+    bool GameSession::RequestItemUse(int slot, std::uint32_t revision, int petSlot)
     {
         {
             std::lock_guard<std::mutex> lock(state_->mutex_);
@@ -240,16 +240,21 @@ namespace Client
                 state_->shared_.petStoragePending || state_->requestedPet_ >= 0 || state_->encounterRequested_ ||
                 state_->shared_.encounterPending || state_->shared_.player.inBattle || slot < 5 ||
                 slot >= static_cast<int>(state_->shared_.items.size()) || !state_->shared_.items[slot].present ||
-                state_->shared_.items[slot].type != 20 || state_->shared_.items[slot].revision != revision)
+                (state_->shared_.items[slot].type != 20 && state_->shared_.items[slot].type != 16) ||
+                state_->shared_.items[slot].revision != revision)
                 return false;
             if (petSlot < -1 || petSlot >= static_cast<int>(state_->shared_.pets.size()) ||
                 (petSlot >= 0 && (!state_->shared_.pets[petSlot].received || !state_->shared_.pets[petSlot].present)))
+                return false;
+            if (state_->shared_.items[slot].useField == 1 ||
+                state_->shared_.items[slot].target < 0 || state_->shared_.items[slot].target > 2 ||
+                (state_->shared_.items[slot].type == 16 && state_->shared_.items[slot].target == 0 && petSlot != -1))
                 return false;
             state_->requestedFood_ = slot;
             state_->requestedFoodPet_ = petSlot;
             state_->requestedFoodRevision_ = revision;
             state_->shared_.itemPending = true;
-            state_->shared_.message = petSlot < 0 ? L"正在对当前角色使用食物…" : L"正在对随身宠物使用食物…";
+            state_->shared_.message = petSlot < 0 ? L"正在对当前角色使用道具…" : L"正在对随身宠物使用道具…";
         }
         ::PostMessage(state_->window_, state_->message_, 0, 0);
         return true;
@@ -590,7 +595,7 @@ namespace Client
                     {
                         std::wstring message;
                         std::string failure;
-                        try { message = TextEncoding::ErrorText(client.UseFood(food, foodRevision, foodPet).c_str()); }
+                        try { message = TextEncoding::ErrorText(client.UseItem(food, foodRevision, foodPet).c_str()); }
                         catch (const std::exception& error)
                         {
                             failure = error.what();

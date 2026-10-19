@@ -47,7 +47,7 @@ public:
     std::string RenamePet(int slot, const std::string& uniqueCode, const std::string& nickname);
     std::string DropPet(int slot, const std::string& uniqueCode);
     std::string DropItem(int slot, std::uint32_t revision);
-    std::string UseFood(int slot, std::uint32_t revision, int petSlot);
+    std::string UseItem(int slot, std::uint32_t revision, int petSlot);
     void RefreshItemStorage();
     void TransferItemStorage(bool put, int slot, std::uint32_t revision, const std::string& uniqueCode);
     const std::vector<ItemStatus>& GetItemStorage() const noexcept { return itemStorage_; }

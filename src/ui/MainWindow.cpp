@@ -72,7 +72,7 @@ namespace Client
         exit_.Create(L"退出", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, empty, this, ExitButton);
         mainTabs_.Create(WS_CHILD | WS_TABSTOP | WS_CLIPSIBLINGS | TCS_VERTICAL | TCS_MULTILINE,
             empty, this, MainTabs);
-        const wchar_t* mainCaptions[] = { L"角色", L"地图", L"战斗", L"商店", L"任务" };
+        const wchar_t* mainCaptions[] = { L"角色", L"地图", L"战斗", L"黑店", L"任务" };
         for (int i = 0; i < 5; ++i)
             mainTabs_.InsertItem(i, mainCaptions[i]);
         mainTabs_.SetPadding(CSize(12, 10));

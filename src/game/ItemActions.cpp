@@ -23,18 +23,19 @@ std::string LoginClient::DropItem(int slot, std::uint32_t revision)
     return "服务器未确认道具丢弃，请检查道具及当前场景是否允许丢弃，勿连续重复操作";
 }
 
-std::string LoginClient::UseFood(int slot, std::uint32_t revision, int petSlot)
+std::string LoginClient::UseItem(int slot, std::uint32_t revision, int petSlot)
 {
     if (!inGame_ || !playerStatus_.received || playerStatus_.inBattle ||
         IsEncounterEnabled() || IsEncounterStopping())
-        throw std::runtime_error("请先停止遇敌并结束战斗，再使用食物");
+        throw std::runtime_error("请先停止遇敌并结束战斗，再使用道具");
     if (slot < 5 || slot >= static_cast<int>(items_.size()) || !items_[slot].present ||
-        items_[slot].type != 20 || items_[slot].revision != revision)
-        throw std::runtime_error("背包道具数据已变化，请重新选择食物");
+        (items_[slot].type != 20 && items_[slot].type != 16) ||
+        items_[slot].revision != revision)
+        throw std::runtime_error("背包道具数据已变化，请重新选择道具");
     const auto& item = items_[slot];
-    if (item.useField == 1 || item.target == 3 || item.target == 4)
-        throw std::runtime_error("该食物不能在当前场景使用");
-    if (petSlot < -1 || petSlot >= static_cast<int>(pets_.size()) ||
+    if (item.useField == 1 || item.target < 0 || item.target > 2)
+        throw std::runtime_error("该道具不能在当前场景使用");
+    if ((item.type == 16 && item.target == 0 && petSlot != -1) || petSlot < -1 || petSlot >= static_cast<int>(pets_.size()) ||
         (petSlot >= 0 && (!pets_[petSlot].received || !pets_[petSlot].present)))
         throw std::runtime_error("宠物数据已变化，请重新选择使用目标");
     waitingFood_ = true;
@@ -48,8 +49,8 @@ std::string LoginClient::UseFood(int slot, std::uint32_t revision, int petSlot)
         waitingFood_ = false;
         if (!foodMessage_.empty()) return foodMessage_;
         if (items_[slot].revision != revision)
-            return "食物使用请求已处理，背包数据已更新";
-        return "服务器未确认食物使用，请检查使用条件和背包，勿连续重复使用";
+            return "道具使用请求已处理，背包数据已更新";
+        return "服务器未确认道具使用，请检查使用条件和背包，勿连续重复使用";
     }
     catch (...)
     {

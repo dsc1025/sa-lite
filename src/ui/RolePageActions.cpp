@@ -20,7 +20,8 @@ namespace Client
         bool pet = tab == 1;
         bool enabled = true;
         std::string uniqueCode;
-        bool food = false;
+        bool targetedUse = false;
+        bool directUse = false;
         std::uint32_t itemRevision = 0;
         CString name;
         if (pet)
@@ -40,7 +41,9 @@ namespace Client
                 !view_.items[slot].present)
                 return;
             name = LegacyText(view_.items[slot].name);
-            food = view_.items[slot].type == 20 && slot >= 5;
+            targetedUse = slot >= 5 && (view_.items[slot].type == 20 ||
+                (view_.items[slot].type == 16 && view_.items[slot].target >= 1 && view_.items[slot].target <= 2));
+            directUse = view_.items[slot].type == 16 && view_.items[slot].target == 0 && slot >= 5;
             itemRevision = view_.items[slot].revision;
         }
         list_.SetItemState(click->iItem, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
@@ -56,7 +59,12 @@ namespace Client
         bool canDiscard = enabled && idle;
         menu.AppendMenu(MF_STRING | (canDiscard ? MF_ENABLED : MF_GRAYED), 2, L"丢弃");
         CMenu useMenu;
-        if (food)
+        if (directUse)
+        {
+            bool canUse = idle && view_.items[slot].useField != 1;
+            menu.AppendMenu(MF_STRING | (canUse ? MF_ENABLED : MF_GRAYED), 4, L"使用");
+        }
+        else if (targetedUse)
         {
             const auto& item = view_.items[slot];
             bool canUse = !view_.itemPending && !view_.petStoragePending && !view_.player.inBattle &&
@@ -99,11 +107,12 @@ namespace Client
             else ShowItemProperties(list_, click->iItem);
             return;
         }
-        if (food && command >= 4 && command < 5 + view_.pets.size())
+        if ((directUse && command == 4) || (targetedUse && command >= 4 && command < 5 + view_.pets.size()))
         {
             int petSlot = command == 4 ? -1 : static_cast<int>(command) - 5;
-            if (session_.RequestFood(slot, itemRevision, petSlot))
-                footer_.SetWindowText(petSlot < 0 ? L"正在对当前角色使用食物…" : L"正在对随身宠物使用食物…");
+            if (session_.RequestItemUse(slot, itemRevision, petSlot))
+                footer_.SetWindowText(directUse ? L"正在使用道具…" :
+                    petSlot < 0 ? L"正在对当前角色使用道具…" : L"正在对随身宠物使用道具…");
             return;
         }
         if (!enabled || (command != 1 && command != 2))
