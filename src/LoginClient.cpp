@@ -4,6 +4,7 @@
 #include <ws2tcpip.h>
 #include <algorithm>
 #include <stdexcept>
+#include <utility>
 
 using namespace Protocol;
 
@@ -48,6 +49,10 @@ void LoginClient::Disconnect() noexcept
     magic_.assign(5, {});
     itemsReceived_ = false;
     itemRevision_ = 0;
+    shopItems_.clear();
+    shopCategory_ = -1;
+    pearlBalance_ = 0;
+    shopUncertain_ = false;
     itemStorage_.clear();
     itemStorageReceived_ = false;
     waitingFood_ = false;
@@ -361,4 +366,132 @@ void LoginClient::LeaveGame(int timeoutMs)
     if (!inGame_ || timeoutMs <= 0)
         throw std::logic_error("Logout requires a character login");
     Disconnect();
+}
+
+namespace
+{
+    std::vector<int> ShopNumbers(const std::vector<std::string>& fields, int count,
+        int strings, const std::string& key, std::vector<std::string>& texts)
+    {
+        if (fields.size() != static_cast<std::size_t>(count + strings + 4))
+            throw std::runtime_error("Invalid shop reply");
+        std::uint32_t checksum = 0;
+        std::vector<int> numbers;
+        for (int i = 0; i < count; ++i)
+        {
+            auto value = ReadInteger(Decode64(fields[2 + i], key, -1), { 2, 4, 1, 3 });
+            checksum += value;
+            numbers.push_back(static_cast<int>(value));
+        }
+        for (int i = 0; i < strings; ++i)
+        {
+            auto value = Decode64(fields[2 + count + i], key, 1);
+            auto end = value.find('\0');
+            if (end != std::string::npos) value.resize(end);
+            checksum += static_cast<std::uint32_t>(value.size());
+            texts.push_back(value);
+        }
+        if (checksum != ReadInteger(Decode64(fields[fields.size() - 2], key, -1), { 2, 4, 1, 3 }))
+            throw std::runtime_error("Invalid shop checksum");
+        return numbers;
+    }
+
+    std::string ShopError(int result)
+    {
+        switch (result)
+        {
+        case 2: return "购买参数无效";
+        case 3: return "请结束战斗或交易后再操作黑店";
+        case 4: return "黑店数据库操作失败，请刷新并确认余额和库存";
+        case 5: return "商品已下架或不支持所选货币";
+        case 6: return "商品价格已变化，请刷新后重新购买";
+        case 7: return "COST不足";
+        case 8: return "背包空位不足";
+        case 9: return "商品生成失败，购买已取消";
+        case 10: return "P 余额不足";
+        case 11: return "商品库存不足";
+        default: return "黑店返回未知状态";
+        }
+    }
+}
+
+void LoginClient::RefreshShop(int category)
+{
+    if (!inGame_ || category < 0 || category > 2 || playerStatus_.inBattle || IsEncounterEnabled())
+        throw std::runtime_error("请先停止遇敌并结束战斗，再刷新黑店");
+    if (shopUncertain_)
+        throw std::runtime_error("上次黑店请求未确认，请重新登录后检查余额与背包");
+    shopItems_.clear();
+    shopCategory_ = -1;
+    int offset = 0, expectedTotal = -1;
+    bool awaiting = false;
+    std::vector<Game::ShopItem> items;
+    try
+    {
+        for (;;)
+        {
+            auto deadline = GetTickCount64() + 10000;
+            awaiting = true;
+            SendNumbers("122", { category, offset }, deadline);
+            int pageStart = offset;
+            for (;;)
+            {
+                auto fields = DecodePacket(connection_.Receive(deadline));
+                if (fields[1] != "123") { HandleGamePacket(fields); continue; }
+                std::vector<std::string> texts;
+                auto n = ShopNumbers(fields, 12, 2, sessionKey_, texts);
+                pearlBalance_ = n[10];
+                if (n[1] != category || n[2] != offset || n[3] < offset)
+                    throw std::runtime_error("黑店列表已变化，请重新刷新");
+                if (n[0] != 0 && n[0] != 1) {
+                    awaiting = false;
+                    throw std::runtime_error(ShopError(n[0]));
+                }
+                if (expectedTotal < 0) expectedTotal = n[3];
+                if (expectedTotal != n[3] || expectedTotal > 100000)
+                    throw std::runtime_error("黑店列表已变化或记录过多，请重新刷新");
+                if (n[0] == 1) { awaiting = false; break; }
+                if (n[4] < 0 || n[5] < -1 || n[6] < -1 || n[7] < -1 || offset >= expectedTotal)
+                    throw std::runtime_error("Invalid shop item");
+                Game::ShopItem item;
+                item.id = n[4]; item.cost = n[5]; item.pearl = n[6]; item.stock = n[7];
+                item.image = n[8]; item.level = n[9]; item.type = n[11];
+                item.name = texts[0]; item.description = texts[1];
+                items.push_back(item);
+                ++offset;
+            }
+            if (offset == expectedTotal) break;
+            if (offset == pageStart) throw std::runtime_error("Invalid shop pagination");
+        }
+        shopItems_ = std::move(items);
+        shopCategory_ = category;
+    }
+    catch (...)
+    {
+        shopUncertain_ = awaiting;
+        throw;
+    }
+}
+
+std::string LoginClient::BuyShopItem(int itemId, int quantity, int price, int currency)
+{
+    if (!inGame_ || playerStatus_.inBattle || IsEncounterEnabled() || IsEncounterStopping() ||
+        shopUncertain_ || quantity < 1 || quantity > 15 || price < 0 || currency < 0 || currency > 1)
+        throw std::runtime_error("当前状态无法购买，请停止遇敌并刷新黑店");
+    auto deadline = GetTickCount64() + 10000;
+    shopUncertain_ = true;
+    SendNumbers("124", { itemId, quantity, price, currency }, deadline);
+    for (;;)
+    {
+        auto fields = DecodePacket(connection_.Receive(deadline));
+        if (fields[1] != "125") { HandleGamePacket(fields); continue; }
+        std::vector<std::string> texts;
+        auto n = ShopNumbers(fields, 7, 0, sessionKey_, texts);
+        if (n[1] != itemId || n[2] != quantity || n[4] != currency)
+            throw std::runtime_error("Invalid shop purchase reply");
+        shopUncertain_ = false;
+        playerStatus_.gold = n[5];
+        pearlBalance_ = n[6];
+        return n[0] == 0 ? "购买成功" : ShopError(n[0]);
+    }
 }

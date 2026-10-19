@@ -32,6 +32,7 @@ namespace Client
                 state_->requestedRename_ = -1;
                 state_->requestedAttribute_ = -1;
                 state_->storageRequested_ = false;
+                state_->requestedShopCategory_ = -1;
                 state_->requestedFood_ = -1;
                 state_->requestedDiscard_ = -1;
                 state_->requestedDiscardCode_.clear();
@@ -302,6 +303,27 @@ namespace Client
         state_->wake_.notify_all();
     }
 
+    bool GameSession::RequestShop(int category, int itemId, int quantity, int price, int currency)
+    {
+        {
+            std::lock_guard<std::mutex> lock(state_->mutex_);
+            if (state_->stop_ || state_->done_ || state_->shared_.screen != Screen::Game ||
+                state_->shared_.shopPending || state_->shared_.itemPending ||
+                state_->shared_.petStoragePending || state_->encounterRequested_ ||
+                state_->shared_.encounterPending || state_->shared_.player.inBattle ||
+                category < 0 || category > 2)
+                return false;
+            state_->requestedShopCategory_ = category;
+            state_->requestedShopItem_ = itemId;
+            state_->requestedShopQuantity_ = quantity;
+            state_->requestedShopPrice_ = price;
+            state_->requestedShopCurrency_ = currency;
+            state_->shared_.shopPending = true;
+        }
+        ::PostMessage(state_->window_, state_->message_, 0, 0);
+        return true;
+    }
+
     void GameSession::Publish(Screen screen, const std::wstring& message, const LoginClient* client)
     {
         {
@@ -316,6 +338,7 @@ namespace Client
                 state_->shared_.encounterMessage = L"遇敌未开始";
                 state_->shared_.petStoragePending = false;
                 state_->shared_.itemPending = false;
+                state_->shared_.shopPending = false;
                 state_->shared_.attributePending = false;
             }
             state_->shared_.message = message;
@@ -328,6 +351,9 @@ namespace Client
                 state_->shared_.captureStatistics = client->GetCaptureStatistics();
                 state_->shared_.pets = client->GetPets();
                 state_->shared_.items = client->GetItems();
+                state_->shared_.shopItems = client->GetShopItems();
+                state_->shared_.shopCategory = client->GetShopCategory();
+                state_->shared_.pearlBalance = client->GetPearlBalance();
                 state_->shared_.magic = client->GetMagic();
                 state_->shared_.hasItems = client->HasItems();
                 state_->shared_.itemStorage = client->GetItemStorage();
@@ -417,6 +443,7 @@ namespace Client
                 for (;;)
                 {
                     int pet, state, pollTimeout, storageSlot, food, foodPet, discard, attribute;
+                    int shopCategory, shopItem, shopQuantity, shopPrice, shopCurrency;
                     bool discardPet;
                     std::uint32_t discardRevision;
                     std::string discardCode;
@@ -434,6 +461,12 @@ namespace Client
                     {
                         std::lock_guard<std::mutex> lock(state_->mutex_);
                         if (state_->stop_) break;
+                        shopCategory = state_->requestedShopCategory_;
+                        shopItem = state_->requestedShopItem_;
+                        shopQuantity = state_->requestedShopQuantity_;
+                        shopPrice = state_->requestedShopPrice_;
+                        shopCurrency = state_->requestedShopCurrency_;
+                        state_->requestedShopCategory_ = -1;
                         chat.swap(state_->requestedChat_);
                         pollTimeout = state_->encounterRequested_ || client.GetPlayerStatus().inBattle ? Game::BATTLE_DELAY_MS : 100;
                         renamePet = state_->requestedRename_;
@@ -476,6 +509,29 @@ namespace Client
                     }
                     for (const auto& text : chat)
                         client.SendChat(text);
+                    if (shopCategory >= 0)
+                    {
+                        std::wstring message;
+                        try
+                        {
+                            std::string result;
+                            if (shopItem >= 0)
+                                result = client.BuyShopItem(shopItem, shopQuantity, shopPrice, shopCurrency);
+                            client.RefreshShop(shopCategory);
+                            message = shopItem >= 0 ? TextEncoding::ErrorText(result.c_str()) : L"黑店已刷新";
+                        }
+                        catch (const std::exception& error)
+                        {
+                            if (!client.IsConnected()) throw;
+                            message = TextEncoding::ErrorText(error.what());
+                        }
+                        {
+                            std::lock_guard<std::mutex> lock(state_->mutex_);
+                            state_->shared_.shopPending = false;
+                        }
+                        movementMessage = message;
+                        Publish(Screen::Game, message, &client);
+                    }
                     if (attribute >= 0)
                     {
                         std::wstring message;

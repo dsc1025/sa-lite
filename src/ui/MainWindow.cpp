@@ -8,6 +8,7 @@
 #include "../map/MapIndex.h"
 #include "../text/TextEncoding.h"
 #include <stdexcept>
+#include <algorithm>
 
 namespace Client
 {
@@ -27,6 +28,10 @@ namespace Client
         ON_BN_CLICKED(ExitButton, &MainWindow::OnExit)
         ON_MESSAGE(SessionMessage, &MainWindow::OnSession)
         ON_MESSAGE(BattleSceneClosedMessage, &MainWindow::OnBattleSceneClosed)
+        ON_NOTIFY(TCN_SELCHANGE, ShopTabs, &MainWindow::OnMainTab)
+        ON_BN_CLICKED(130, &MainWindow::OnShopRefresh)
+        ON_BN_CLICKED(131, &MainWindow::OnShopBuy)
+        ON_NOTIFY(NM_DBLCLK, 132, &MainWindow::OnShopDetail)
         ON_NOTIFY(TCN_SELCHANGE, MainTabs, &MainWindow::OnMainTab)
         ON_NOTIFY(TCN_SELCHANGE, IDC_BATTLE_TABS, &MainWindow::OnMainTab)
         ON_BN_CLICKED(IDC_BATTLE_START, &MainWindow::OnBattleStart)
@@ -92,6 +97,23 @@ namespace Client
         shopTabs_.InsertItem(1, L"装备");
         shopTabs_.InsertItem(2, L"技能");
         DWORD listStyle = WS_CHILD | WS_TABSTOP | WS_CLIPSIBLINGS | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS;
+        shopList_.Create(listStyle, empty, this, 132);
+        shopList_.ModifyStyleEx(0, WS_EX_CLIENTEDGE);
+        shopList_.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
+        const wchar_t* shopColumns[] = { L"商品", L"COST", L"P", L"库存", L"等级", L"说明" };
+        const int shopWidths[] = { 140, 65, 65, 65, 45, 200 };
+        for (int i = 0; i < 6; ++i) shopList_.InsertColumn(i, shopColumns[i], LVCFMT_LEFT, shopWidths[i]);
+        shopRefresh_.Create(L"刷新", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, empty, this, 130);
+        shopBuy_.Create(L"购买", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, empty, this, 131);
+        shopQuantityLabel_.Create(L"数量", WS_CHILD, empty, this);
+        shopQuantity_.Create(WS_CHILD | WS_TABSTOP | WS_BORDER | ES_NUMBER, empty, this, 133);
+        shopQuantity_.SetLimitText(2);
+        shopQuantity_.SetWindowText(L"1");
+        shopCurrency_.Create(WS_CHILD | WS_TABSTOP | CBS_DROPDOWNLIST, empty, this, 134);
+        shopCurrency_.AddString(L"COST");
+        shopCurrency_.AddString(L"P");
+        shopCurrency_.SetCurSel(0);
+        shopBalance_.Create(L"", WS_CHILD, empty, this);
         list_.Create(listStyle, empty, this, CharacterList);
         list_.ModifyStyleEx(0, WS_EX_CLIENTEDGE);
         list_.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
@@ -165,7 +187,14 @@ namespace Client
             CRect shopPage = mainPage;
             shopTabs_.AdjustRect(FALSE, &shopPage);
             shopPage.DeflateRect(6, 6);
-            developing_.MoveWindow(shopPage);
+            shopRefresh_.MoveWindow(shopPage.left, shopPage.top, 70, 26);
+            shopBalance_.MoveWindow(shopPage.left + 80, shopPage.top + 3, shopPage.Width() - 80, 24);
+            shopList_.MoveWindow(shopPage.left, shopPage.top + 34, shopPage.Width(), shopPage.Height() - 72);
+            int bottom = shopPage.bottom - 28;
+            shopQuantityLabel_.MoveWindow(shopPage.left, bottom + 3, 36, 24);
+            shopQuantity_.MoveWindow(shopPage.left + 40, bottom, 50, 26);
+            shopCurrency_.MoveWindow(shopPage.left + 100, bottom, 90, 160);
+            shopBuy_.MoveWindow(shopPage.left + 200, bottom, 80, 26);
         }
         LayoutBattle(mainPage);
         list_.MoveWindow(16, 54, width - 32, height - 146);
@@ -376,6 +405,62 @@ namespace Client
         Layout();
         if (view_.screen == Screen::Game && mainTabs_.GetCurSel() == 0)
             rolePage_->Activate();
+        if (view_.screen == Screen::Game && mainTabs_.GetCurSel() == 3 &&
+            !view_.shopPending && view_.shopCategory != shopTabs_.GetCurSel())
+            OnShopRefresh();
         *result = 0;
+    }
+
+    void MainWindow::OnShopRefresh()
+    {
+        if (!session_.RequestShop(shopTabs_.GetCurSel()))
+            SetTextIfChanged(footer_, L"请停止遇敌并等待当前操作结束后刷新黑店");
+    }
+
+    void MainWindow::OnShopDetail(NMHDR* header, LRESULT* result)
+    {
+        *result = 0;
+        auto click = reinterpret_cast<NMITEMACTIVATE*>(header);
+        if (view_.screen != Screen::Game || mainTabs_.GetCurSel() != 3 ||
+            view_.shopPending || view_.shopCategory != shopTabs_.GetCurSel() || click->iItem < 0)
+            return;
+        int id = static_cast<int>(shopList_.GetItemData(click->iItem));
+        auto found = std::find_if(view_.shopItems.begin(), view_.shopItems.end(),
+            [id](const Game::ShopItem& item) { return item.id == id; });
+        if (found == view_.shopItems.end()) return;
+        CString text;
+        text.Format(L"商品：%s\r\n类型：%d\r\n等级：%d\r\nCOST：%s\r\nP：%s\r\n库存：%s\r\n\r\n说明：\r\n%s",
+            LegacyText(found->name).GetString(), found->type, found->level,
+            found->cost < 0 ? L"不可用" : Number(found->cost).GetString(),
+            found->pearl < 0 ? L"不可用" : Number(found->pearl).GetString(),
+            found->stock < 0 ? L"不限量" : Number(found->stock).GetString(),
+            LegacyText(found->description).GetString());
+        shopProperties_.Show(this, text, L"商品详情");
+    }
+
+    void MainWindow::OnShopBuy()
+    {
+        int row = shopList_.GetNextItem(-1, LVNI_SELECTED);
+        if (row < 0 || view_.shopPending || view_.shopCategory != shopTabs_.GetCurSel()) return;
+        int id = static_cast<int>(shopList_.GetItemData(row));
+        auto found = std::find_if(view_.shopItems.begin(), view_.shopItems.end(),
+            [id](const Game::ShopItem& item) { return item.id == id; });
+        if (found == view_.shopItems.end()) return;
+        CString quantityText;
+        shopQuantity_.GetWindowText(quantityText);
+        int quantity = _wtoi(quantityText);
+        int currency = shopCurrency_.GetCurSel();
+        int price = currency == 1 ? found->pearl : found->cost;
+        if (quantity < 1 || quantity > 15 || price < 0 || (found->stock >= 0 && quantity > found->stock))
+        {
+            MessageBox(L"请检查支付方式、数量（1～15）及库存。", L"无法购买", MB_OK | MB_ICONWARNING);
+            return;
+        }
+        CString question;
+        question.Format(L"购买 %s × %d，支付 %lld %s？", LegacyText(found->name).GetString(),
+            quantity, static_cast<long long>(price) * quantity, currency == 1 ? L"P" : L"COST");
+        if (MessageBox(question, L"购买商品", MB_YESNO | MB_ICONQUESTION) == IDYES)
+            if (!session_.RequestShop(shopTabs_.GetCurSel(), id, quantity, price, currency))
+                SetTextIfChanged(footer_, L"请停止遇敌并等待当前操作结束后购买");
     }
 }

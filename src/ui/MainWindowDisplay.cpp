@@ -52,7 +52,7 @@ namespace Client
         bool mapPage = game && mainTabs_.GetCurSel() == 1;
         bool battle = game && mainTabs_.GetCurSel() == 2;
         bool shop = game && mainTabs_.GetCurSel() == 3;
-        ShowIfChanged(developing_, game && !role && !mapPage && (!battle || battleTabs_.GetCurSel() != 0));
+        ShowIfChanged(developing_, game && !role && !mapPage && !shop && (!battle || battleTabs_.GetCurSel() != 0));
         RefreshBattle(battle);
         battleSceneWindow_->Update(this, view_, showBattle_);
         if (!game && battleSettingsWindow_->GetSafeHwnd())
@@ -69,6 +69,38 @@ namespace Client
         ShowIfChanged(*rolePage_, role);
         rolePage_->Refresh();
         ShowIfChanged(shopTabs_, shop);
+        ShowIfChanged(shopList_, shop);
+        ShowIfChanged(shopRefresh_, shop);
+        ShowIfChanged(shopBuy_, shop);
+        ShowIfChanged(shopQuantity_, shop);
+        ShowIfChanged(shopQuantityLabel_, shop);
+        ShowIfChanged(shopCurrency_, shop);
+        ShowIfChanged(shopBalance_, shop);
+        bool shopReady = shop && !view_.shopPending && !view_.player.inBattle &&
+            !view_.encounterEnabled && !view_.encounterPending && !view_.itemPending &&
+            !view_.petStoragePending;
+        EnableIfChanged(shopRefresh_, shopReady);
+        EnableIfChanged(shopBuy_, shopReady && view_.shopCategory == shopTabs_.GetCurSel());
+        EnableIfChanged(shopQuantity_, shopReady);
+        EnableIfChanged(shopCurrency_, shopReady);
+        CString balance;
+        balance.Format(L"COST %d   P %d%s", view_.player.gold, view_.pearlBalance,
+            view_.shopPending ? L"   正在处理…" : L"");
+        SetTextIfChanged(shopBalance_, balance);
+        if (shop)
+        {
+            ListUpdate rows(shopList_);
+            if (view_.shopCategory == shopTabs_.GetCurSel())
+                for (const auto& item : view_.shopItems)
+                {
+                    int row = rows.Add(item.id, LegacyText(item.name));
+                    SetCellIfChanged(shopList_, row, 1, item.cost < 0 ? CString(L"不可用") : Number(item.cost));
+                    SetCellIfChanged(shopList_, row, 2, item.pearl < 0 ? CString(L"不可用") : Number(item.pearl));
+                    SetCellIfChanged(shopList_, row, 3, item.stock < 0 ? CString(L"不限量") : Number(item.stock));
+                    SetCellIfChanged(shopList_, row, 4, Number(item.level));
+                    SetCellIfChanged(shopList_, row, 5, LegacyText(item.description));
+                }
+        }
         ShowIfChanged(list_, characters);
         EnableIfChanged(exit_, view_.screen != Screen::Closing);
         SetTextIfChanged(exit_, game ? L"退出登录" : L"退出");
@@ -81,7 +113,7 @@ namespace Client
         if (game && view_.player.received)
         {
             CString stats;
-            stats.Format(L"   等级 %d   HP %d/%d   MP %d/%d   金币 %d", view_.player.level,
+            stats.Format(L"   等级 %d   HP %d/%d   MP %d/%d   COST %d", view_.player.level,
                 view_.player.hp, view_.player.maxHp, view_.player.mp, view_.player.maxMp, view_.player.gold);
             summary += stats;
             if (view_.player.mapId >= 0)

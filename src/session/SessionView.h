@@ -28,6 +28,9 @@ namespace Client
         std::vector<Game::PetStatus> pets;
         std::vector<Game::ItemStatus> items;
         std::vector<Game::MagicStatus> magic;
+        std::vector<Game::ShopItem> shopItems;
+        int shopCategory = -1, pearlBalance = 0;
+        bool shopPending = false;
         bool hasItems = false;
         bool itemPending = false;
         bool attributePending = false;

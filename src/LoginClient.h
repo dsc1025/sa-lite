@@ -48,6 +48,11 @@ public:
     std::string DropPet(int slot, const std::string& uniqueCode);
     std::string DropItem(int slot, std::uint32_t revision);
     std::string UseItem(int slot, std::uint32_t revision, int petSlot);
+    void RefreshShop(int category);
+    std::string BuyShopItem(int itemId, int quantity, int price, int currency);
+    const std::vector<Game::ShopItem>& GetShopItems() const noexcept { return shopItems_; }
+    int GetShopCategory() const noexcept { return shopCategory_; }
+    int GetPearlBalance() const noexcept { return pearlBalance_; }
     void RefreshItemStorage();
     void TransferItemStorage(bool put, int slot, std::uint32_t revision, const std::string& uniqueCode);
     const std::vector<ItemStatus>& GetItemStorage() const noexcept { return itemStorage_; }
@@ -103,6 +108,9 @@ private:
     bool HandleEncounterReply(const std::vector<std::string>& fields);
     bool PollCaptureNames();
 
+    std::vector<Game::ShopItem> shopItems_;
+    int shopCategory_ = -1, pearlBalance_ = 0;
+    bool shopUncertain_ = false;
     SocketConnection connection_;
     std::vector<std::string> chatMessages_;
     bool loggedIn_ = false;

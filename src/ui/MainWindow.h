@@ -2,6 +2,7 @@
 
 #include <afxwin.h>
 #include <afxcmn.h>
+#include "PropertiesWindow.h"
 #include "../map/MapIndex.h"
 #include "../session/GameSession.h"
 #include "../session/SessionView.h"
@@ -42,6 +43,9 @@ namespace Client
         afx_msg void OnClose();
         afx_msg LRESULT OnSession(WPARAM, LPARAM);
         afx_msg void OnMainTab(NMHDR*, LRESULT* result);
+        afx_msg void OnShopRefresh();
+        afx_msg void OnShopBuy();
+        afx_msg void OnShopDetail(NMHDR* header, LRESULT* result);
         afx_msg void OnMapPosition();
         afx_msg void OnMapRegion();
         afx_msg void OnBattleStart();
@@ -92,6 +96,12 @@ namespace Client
         CEdit captureMinimums_[5];
         std::vector<PetLv1Entry> capturePets_;
         int captureSourceInstanceId_ = -1;
+        CListCtrl shopList_;
+        ItemPropertiesWindow shopProperties_;
+        CButton shopRefresh_, shopBuy_;
+        CEdit shopQuantity_;
+        CComboBox shopCurrency_;
+        CStatic shopBalance_, shopQuantityLabel_;
         CListCtrl list_;
         SessionView view_;
         GameSession session_;

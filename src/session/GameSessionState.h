@@ -51,6 +51,8 @@ namespace Client
         int requestedFood_ = -1;
         int requestedFoodPet_ = -1;
         std::uint32_t requestedFoodRevision_ = 0;
+        int requestedShopCategory_ = -1, requestedShopItem_ = -1;
+        int requestedShopQuantity_ = 1, requestedShopPrice_ = 0, requestedShopCurrency_ = 0;
         int requestedMap_ = -1, requestedX_ = -1, requestedY_ = -1;
     };
 }

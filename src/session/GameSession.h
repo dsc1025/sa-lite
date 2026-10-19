@@ -49,6 +49,7 @@ namespace Client
         bool RequestItemUse(int slot, std::uint32_t revision, int petSlot);
         bool RequestItemStorage(Game::ItemStorageAction action, int slot = -1,
             std::uint32_t revision = 0, const std::string& uniqueCode = {});
+        bool RequestShop(int category, int itemId = -1, int quantity = 1, int price = 0, int currency = 0);
         void SetEncounterEnabled(bool enabled, bool capture = false, int sourceInstanceId = -1);
         void SetCaptureSettings(const Game::CaptureSettings& settings);
         void SetCaptureMinimums(const std::array<int, 5>& minimums);
