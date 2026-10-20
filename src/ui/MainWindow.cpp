@@ -13,7 +13,7 @@
 namespace Client
 {
     constexpr UINT SessionMessage = WM_APP + 1;
-    enum ControlId { LoginButton = 100, EnterButton, ExitButton, CharacterList = 104, MainTabs = 120, ShopTabs, MapPositionButton, MapRegionButton };
+    enum ControlId { LoginButton = 100, EnterButton, ExitButton, CharacterList = 104, MainTabs = 120, ShopTabs, MapPositionButton, MapRegionButton, ShopRefreshButton = 150, ShopBuyButton, ShopList, ShopQuantity, ShopCurrency };
 
     BEGIN_MESSAGE_MAP(MainWindow, CFrameWnd)
         ON_WM_CREATE()
@@ -29,9 +29,9 @@ namespace Client
         ON_MESSAGE(SessionMessage, &MainWindow::OnSession)
         ON_MESSAGE(BattleSceneClosedMessage, &MainWindow::OnBattleSceneClosed)
         ON_NOTIFY(TCN_SELCHANGE, ShopTabs, &MainWindow::OnMainTab)
-        ON_BN_CLICKED(130, &MainWindow::OnShopRefresh)
-        ON_BN_CLICKED(131, &MainWindow::OnShopBuy)
-        ON_NOTIFY(NM_DBLCLK, 132, &MainWindow::OnShopDetail)
+        ON_BN_CLICKED(ShopRefreshButton, &MainWindow::OnShopRefresh)
+        ON_BN_CLICKED(ShopBuyButton, &MainWindow::OnShopBuy)
+        ON_NOTIFY(NM_DBLCLK, ShopList, &MainWindow::OnShopDetail)
         ON_NOTIFY(TCN_SELCHANGE, MainTabs, &MainWindow::OnMainTab)
         ON_NOTIFY(TCN_SELCHANGE, IDC_BATTLE_TABS, &MainWindow::OnMainTab)
         ON_BN_CLICKED(IDC_BATTLE_START, &MainWindow::OnBattleStart)
@@ -77,7 +77,7 @@ namespace Client
         exit_.Create(L"退出", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, empty, this, ExitButton);
         mainTabs_.Create(WS_CHILD | WS_TABSTOP | WS_CLIPSIBLINGS | TCS_VERTICAL | TCS_MULTILINE,
             empty, this, MainTabs);
-        const wchar_t* mainCaptions[] = { L"角色", L"地图", L"战斗", L"黑店", L"任务" };
+        const wchar_t* mainCaptions[] = { L"角色", L"地图", L"战斗", L"黑市", L"任务" };
         for (int i = 0; i < 5; ++i)
             mainTabs_.InsertItem(i, mainCaptions[i]);
         mainTabs_.SetPadding(CSize(12, 10));
@@ -97,19 +97,19 @@ namespace Client
         shopTabs_.InsertItem(1, L"装备");
         shopTabs_.InsertItem(2, L"技能");
         DWORD listStyle = WS_CHILD | WS_TABSTOP | WS_CLIPSIBLINGS | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS;
-        shopList_.Create(listStyle, empty, this, 132);
+        shopList_.Create(listStyle, empty, this, ShopList);
         shopList_.ModifyStyleEx(0, WS_EX_CLIENTEDGE);
         shopList_.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
         const wchar_t* shopColumns[] = { L"商品", L"COST", L"P", L"库存", L"等级", L"说明" };
         const int shopWidths[] = { 140, 65, 65, 65, 45, 200 };
         for (int i = 0; i < 6; ++i) shopList_.InsertColumn(i, shopColumns[i], LVCFMT_LEFT, shopWidths[i]);
-        shopRefresh_.Create(L"刷新", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, empty, this, 130);
-        shopBuy_.Create(L"购买", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, empty, this, 131);
+        shopRefresh_.Create(L"刷新", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, empty, this, ShopRefreshButton);
+        shopBuy_.Create(L"购买", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, empty, this, ShopBuyButton);
         shopQuantityLabel_.Create(L"数量", WS_CHILD, empty, this);
-        shopQuantity_.Create(WS_CHILD | WS_TABSTOP | WS_BORDER | ES_NUMBER, empty, this, 133);
+        shopQuantity_.Create(WS_CHILD | WS_TABSTOP | WS_BORDER | ES_NUMBER, empty, this, ShopQuantity);
         shopQuantity_.SetLimitText(2);
         shopQuantity_.SetWindowText(L"1");
-        shopCurrency_.Create(WS_CHILD | WS_TABSTOP | CBS_DROPDOWNLIST, empty, this, 134);
+        shopCurrency_.Create(WS_CHILD | WS_TABSTOP | CBS_DROPDOWNLIST, empty, this, ShopCurrency);
         shopCurrency_.AddString(L"COST");
         shopCurrency_.AddString(L"P");
         shopCurrency_.SetCurSel(0);
@@ -413,8 +413,9 @@ namespace Client
 
     void MainWindow::OnShopRefresh()
     {
+        if (view_.screen != Screen::Game || mainTabs_.GetCurSel() != 3) return;
         if (!session_.RequestShop(shopTabs_.GetCurSel()))
-            SetTextIfChanged(footer_, L"请停止遇敌并等待当前操作结束后刷新黑店");
+            SetTextIfChanged(footer_, L"请停止遇敌并等待当前操作结束后刷新黑市");
     }
 
     void MainWindow::OnShopDetail(NMHDR* header, LRESULT* result)
@@ -440,6 +441,7 @@ namespace Client
 
     void MainWindow::OnShopBuy()
     {
+        if (view_.screen != Screen::Game || mainTabs_.GetCurSel() != 3) return;
         int row = shopList_.GetNextItem(-1, LVNI_SELECTED);
         if (row < 0 || view_.shopPending || view_.shopCategory != shopTabs_.GetCurSel()) return;
         int id = static_cast<int>(shopList_.GetItemData(row));

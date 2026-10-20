@@ -87,6 +87,31 @@ void LoginClient::IncreaseAttribute(int attribute)
 
 bool LoginClient::HandleGamePacket(const std::vector<std::string>& fields)
 {
+    if (fields[1] == "24")
+    {
+        if (fields.size() != 6)
+            throw std::runtime_error("Invalid item move reply");
+        auto from = ReadInteger(Decode64(fields[2], sessionKey_, -1), { 2, 4, 1, 3 });
+        auto to = ReadInteger(Decode64(fields[3], sessionKey_, -1), { 2, 4, 1, 3 });
+        auto checksum = ReadInteger(Decode64(fields[4], sessionKey_, -1), { 2, 4, 1, 3 });
+        if (checksum != from + to)
+            throw std::runtime_error("Invalid item move checksum");
+        if (from == static_cast<std::uint32_t>(-1) && to == static_cast<std::uint32_t>(-1))
+        {
+            itemMoveFrom_ = itemMoveTo_ = -1;
+            ++itemMoveSerial_;
+            return true;
+        }
+        if (from >= items_.size() || to >= items_.size() || from == to)
+            throw std::runtime_error("Invalid item move slots");
+        std::swap(items_[from], items_[to]);
+        items_[from].revision = ++itemRevision_;
+        items_[to].revision = ++itemRevision_;
+        itemMoveFrom_ = static_cast<int>(from);
+        itemMoveTo_ = static_cast<int>(to);
+        ++itemMoveSerial_;
+        return true;
+    }
     if (fields[1] == "63")
     {
         if (fields.size() != 5)

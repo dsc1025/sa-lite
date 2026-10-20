@@ -48,6 +48,8 @@ namespace Client
         bool requestedDiscardPet_ = false;
         std::uint32_t requestedDiscardRevision_ = 0;
         std::string requestedDiscardCode_;
+        int requestedEquipment_ = -1, requestedEquipmentSlot_ = -1;
+        std::uint32_t requestedEquipmentRevision_ = 0;
         int requestedFood_ = -1;
         int requestedFoodPet_ = -1;
         std::uint32_t requestedFoodRevision_ = 0;

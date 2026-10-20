@@ -47,6 +47,7 @@ public:
     std::string RenamePet(int slot, const std::string& uniqueCode, const std::string& nickname);
     std::string DropPet(int slot, const std::string& uniqueCode);
     std::string DropItem(int slot, std::uint32_t revision);
+    std::string EquipItem(int slot, std::uint32_t revision, int equipmentSlot = -1);
     std::string UseItem(int slot, std::uint32_t revision, int petSlot);
     void RefreshShop(int category);
     std::string BuyShopItem(int itemId, int quantity, int price, int currency);
@@ -137,6 +138,8 @@ private:
     std::vector<Game::MagicStatus> magic_ = std::vector<Game::MagicStatus>(5);
     bool itemsReceived_ = false;
     std::uint32_t itemRevision_ = 0;
+    std::uint32_t itemMoveSerial_ = 0;
+    int itemMoveFrom_ = -1, itemMoveTo_ = -1;
     std::vector<ItemStatus> itemStorage_;
     bool itemStorageReceived_ = false;
     bool waitingFood_ = false;

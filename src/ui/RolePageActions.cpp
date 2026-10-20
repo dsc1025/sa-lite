@@ -22,6 +22,7 @@ namespace Client
         std::string uniqueCode;
         bool targetedUse = false;
         bool directUse = false;
+        bool equipment = false;
         std::uint32_t itemRevision = 0;
         CString name;
         if (pet)
@@ -45,6 +46,7 @@ namespace Client
                 (view_.items[slot].type == 16 && view_.items[slot].target >= 1 && view_.items[slot].target <= 2));
             directUse = view_.items[slot].type == 16 && view_.items[slot].target == 0 && slot >= 5;
             itemRevision = view_.items[slot].revision;
+            equipment = Game::IsEquipmentType(view_.items[slot].type);
         }
         list_.SetItemState(click->iItem, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
         RefreshDetail();
@@ -58,6 +60,21 @@ namespace Client
         menu.AppendMenu(MF_STRING | (canStore ? MF_ENABLED : MF_GRAYED), 1, L"存入");
         bool canDiscard = enabled && idle;
         menu.AppendMenu(MF_STRING | (canDiscard ? MF_ENABLED : MF_GRAYED), 2, L"丢弃");
+        CMenu equipmentMenu;
+        if (equipment)
+        {
+            bool canEquip = idle && !view_.shopPending;
+            if (slot >= 5 && Game::EquipmentSlot(view_.items[slot].type) == 3)
+            {
+                if (!equipmentMenu.CreatePopupMenu()) return;
+                equipmentMenu.AppendMenu(MF_STRING, 11, L"饰品1");
+                equipmentMenu.AppendMenu(MF_STRING, 12, L"饰品2");
+                menu.AppendMenu(MF_POPUP | (canEquip ? MF_ENABLED : MF_GRAYED),
+                    reinterpret_cast<UINT_PTR>(equipmentMenu.Detach()), L"装备");
+            }
+            else
+                menu.AppendMenu(MF_STRING | (canEquip ? MF_ENABLED : MF_GRAYED), 11, slot < 5 ? L"卸下" : L"装备");
+        }
         CMenu useMenu;
         if (directUse)
         {
@@ -90,6 +107,16 @@ namespace Client
         list_.ClientToScreen(&point);
         UINT command = menu.TrackPopupMenu(TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON,
             point.x, point.y, this);
+        if (equipment && (command == 11 || command == 12))
+        {
+            int equipmentSlot = slot >= 5 && Game::EquipmentSlot(view_.items[slot].type) == 3 ?
+                (command == 11 ? 3 : 4) : -1;
+            if (session_.RequestItemEquip(slot, itemRevision, equipmentSlot))
+                footer_.SetWindowText(slot < 5 ? L"正在卸下装备…" : L"正在穿上装备…");
+            else
+                footer_.SetWindowText(L"当前状态或装备数据已变化，请重新选择后操作");
+            return;
+        }
         if (command == 10 && pet && idle && view_.pets[slot].canRename && !uniqueCode.empty())
         {
             renamingPet_ = slot;

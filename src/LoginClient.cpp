@@ -49,6 +49,8 @@ void LoginClient::Disconnect() noexcept
     magic_.assign(5, {});
     itemsReceived_ = false;
     itemRevision_ = 0;
+    itemMoveSerial_ = 0;
+    itemMoveFrom_ = itemMoveTo_ = -1;
     shopItems_.clear();
     shopCategory_ = -1;
     pearlBalance_ = 0;
@@ -401,8 +403,8 @@ namespace
         switch (result)
         {
         case 2: return "购买参数无效";
-        case 3: return "请结束战斗或交易后再操作黑店";
-        case 4: return "黑店数据库操作失败，请刷新并确认余额和库存";
+        case 3: return "请结束战斗或交易后再操作黑市";
+        case 4: return "黑市数据库操作失败，请刷新并确认余额和库存";
         case 5: return "商品已下架或不支持所选货币";
         case 6: return "商品价格已变化，请刷新后重新购买";
         case 7: return "COST不足";
@@ -410,7 +412,7 @@ namespace
         case 9: return "商品生成失败，购买已取消";
         case 10: return "P 余额不足";
         case 11: return "商品库存不足";
-        default: return "黑店返回未知状态";
+        default: return "黑市返回未知状态";
         }
     }
 }
@@ -418,9 +420,9 @@ namespace
 void LoginClient::RefreshShop(int category)
 {
     if (!inGame_ || category < 0 || category > 2 || playerStatus_.inBattle || IsEncounterEnabled())
-        throw std::runtime_error("请先停止遇敌并结束战斗，再刷新黑店");
+        throw std::runtime_error("请先停止遇敌并结束战斗，再刷新黑市");
     if (shopUncertain_)
-        throw std::runtime_error("上次黑店请求未确认，请重新登录后检查余额与背包");
+        throw std::runtime_error("上次黑市请求未确认，请重新登录后检查余额与背包");
     shopItems_.clear();
     shopCategory_ = -1;
     int offset = 0, expectedTotal = -1;
@@ -442,14 +444,14 @@ void LoginClient::RefreshShop(int category)
                 auto n = ShopNumbers(fields, 12, 2, sessionKey_, texts);
                 pearlBalance_ = n[10];
                 if (n[1] != category || n[2] != offset || n[3] < offset)
-                    throw std::runtime_error("黑店列表已变化，请重新刷新");
+                    throw std::runtime_error("黑市列表已变化，请重新刷新");
                 if (n[0] != 0 && n[0] != 1) {
                     awaiting = false;
                     throw std::runtime_error(ShopError(n[0]));
                 }
                 if (expectedTotal < 0) expectedTotal = n[3];
                 if (expectedTotal != n[3] || expectedTotal > 100000)
-                    throw std::runtime_error("黑店列表已变化或记录过多，请重新刷新");
+                    throw std::runtime_error("黑市列表已变化或记录过多，请重新刷新");
                 if (n[0] == 1) { awaiting = false; break; }
                 if (n[4] < 0 || n[5] < -1 || n[6] < -1 || n[7] < -1 || offset >= expectedTotal)
                     throw std::runtime_error("Invalid shop item");
@@ -477,7 +479,7 @@ std::string LoginClient::BuyShopItem(int itemId, int quantity, int price, int cu
 {
     if (!inGame_ || playerStatus_.inBattle || IsEncounterEnabled() || IsEncounterStopping() ||
         shopUncertain_ || quantity < 1 || quantity > 15 || price < 0 || currency < 0 || currency > 1)
-        throw std::runtime_error("当前状态无法购买，请停止遇敌并刷新黑店");
+        throw std::runtime_error("当前状态无法购买，请停止遇敌并刷新黑市");
     auto deadline = GetTickCount64() + 10000;
     shopUncertain_ = true;
     SendNumbers("124", { itemId, quantity, price, currency }, deadline);

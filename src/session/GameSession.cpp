@@ -34,6 +34,7 @@ namespace Client
                 state_->storageRequested_ = false;
                 state_->requestedShopCategory_ = -1;
                 state_->requestedFood_ = -1;
+                state_->requestedEquipment_ = -1;
                 state_->requestedDiscard_ = -1;
                 state_->requestedDiscardCode_.clear();
                 state_->requestedStorageCode_.clear();
@@ -228,6 +229,29 @@ namespace Client
             state_->requestedDiscardCode_ = uniqueCode;
             state_->shared_.itemPending = true;
             state_->shared_.message = pet ? L"正在丢弃宠物…" : L"正在丢弃道具…";
+        }
+        ::PostMessage(state_->window_, state_->message_, 0, 0);
+        return true;
+    }
+
+    bool GameSession::RequestItemEquip(int slot, std::uint32_t revision, int equipmentSlot)
+    {
+        {
+            std::lock_guard<std::mutex> lock(state_->mutex_);
+            if (state_->stop_ || state_->done_ || state_->shared_.screen != Screen::Game ||
+                state_->shared_.itemPending || state_->shared_.petStoragePending || state_->shared_.shopPending ||
+                state_->requestedPet_ >= 0 || state_->encounterRequested_ || state_->shared_.encounterEnabled ||
+                state_->shared_.encounterPending || state_->shared_.player.inBattle ||
+                !state_->shared_.player.received || !state_->shared_.hasItems || slot < 0 ||
+                slot >= static_cast<int>(state_->shared_.items.size()) || !state_->shared_.items[slot].present ||
+                state_->shared_.items[slot].revision != revision ||
+                !Game::IsEquipmentType(state_->shared_.items[slot].type))
+                return false;
+            state_->requestedEquipment_ = slot;
+            state_->requestedEquipmentSlot_ = equipmentSlot;
+            state_->requestedEquipmentRevision_ = revision;
+            state_->shared_.itemPending = true;
+            state_->shared_.message = slot < 5 ? L"正在卸下装备…" : L"正在穿上装备…";
         }
         ::PostMessage(state_->window_, state_->message_, 0, 0);
         return true;
@@ -447,6 +471,8 @@ namespace Client
                     bool discardPet;
                     std::uint32_t discardRevision;
                     std::string discardCode;
+                    int equipment, equipmentSlot;
+                    std::uint32_t equipmentRevision;
                     int renamePet;
                     std::string renameCode, nickname;
                     std::uint32_t foodRevision, itemStorageRevision;
@@ -482,6 +508,10 @@ namespace Client
                         discardRevision = state_->requestedDiscardRevision_;
                         discardCode = state_->requestedDiscardCode_;
                         state_->requestedDiscard_ = -1;
+                        equipment = state_->requestedEquipment_;
+                        equipmentSlot = state_->requestedEquipmentSlot_;
+                        equipmentRevision = state_->requestedEquipmentRevision_;
+                        state_->requestedEquipment_ = -1;
                         food = state_->requestedFood_;
                         foodPet = state_->requestedFoodPet_;
                         foodRevision = state_->requestedFoodRevision_;
@@ -518,7 +548,7 @@ namespace Client
                             if (shopItem >= 0)
                                 result = client.BuyShopItem(shopItem, shopQuantity, shopPrice, shopCurrency);
                             client.RefreshShop(shopCategory);
-                            message = shopItem >= 0 ? TextEncoding::ErrorText(result.c_str()) : L"黑店已刷新";
+                            message = shopItem >= 0 ? TextEncoding::ErrorText(result.c_str()) : L"黑市已刷新";
                         }
                         catch (const std::exception& error)
                         {
@@ -644,6 +674,22 @@ namespace Client
                         }
                         if (!client.IsConnected())
                             throw std::runtime_error(failure);
+                        movementMessage = message;
+                        Publish(Screen::Game, message, &client);
+                    }
+                    if (equipment >= 0)
+                    {
+                        std::wstring message;
+                        try { message = TextEncoding::ErrorText(client.EquipItem(equipment, equipmentRevision, equipmentSlot).c_str()); }
+                        catch (const std::exception& error)
+                        {
+                            if (!client.IsConnected()) throw;
+                            message = TextEncoding::ErrorText(error.what());
+                        }
+                        {
+                            std::lock_guard<std::mutex> lock(state_->mutex_);
+                            state_->shared_.itemPending = false;
+                        }
                         movementMessage = message;
                         Publish(Screen::Game, message, &client);
                     }

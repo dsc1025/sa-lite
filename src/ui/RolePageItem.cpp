@@ -86,13 +86,13 @@ namespace Client
         const wchar_t* equipment[] = { L"头部", L"身体", L"武器", L"饰品1", L"饰品2" };
         for (std::size_t i = 0; i < view_.items.size(); ++i)
         {
-            if (!view_.items[i].present) continue;
+            if (i >= 5 && !view_.items[i].present) continue;
             CString name;
             if (i < 5) name = equipment[i];
             else name.Format(L"背包 %d", static_cast<int>(i - 4));
-            name += L" · "; name += LegacyText(view_.items[i].name);
+            name += L" · "; name += view_.items[i].present ? LegacyText(view_.items[i].name) : CString(L"-");
             int row = rows.Add(i, name);
-            SetCellIfChanged(list_, row, 1, ItemTypeName(view_.items[i].type));
+            SetCellIfChanged(list_, row, 1, view_.items[i].present ? ItemTypeName(view_.items[i].type) : CString());
         }
     }
 

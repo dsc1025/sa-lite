@@ -46,6 +46,7 @@ namespace Client
         bool RequestIncreaseAttribute(int attribute);
         bool RequestPetStorage(Game::PetStorageAction action, int slot = -1, const std::string& uniqueCode = {});
         bool RequestDiscard(bool pet, int slot, std::uint32_t revision, const std::string& uniqueCode);
+        bool RequestItemEquip(int slot, std::uint32_t revision, int equipmentSlot = -1);
         bool RequestItemUse(int slot, std::uint32_t revision, int petSlot);
         bool RequestItemStorage(Game::ItemStorageAction action, int slot = -1,
             std::uint32_t revision = 0, const std::string& uniqueCode = {});

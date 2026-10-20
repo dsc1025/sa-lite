@@ -23,6 +23,46 @@ std::string LoginClient::DropItem(int slot, std::uint32_t revision)
     return "服务器未确认道具丢弃，请检查道具及当前场景是否允许丢弃，勿连续重复操作";
 }
 
+std::string LoginClient::EquipItem(int slot, std::uint32_t revision, int equipmentSlot)
+{
+    if (!inGame_ || !itemsReceived_ || !playerStatus_.received || playerStatus_.inBattle ||
+        IsEncounterEnabled() || IsEncounterStopping())
+        throw std::runtime_error("请先停止遇敌并结束战斗，再穿脱装备");
+    if (slot < 0 || slot >= static_cast<int>(items_.size()) || !items_[slot].present ||
+        items_[slot].revision != revision || !Game::IsEquipmentType(items_[slot].type))
+        throw std::runtime_error("装备数据已变化，请重新选择");
+    int destination = -1;
+    if (slot < 5)
+    {
+        for (int i = 5; i < static_cast<int>(items_.size()); ++i)
+            if (!items_[i].present) { destination = i; break; }
+        if (destination < 0)
+            throw std::runtime_error("背包已满，请先空出栏位再卸下装备");
+    }
+    else
+    {
+        destination = Game::EquipmentSlot(items_[slot].type);
+        if (destination == 3)
+        {
+            if (equipmentSlot != 3 && equipmentSlot != 4)
+                throw std::runtime_error("请选择饰品栏位");
+            destination = equipmentSlot;
+        }
+        else if (equipmentSlot != -1 && equipmentSlot != destination)
+            throw std::runtime_error("装备栏位无效");
+    }
+    auto serial = itemMoveSerial_;
+    auto deadline = GetTickCount64() + 2000;
+    SendNumbers("23", { slot, destination }, deadline);
+    while (itemMoveSerial_ == serial && GetTickCount64() < deadline)
+        PollGame(100);
+    if (itemMoveSerial_ == serial)
+        return "服务器未确认穿脱装备，请检查背包与装备栏，勿连续重复操作";
+    if (itemMoveFrom_ != slot || itemMoveTo_ != destination)
+        return "服务器拒绝穿脱装备，请检查装备条件及服务器提示";
+    return slot < 5 ? "装备已卸下" : "装备已穿上";
+}
+
 std::string LoginClient::UseItem(int slot, std::uint32_t revision, int petSlot)
 {
     if (!inGame_ || !playerStatus_.received || playerStatus_.inBattle ||
