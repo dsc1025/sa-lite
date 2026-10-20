@@ -41,6 +41,8 @@ namespace Client
             ShowIfChanged(*edit, login);
             EnableIfChanged(*edit, view_.screen == Screen::Login);
         }
+        ShowIfChanged(update_, login);
+        EnableIfChanged(update_, view_.screen == Screen::Login);
         ShowIfChanged(login_, login);
         EnableIfChanged(login_, view_.screen == Screen::Login);
         ShowIfChanged(enter_, characters);

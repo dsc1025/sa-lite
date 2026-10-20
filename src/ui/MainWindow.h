@@ -78,7 +78,7 @@ namespace Client
         std::unique_ptr<MiniMap> miniMap_;
         std::unique_ptr<ChatWindow> chatWindow_;
         CEdit address_, port_, account_, password_;
-        CButton login_, enter_, exit_;
+        CButton login_, enter_, exit_, update_;
         CButton createCharacter_;
         std::unique_ptr<CreateCharacterWindow> createCharacterWindow_;
         bool creationOffered_ = false;

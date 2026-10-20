@@ -14,7 +14,7 @@ namespace Client
             INITCOMMONCONTROLSEX controls{ sizeof(controls), ICC_LISTVIEW_CLASSES | ICC_TAB_CLASSES };
             InitCommonControlsEx(&controls);
             CWinApp::InitInstance();
-            SetThemeAppProperties(0);
+            SetThemeAppProperties(STAP_ALLOW_NONCLIENT);
             auto window = new MainWindow;
             if (!window->Create(nullptr, L"登录", WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN, CRect(0, 0, 460, 330)))
                 return FALSE;

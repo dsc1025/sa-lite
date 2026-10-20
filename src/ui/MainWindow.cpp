@@ -13,7 +13,7 @@
 namespace Client
 {
     constexpr UINT SessionMessage = WM_APP + 1;
-    enum ControlId { LoginButton = 100, EnterButton, ExitButton, CharacterList = 104, MainTabs = 120, ShopTabs, MapPositionButton, MapRegionButton, ShopRefreshButton = 150, ShopBuyButton, ShopList, ShopQuantity, ShopCurrency };
+    enum ControlId { LoginButton = 100, EnterButton, ExitButton, UpdateButton, CharacterList = 104, MainTabs = 120, ShopTabs, MapPositionButton, MapRegionButton, ShopRefreshButton = 150, ShopBuyButton, ShopList, ShopQuantity, ShopCurrency };
 
     BEGIN_MESSAGE_MAP(MainWindow, CFrameWnd)
         ON_WM_CREATE()
@@ -75,6 +75,7 @@ namespace Client
         enter_.Create(L"进入游戏", WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON, empty, this, EnterButton);
         createCharacter_.Create(L"创建角色", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, empty, this, 105);
         exit_.Create(L"退出", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, empty, this, ExitButton);
+        update_.Create(L"更新", WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON, empty, this, UpdateButton);
         mainTabs_.Create(WS_CHILD | WS_TABSTOP | WS_CLIPSIBLINGS | TCS_VERTICAL | TCS_MULTILINE,
             empty, this, MainTabs);
         const wchar_t* mainCaptions[] = { L"角色", L"地图", L"战斗", L"黑市", L"任务" };
@@ -157,15 +158,20 @@ namespace Client
         summary_.MoveWindow(16, 16, width - 128, 24);
         footer_.MoveWindow(16, height - 30, width - 32, 24);
         int left = (width - 360) / 2;
+        constexpr int inputWidth = 272;
         CEdit* edits[] = { &address_, &port_, &account_, &password_ };
         for (int i = 0; i < 4; ++i)
         {
             int top = 30 + i * 42;
             labels_[i].MoveWindow(left, top + 4, 80, 24);
-            edits[i]->MoveWindow(left + 88, top, 272, 26);
+            edits[i]->MoveWindow(left + 88, top, inputWidth, 26);
         }
-        login_.MoveWindow(left + 88, 208, 100, 30);
-        exit_.MoveWindow(login ? left + 200 : width - 116, login ? 208 : 12, 100, 30);
+        constexpr int buttonWidth = 80;
+        int buttonGap = (inputWidth - buttonWidth * 3) / 2;
+        login_.MoveWindow(left + 88, 208, buttonWidth, 30);
+        exit_.MoveWindow(login ? left + 88 + buttonWidth + buttonGap : width - 116,
+            login ? 208 : 12, login ? buttonWidth : 100, 30);
+        update_.MoveWindow(left + 88 + inputWidth - buttonWidth, 208, buttonWidth, 30);
         enter_.MoveWindow(width - 146, height - 76, 130, 30);
         createCharacter_.MoveWindow(16, height - 76, 130, 30);
         mainTabs_.MoveWindow(16, 54, width - 32, height - 92);
