@@ -23,6 +23,7 @@ namespace Client
         ON_WM_CTLCOLOR()
         ON_WM_CLOSE()
         ON_BN_CLICKED(LoginButton, &MainWindow::OnLogin)
+        ON_BN_CLICKED(UpdateButton, &MainWindow::OnUpdate)
         ON_BN_CLICKED(EnterButton, &MainWindow::OnEnter)
         ON_BN_CLICKED(105, &MainWindow::OnCreateCharacter)
         ON_BN_CLICKED(ExitButton, &MainWindow::OnExit)
@@ -236,6 +237,11 @@ namespace Client
     {
         if (view_.screen != Screen::Login)
             return;
+        if (UpdateInProgress())
+        {
+            MessageBox(L"请先完成或关闭更新窗口，再登录游戏。", L"客户端更新", MB_OK | MB_ICONINFORMATION);
+            return;
+        }
         try
         {
             auto address = AsciiText(address_);

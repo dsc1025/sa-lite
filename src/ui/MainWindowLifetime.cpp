@@ -27,5 +27,6 @@ namespace Client
     {
         session_.Stop();
         session_.Join();
+        if (updateProcess_) CloseHandle(updateProcess_);
     }
 }

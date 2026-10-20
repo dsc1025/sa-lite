@@ -3,4 +3,5 @@
     <Platform Name="x64" />
   </Configurations>
   <Project Path="SAClient.vcxproj" Id="235664cf-2d28-4fc1-a14b-544f82a678bd" />
+  <Project Path="SAUpdater.vcxproj" Id="86d62c6b-02b6-4e2a-b86b-2b417812c175" />
 </Solution>

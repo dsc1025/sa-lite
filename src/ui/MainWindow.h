@@ -37,6 +37,7 @@ namespace Client
         afx_msg void OnPaint();
         afx_msg HBRUSH OnCtlColor(CDC* dc, CWnd* window, UINT type);
         afx_msg void OnLogin();
+        afx_msg void OnUpdate();
         afx_msg void OnEnter();
         afx_msg void OnCreateCharacter();
         afx_msg void OnExit();
@@ -65,6 +66,7 @@ namespace Client
         void RefreshMapPositions();
         void LoadLogin();
         void SaveLogin();
+        bool UpdateInProgress();
 
         CFont font_;
         CBrush background_, white_;
@@ -79,6 +81,7 @@ namespace Client
         std::unique_ptr<ChatWindow> chatWindow_;
         CEdit address_, port_, account_, password_;
         CButton login_, enter_, exit_, update_;
+        HANDLE updateProcess_ = nullptr;
         CButton createCharacter_;
         std::unique_ptr<CreateCharacterWindow> createCharacterWindow_;
         bool creationOffered_ = false;

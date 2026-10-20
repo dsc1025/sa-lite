@@ -100,6 +100,7 @@
     <ClCompile Include="src\map\MapIndex.cpp" />
     <ClCompile Include="src\text\TextEncoding.cpp" />
     <ClCompile Include="src\ui\MainWindow.cpp" />
+    <ClCompile Include="src\ui\MainWindowUpdate.cpp" />
     <ClCompile Include="src\ui\ChatWindow.cpp" />
     <ClCompile Include="src\ui\CreateCharacterWindow.cpp" />
     <ClCompile Include="src\ui\PropertiesWindow.cpp" />
@@ -114,5 +115,14 @@
     <ClCompile Include="src\ui\LoginSettings.cpp" />
     <ClCompile Include="src\ui\UiText.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="SAUpdater.vcxproj">
+      <Project>{86D62C6B-02B6-4E2A-B86B-2B417812C175}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Target Name="GenerateUpdateManifest" AfterTargets="Build" Condition="'$(Configuration)'=='Release'">
+    <Exec Command="powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\scripts\GenerateUpdateManifest.ps1&quot; -VersionHeader &quot;$(MSBuildProjectDirectory)\src\AppInfo.h&quot; -ExecutablePath &quot;$(TargetPath)&quot;" />
+  </Target>
 </Project>
