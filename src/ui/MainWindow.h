@@ -21,6 +21,7 @@ namespace Client
     class CaptureSettingsWindow;
     class BattleSceneWindow;
     class RolePage;
+    class AuctionPage;
     class BattleGroup;
 
     class MainWindow : public CFrameWnd
@@ -109,6 +110,7 @@ namespace Client
         SessionView view_;
         GameSession session_;
         std::unique_ptr<RolePage> rolePage_;
+        std::unique_ptr<AuctionPage> auctionPage_;
         bool closeWindow_ = false;
         bool expanded_ = false;
         int displayedScreen_ = -1;

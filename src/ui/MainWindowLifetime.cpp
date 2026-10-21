@@ -6,6 +6,7 @@
 #include "BattleSettingsWindow.h"
 #include "BattleSceneWindow.h"
 #include "RolePage.h"
+#include "AuctionPage.h"
 
 namespace Client
 {
@@ -17,7 +18,8 @@ namespace Client
           battleSettingsWindow_(std::make_unique<BattleSettingsWindow>()),
           captureSettingsWindow_(std::make_unique<CaptureSettingsWindow>()),
           battleSceneWindow_(std::make_unique<BattleSceneWindow>()),
-          rolePage_(std::make_unique<RolePage>(view_, session_, footer_))
+          rolePage_(std::make_unique<RolePage>(view_, session_, footer_)),
+          auctionPage_(std::make_unique<AuctionPage>(view_))
     {
         background_.CreateSolidBrush(GetSysColor(COLOR_BTNFACE));
         white_.CreateSolidBrush(GetSysColor(COLOR_WINDOW));

@@ -46,6 +46,8 @@
     <ClInclude Include="src\game\Character.h" />
     <ClInclude Include="src\game\Encounter.h" />
     <ClInclude Include="src\game\ItemTypes.h" />
+    <ClInclude Include="src\game\AuctionTypes.h" />
+    <ClInclude Include="src\ui\AuctionPage.h" />
     <ClInclude Include="src\game\MagicStatus.h" />
     <ClInclude Include="src\game\PetTypes.h" />
     <ClInclude Include="src\game\PlayerStatus.h" />
@@ -77,6 +79,7 @@
   <ItemGroup>
     <ClCompile Include="src\game\Encounter.cpp" />
     <ClCompile Include="src\ui\MainWindowLifetime.cpp" />
+    <ClCompile Include="src\ui\AuctionPage.cpp" />
     <ClCompile Include="src\game\Character.cpp" />
     <ClCompile Include="src\map\ResourceDirectory.cpp" />
     <ClCompile Include="src\ui\BattleGroup.cpp" />

@@ -6,6 +6,7 @@
 #include "BattleSettingsWindow.h"
 #include "BattleSceneWindow.h"
 #include "RolePage.h"
+#include "AuctionPage.h"
 #include "UiText.h"
 
 namespace Client
@@ -71,6 +72,9 @@ namespace Client
         ShowIfChanged(*rolePage_, role);
         rolePage_->Refresh();
         ShowIfChanged(shopTabs_, shop);
+        ShowIfChanged(*auctionPage_, shop && shopTabs_.GetCurSel() == 3);
+        auctionPage_->Refresh();
+        shop = shop && shopTabs_.GetCurSel() < 3;
         ShowIfChanged(shopList_, shop);
         ShowIfChanged(shopRefresh_, shop);
         ShowIfChanged(shopBuy_, shop);

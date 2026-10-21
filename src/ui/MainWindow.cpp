@@ -4,6 +4,7 @@
 #include "MiniMap.h"
 #include "CreateCharacterWindow.h"
 #include "RolePage.h"
+#include "AuctionPage.h"
 #include "UiText.h"
 #include "../map/MapIndex.h"
 #include "../text/TextEncoding.h"
@@ -98,6 +99,9 @@ namespace Client
         shopTabs_.InsertItem(0, L"道具");
         shopTabs_.InsertItem(1, L"装备");
         shopTabs_.InsertItem(2, L"技能");
+        shopTabs_.InsertItem(3, L"竞拍");
+        if (!auctionPage_->Create(this, &font_))
+            return -1;
         DWORD listStyle = WS_CHILD | WS_TABSTOP | WS_CLIPSIBLINGS | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS;
         shopList_.Create(listStyle, empty, this, ShopList);
         shopList_.ModifyStyleEx(0, WS_EX_CLIENTEDGE);
@@ -194,6 +198,7 @@ namespace Client
             CRect shopPage = mainPage;
             shopTabs_.AdjustRect(FALSE, &shopPage);
             shopPage.DeflateRect(6, 6);
+            auctionPage_->MoveWindow(shopPage);
             shopRefresh_.MoveWindow(shopPage.left, shopPage.top, 70, 26);
             shopBalance_.MoveWindow(shopPage.left + 80, shopPage.top + 3, shopPage.Width() - 80, 24);
             shopList_.MoveWindow(shopPage.left, shopPage.top + 34, shopPage.Width(), shopPage.Height() - 72);
@@ -418,14 +423,16 @@ namespace Client
         if (view_.screen == Screen::Game && mainTabs_.GetCurSel() == 0)
             rolePage_->Activate();
         if (view_.screen == Screen::Game && mainTabs_.GetCurSel() == 3 &&
-            !view_.shopPending && view_.shopCategory != shopTabs_.GetCurSel())
+            shopTabs_.GetCurSel() < 3 && !view_.shopPending && view_.shopCategory != shopTabs_.GetCurSel())
             OnShopRefresh();
+        if (view_.screen == Screen::Game && mainTabs_.GetCurSel() == 3 && shopTabs_.GetCurSel() == 3)
+            auctionPage_->Activate();
         *result = 0;
     }
 
     void MainWindow::OnShopRefresh()
     {
-        if (view_.screen != Screen::Game || mainTabs_.GetCurSel() != 3) return;
+        if (view_.screen != Screen::Game || mainTabs_.GetCurSel() != 3 || shopTabs_.GetCurSel() >= 3) return;
         if (!session_.RequestShop(shopTabs_.GetCurSel()))
             SetTextIfChanged(footer_, L"请停止遇敌并等待当前操作结束后刷新黑市");
     }
@@ -467,7 +474,7 @@ namespace Client
         int price = currency == 1 ? found->pearl : found->cost;
         if (quantity < 1 || quantity > 15 || price < 0 || (found->stock >= 0 && quantity > found->stock))
         {
-            MessageBox(L"请检查支付方式、数量（1～15）及库存。", L"无法购买", MB_OK | MB_ICONWARNING);
+            MessageBox(L"请检查支付方式、购买数量及库存。", L"无法购买", MB_OK | MB_ICONWARNING);
             return;
         }
         CString question;

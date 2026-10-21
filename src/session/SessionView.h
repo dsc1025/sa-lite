@@ -4,6 +4,7 @@
 #include "../game/PlayerStatus.h"
 #include "../game/PetTypes.h"
 #include "../game/ItemTypes.h"
+#include "../game/AuctionTypes.h"
 #include "../game/MagicStatus.h"
 #include "../game/Battle.h"
 #include "../game/BattleSettings.h"
@@ -31,6 +32,7 @@ namespace Client
         std::vector<Game::ShopItem> shopItems;
         int shopCategory = -1, pearlBalance = 0;
         bool shopPending = false;
+        Game::AuctionView auction;
         bool hasItems = false;
         bool itemPending = false;
         bool attributePending = false;
