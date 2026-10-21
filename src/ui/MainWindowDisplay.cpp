@@ -81,7 +81,6 @@ namespace Client
         ShowIfChanged(shopQuantity_, shop);
         ShowIfChanged(shopQuantityLabel_, shop);
         ShowIfChanged(shopCurrency_, shop);
-        ShowIfChanged(shopBalance_, shop);
         bool shopReady = shop && !view_.shopPending && !view_.player.inBattle &&
             !view_.encounterEnabled && !view_.encounterPending && !view_.itemPending &&
             !view_.petStoragePending;
@@ -89,10 +88,6 @@ namespace Client
         EnableIfChanged(shopBuy_, shopReady && view_.shopCategory == shopTabs_.GetCurSel());
         EnableIfChanged(shopQuantity_, shopReady);
         EnableIfChanged(shopCurrency_, shopReady);
-        CString balance;
-        balance.Format(L"COST %d   P %d%s", view_.player.gold, view_.pearlBalance,
-            view_.shopPending ? L"   正在处理…" : L"");
-        SetTextIfChanged(shopBalance_, balance);
         if (shop)
         {
             ListUpdate rows(shopList_);
@@ -114,13 +109,14 @@ namespace Client
         title.Format(L"%s v%s", AppInfo::Name, AppInfo::Version);
         SetTextIfChanged(*this, login ? L"登录" : characters ? L"选择角色" : title.GetString());
         ShowIfChanged(summary_, !login);
-        SetTextIfChanged(footer_, view_.message.c_str());
+        SetTextIfChanged(footer_, view_.shopPending ? L"黑市正在处理…" :
+            view_.auction.pending ? L"竞拍正在处理，请等待服务器确认…" : view_.message.c_str());
         CString summary = game ? CString(view_.characterName.c_str()) : CString();
         if (game && view_.player.received)
         {
             CString stats;
-            stats.Format(L"   等级 %d   HP %d/%d   MP %d/%d   COST %d", view_.player.level,
-                view_.player.hp, view_.player.maxHp, view_.player.mp, view_.player.maxMp, view_.player.gold);
+            stats.Format(L"   等级 %d   COST %d   P %d", view_.player.level,
+                view_.player.gold, view_.pearlBalance);
             summary += stats;
             if (view_.player.mapId >= 0)
             {

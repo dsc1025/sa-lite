@@ -93,7 +93,6 @@ namespace Client
         cancel_.Create(L"撤拍", button, empty, this, Cancel);
         claim_.Create(L"领取", button, empty, this, Claim);
         submit_.Create(L"确认上架", button, empty, this, Submit);
-        message_.Create(L"", WS_CHILD | WS_VISIBLE, empty, this);
         pagination_.Create(L"", WS_CHILD, empty, this);
         bidLabel_.Create(L"出价 P", WS_CHILD, empty, this);
         assetType_.Create(combo, empty, this, AssetType);
@@ -123,13 +122,12 @@ namespace Client
         tabs_.AdjustRect(FALSE, &area);
         area.DeflateRect(6, 6);
         int x = area.left, y = area.top, width = area.Width();
-        message_.MoveWindow(x, area.bottom - 22, width, 22);
         bool create = tabs_.GetCurSel() == 4;
         filter_.MoveWindow(x, y, 100, 180);
         keyword_.MoveWindow(x + 108, y, std::max(80, width - 220), 25);
         search_.MoveWindow(x + width - 104, y, 104, 25);
-        list_.MoveWindow(x, y + 31, width, std::max(40, static_cast<int>(area.bottom) - y - 90));
-        int bottom = area.bottom - 52;
+        list_.MoveWindow(x, y + 31, width, std::max(40, static_cast<int>(area.bottom) - y - 66));
+        int bottom = area.bottom - 28;
         previous_.MoveWindow(x, bottom, 72, 25);
         next_.MoveWindow(x + 80, bottom, 72, 25);
         pagination_.MoveWindow(x + 160, bottom + 3, 96, 22);
@@ -219,7 +217,6 @@ namespace Client
                 else detail_.Show(GetTopLevelParent(), auction.detail.c_str(), L"竞拍详情");
             }
         }
-        SetTextIfChanged(message_, auction.pending ? L"正在处理，请等待服务器确认…" : auction.message.c_str());
         bool matches = tabs_.GetCurSel() < 4 && static_cast<int>(auction.page) == tabs_.GetCurSel();
         if (!matches || !auction.available || !auction.received)
         {
@@ -288,9 +285,7 @@ namespace Client
     bool AuctionPage::Send(Game::AuctionRequest value)
     {
         if (!Ready()) return false;
-        if (request(value)) return true;
-        SetTextIfChanged(message_, L"当前无法操作，请停止遇敌并等待其他操作结束。");
-        return false;
+        return request(value);
     }
 
     void AuctionPage::Load(int offset)

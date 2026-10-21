@@ -54,7 +54,7 @@ namespace Client
         CComboBox filter_, assetType_, asset_, duration_;
         CEdit keyword_, bidAmount_, startPrice_, buyoutPrice_;
         CButton search_, previous_, next_, bid_, buyout_, cancel_, claim_, submit_;
-        CStatic message_, pagination_, bidLabel_, labels_[5], rules_, assetDetail_;
+        CStatic pagination_, bidLabel_, labels_[5], rules_, assetDetail_;
         ItemPropertiesWindow detail_;
         std::vector<std::pair<int, std::string>> assets_;
         std::vector<std::uint32_t> assetRevisions_;

@@ -332,7 +332,15 @@ bool LoginClient::ApplyPlayerStatus(const std::vector<std::string>& values)
     ApplyExtra(values, status.perception, status.rebirth);
     if (full)
         status.received = true;
+    int balance = pearlBalance_;
+    for (std::size_t end = values.size(); end >= 2; --end)
+        if (values[end - 2] == "VP1")
+        {
+            balance = ParseNumber(values[end - 1]);
+            break;
+        }
     playerStatus_ = status;
+    pearlBalance_ = balance;
     return true;
 }
 

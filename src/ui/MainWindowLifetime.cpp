@@ -21,7 +21,12 @@ namespace Client
           rolePage_(std::make_unique<RolePage>(view_, session_, footer_)),
           auctionPage_(std::make_unique<AuctionPage>(view_))
     {
-        auctionPage_->request = [this](const Game::AuctionRequest& request) { return session_.RequestAuction(request); };
+        auctionPage_->request = [this](const Game::AuctionRequest& request)
+        {
+            if (session_.RequestAuction(request)) return true;
+            footer_.SetWindowText(L"当前无法操作，请停止遇敌并等待其他操作结束。");
+            return false;
+        };
         background_.CreateSolidBrush(GetSysColor(COLOR_BTNFACE));
         white_.CreateSolidBrush(GetSysColor(COLOR_WINDOW));
     }

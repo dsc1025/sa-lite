@@ -59,7 +59,7 @@ namespace Client
         font_.CreatePointFont(90, L"Microsoft YaHei UI");
         CRect empty(0, 0, 0, 0);
         summary_.Create(L"", WS_CHILD | WS_VISIBLE, empty, this);
-        footer_.Create(L"", WS_CHILD | WS_VISIBLE, empty, this);
+        footer_.Create(L"", WS_CHILD | WS_VISIBLE | SS_RIGHT, empty, this);
         const wchar_t* captions[] = { L"服务器", L"端口", L"账号", L"密码" };
         for (int i = 0; i < 4; ++i)
             labels_[i].Create(captions[i], WS_CHILD, empty, this);
@@ -119,7 +119,6 @@ namespace Client
         shopCurrency_.AddString(L"COST");
         shopCurrency_.AddString(L"P");
         shopCurrency_.SetCurSel(0);
-        shopBalance_.Create(L"", WS_CHILD, empty, this);
         list_.Create(listStyle, empty, this, CharacterList);
         list_.ModifyStyleEx(0, WS_EX_CLIENTEDGE);
         list_.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
@@ -199,14 +198,13 @@ namespace Client
             shopTabs_.AdjustRect(FALSE, &shopPage);
             shopPage.DeflateRect(6, 6);
             auctionPage_->MoveWindow(shopPage);
-            shopRefresh_.MoveWindow(shopPage.left, shopPage.top, 70, 26);
-            shopBalance_.MoveWindow(shopPage.left + 80, shopPage.top + 3, shopPage.Width() - 80, 24);
-            shopList_.MoveWindow(shopPage.left, shopPage.top + 34, shopPage.Width(), shopPage.Height() - 72);
+            shopList_.MoveWindow(shopPage.left, shopPage.top, shopPage.Width(), shopPage.Height() - 38);
             int bottom = shopPage.bottom - 28;
             shopQuantityLabel_.MoveWindow(shopPage.left, bottom + 3, 36, 24);
             shopQuantity_.MoveWindow(shopPage.left + 40, bottom, 50, 26);
             shopCurrency_.MoveWindow(shopPage.left + 100, bottom, 90, 160);
             shopBuy_.MoveWindow(shopPage.left + 200, bottom, 80, 26);
+            shopRefresh_.MoveWindow(shopPage.left + 290, bottom, 70, 26);
         }
         LayoutBattle(mainPage);
         list_.MoveWindow(16, 54, width - 32, height - 146);

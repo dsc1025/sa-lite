@@ -105,7 +105,7 @@ namespace Client
         CButton shopRefresh_, shopBuy_;
         CEdit shopQuantity_;
         CComboBox shopCurrency_;
-        CStatic shopBalance_, shopQuantityLabel_;
+        CStatic shopQuantityLabel_;
         CListCtrl list_;
         SessionView view_;
         GameSession session_;
