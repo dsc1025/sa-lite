@@ -39,6 +39,7 @@ namespace Client
                 state_->requestedDiscardCode_.clear();
                 state_->requestedStorageCode_.clear();
                 state_->itemStorageRequested_ = false;
+                state_->auctionRequested_ = false;
                 state_->requestedItemStorageCode_.clear();
                 state_->requestedMap_ = -1;
                 state_->requestedChat_.clear();
@@ -111,7 +112,7 @@ namespace Client
     {
         std::lock_guard<std::mutex> lock(state_->mutex_);
         if (state_->stop_ || state_->done_ || state_->shared_.screen != Screen::Game ||
-            text.empty() || text.size() > 200 || text.find_first_of("\r\n") != std::string::npos ||
+            state_->shared_.auction.pending || text.empty() || text.size() > 200 || text.find_first_of("\r\n") != std::string::npos ||
             text.find('\0') != std::string::npos || state_->requestedChat_.size() >= 8)
             return false;
         state_->requestedChat_.push_back(text);
@@ -121,7 +122,7 @@ namespace Client
     void GameSession::RequestMove(int map, int x, int y)
     {
         std::lock_guard<std::mutex> lock(state_->mutex_);
-        if (!state_->stop_ && !state_->done_)
+        if (!state_->stop_ && !state_->done_ && !state_->shared_.auction.pending)
         {
             state_->encounterRequested_ = false;
             state_->requestedMap_ = map;
@@ -317,6 +318,25 @@ namespace Client
         return true;
     }
 
+    bool GameSession::RequestAuction(const Game::AuctionRequest& request)
+    {
+        {
+            std::lock_guard<std::mutex> lock(state_->mutex_);
+            const auto& view = state_->shared_;
+            if (state_->stop_ || state_->done_ || view.screen != Screen::Game || view.auction.pending ||
+                view.itemPending || view.petStoragePending || view.shopPending || view.attributePending ||
+                state_->requestedPet_ >= 0 || state_->requestedMap_ >= 0 || state_->encounterRequested_ ||
+                view.encounterEnabled || view.encounterPending || view.player.inBattle)
+                return false;
+            state_->requestedAuction_ = request;
+            state_->auctionRequested_ = true;
+            state_->shared_.auction.pending = true;
+            state_->shared_.itemPending = true;
+        }
+        ::PostMessage(state_->window_, state_->message_, 0, 0);
+        return true;
+    }
+
     void GameSession::Stop()
     {
         {
@@ -364,6 +384,8 @@ namespace Client
                 state_->shared_.itemPending = false;
                 state_->shared_.shopPending = false;
                 state_->shared_.attributePending = false;
+                state_->shared_.auction.available = false;
+                state_->shared_.auction.pending = false;
             }
             state_->shared_.message = message;
             if (client)
@@ -378,6 +400,10 @@ namespace Client
                 state_->shared_.shopItems = client->GetShopItems();
                 state_->shared_.shopCategory = client->GetShopCategory();
                 state_->shared_.pearlBalance = client->GetPearlBalance();
+                bool auctionPending = state_->shared_.auction.pending;
+                state_->shared_.auction = client->GetAuction();
+                state_->shared_.auction.available = screen == Screen::Game;
+                state_->shared_.auction.pending = auctionPending;
                 state_->shared_.magic = client->GetMagic();
                 state_->shared_.hasItems = client->HasItems();
                 state_->shared_.itemStorage = client->GetItemStorage();
@@ -477,6 +503,8 @@ namespace Client
                     std::string renameCode, nickname;
                     std::uint32_t foodRevision, itemStorageRevision;
                     bool itemStorage;
+                    bool auction;
+                    Game::AuctionRequest auctionRequest;
                     int itemStorageSlot;
                     Game::ItemStorageAction itemStorageAction;
                     std::string itemStorageCode;
@@ -488,6 +516,9 @@ namespace Client
                         std::lock_guard<std::mutex> lock(state_->mutex_);
                         if (state_->stop_) break;
                         shopCategory = state_->requestedShopCategory_;
+                        auction = state_->auctionRequested_;
+                        auctionRequest = state_->requestedAuction_;
+                        state_->auctionRequested_ = false;
                         shopItem = state_->requestedShopItem_;
                         shopQuantity = state_->requestedShopQuantity_;
                         shopPrice = state_->requestedShopPrice_;
@@ -539,6 +570,28 @@ namespace Client
                     }
                     for (const auto& text : chat)
                         client.SendChat(text);
+                    if (auction)
+                    {
+                        targetMap = -1;
+                        std::wstring message;
+                        try
+                        {
+                            client.RequestAuction(auctionRequest);
+                            message = client.GetAuction().message;
+                        }
+                        catch (const std::exception& error)
+                        {
+                            if (!client.IsConnected()) throw;
+                            message = TextEncoding::ErrorText(error.what());
+                        }
+                        {
+                            std::lock_guard<std::mutex> lock(state_->mutex_);
+                            state_->shared_.auction.pending = false;
+                            state_->shared_.itemPending = false;
+                        }
+                        movementMessage = message;
+                        Publish(Screen::Game, message, &client);
+                    }
                     if (shopCategory >= 0)
                     {
                         std::wstring message;

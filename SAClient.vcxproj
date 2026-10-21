@@ -94,6 +94,7 @@
     <ClCompile Include="src\game\Movement.cpp" />
     <ClCompile Include="src\game\PetActions.cpp" />
     <ClCompile Include="src\game\ItemActions.cpp" />
+    <ClCompile Include="src\game\AuctionActions.cpp" />
     <ClCompile Include="src\network\SocketConnection.cpp" />
     <ClCompile Include="src\protocol\ProtocolCodec.cpp" />
     <ClCompile Include="src\protocol\LegacyFields.cpp" />

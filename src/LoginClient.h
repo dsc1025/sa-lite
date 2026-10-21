@@ -5,6 +5,7 @@
 #include "game/PlayerStatus.h"
 #include "game/PetTypes.h"
 #include "game/ItemTypes.h"
+#include "game/AuctionTypes.h"
 #include "game/MagicStatus.h"
 #include "game/BattleSettings.h"
 #include "game/Battle.h"
@@ -54,6 +55,8 @@ public:
     const std::vector<Game::ShopItem>& GetShopItems() const noexcept { return shopItems_; }
     int GetShopCategory() const noexcept { return shopCategory_; }
     int GetPearlBalance() const noexcept { return pearlBalance_; }
+    void RequestAuction(const Game::AuctionRequest& request);
+    const Game::AuctionView& GetAuction() const noexcept { return auction_; }
     void RefreshItemStorage();
     void TransferItemStorage(bool put, int slot, std::uint32_t revision, const std::string& uniqueCode);
     const std::vector<ItemStatus>& GetItemStorage() const noexcept { return itemStorage_; }
@@ -85,6 +88,9 @@ public:
     bool IsConnected() const noexcept;
 
 private:
+    std::string AuctionExchange(const std::string& command, const std::string& requestId,
+        const Game::AuctionRequest& request);
+    Game::AuctionView auction_;
     std::vector<std::string> ReceiveStrings(const std::vector<std::string>& fields) const;
     std::vector<std::string> WaitReply(const std::string& function, ULONGLONG deadline);
     bool HandleGamePacket(const std::vector<std::string>& fields);

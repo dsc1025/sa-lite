@@ -2,23 +2,10 @@
 #include "../session/GameSession.h"
 #include "../session/SessionView.h"
 #include "UiText.h"
+#include "PetUi.h"
 
 namespace Client
 {
-    namespace
-    {
-        CString ItemTypeName(int type)
-        {
-            const wchar_t* names[] = {
-                L"拳", L"斧头", L"棍棒", L"枪／矛", L"弓", L"盾", L"头盔", L"铠甲",
-                L"手镯", L"乐器", L"项链", L"戒指", L"腰带", L"耳环", L"鼻环", L"护身符",
-                L"道具", L"回旋镖", L"投掷斧头", L"投掷石", L"料理", L"金属", L"宝石", L"货物"
-            };
-            return type >= 0 && type < static_cast<int>(sizeof(names) / sizeof(names[0])) ?
-                CString(names[type]) : Number(type);
-        }
-    }
-
     void RolePage::ShowItemProperties(CListCtrl& list, int row)
     {
         if (view_.screen != Screen::Game || !IsWindowVisible() || tabs_.GetCurSel() != 2 ||
@@ -31,18 +18,7 @@ namespace Client
         if (slot >= items.size() || !items[slot].present)
             return;
         const auto item = items[slot];
-        CString text;
-        text.Format(L"名称：%s\r\n分类：%s\r\n", LegacyText(item.name).GetString(),
-            ItemTypeName(item.type).GetString());
-        if (item.levelKnown)
-        {
-            CString level;
-            level.Format(L"使用等级：%d\r\n", item.level);
-            text += level;
-        }
-        text += L"\r\n说明：\r\n";
-        text += LegacyText(item.description);
-        itemProperties_.Show(GetTopLevelParent(), text);
+        itemProperties_.Show(GetTopLevelParent(), ItemPropertiesText(item));
     }
 
     void RolePage::OnItemStorageRightClick(NMHDR* header, LRESULT* result)

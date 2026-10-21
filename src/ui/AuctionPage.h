@@ -57,8 +57,10 @@ namespace Client
         CStatic message_, pagination_, bidLabel_, labels_[5], rules_, assetDetail_;
         ItemPropertiesWindow detail_;
         std::vector<std::pair<int, std::string>> assets_;
+        std::vector<std::uint32_t> assetRevisions_;
         std::vector<Game::AuctionEntry> displayed_;
         unsigned int displayedRevision_ = 0;
+        unsigned int assetRevision_ = 0, detailRevision_ = 0;
         bool hasDisplayed_ = false;
         int offset_ = 0;
     };

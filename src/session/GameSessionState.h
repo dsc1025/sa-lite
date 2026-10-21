@@ -40,6 +40,8 @@ namespace Client
         int requestedStorageSlot_ = -1;
         std::string requestedStorageCode_;
         bool itemStorageRequested_ = false;
+        bool auctionRequested_ = false;
+        Game::AuctionRequest requestedAuction_;
         Game::ItemStorageAction requestedItemStorageAction_ = Game::ItemStorageAction::List;
         int requestedItemStorageSlot_ = -1;
         std::uint32_t requestedItemStorageRevision_ = 0;

@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include "PetTypes.h"
+#include "ItemTypes.h"
 
 namespace Game
 {
@@ -25,15 +27,21 @@ namespace Game
         std::wstring keyword;
         std::int64_t amount = 0, buyout = 0;
         int offset = 0, slot = -1, hours = 4;
+        std::uint32_t assetRevision = 0;
     };
 
     struct AuctionView
     {
-        bool available = false, pending = false, received = false, hasNext = false;
+        bool available = false, enabled = false, pending = false, received = false, hasNext = false;
         AuctionPage page = AuctionPage::Browse;
         int offset = 0, activeListings = 0, listingLimit = 5;
         std::int64_t balance = 0, listingFee = 0, saleFee = 0;
         unsigned int revision = 0;
+        unsigned int detailRevision = 0;
+        std::wstring detail;
+        std::string detailType;
+        PetStatus detailPet;
+        ItemStatus detailItem;
         std::wstring message = L"竞拍服务尚未连接";
         std::vector<AuctionEntry> entries;
     };

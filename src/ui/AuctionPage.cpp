@@ -1,6 +1,7 @@
 #include "AuctionPage.h"
 #include "../session/SessionView.h"
 #include "UiText.h"
+#include "PetUi.h"
 #include <algorithm>
 #include <initializer_list>
 #include <limits>
@@ -183,14 +184,17 @@ namespace Client
     {
         const auto* entry = Selected();
         bool ready = Ready();
+        EnableIfChanged(tabs_, !view_.auction.pending);
+        for (auto control : std::initializer_list<CWnd*>{ &filter_, &keyword_, &bidAmount_, &assetType_,
+            &asset_, &duration_, &startPrice_, &buyoutPrice_ }) EnableIfChanged(*control, ready);
         EnableIfChanged(search_, ready);
         EnableIfChanged(previous_, ready && offset_ > 0);
         EnableIfChanged(next_, ready && hasDisplayed_ && view_.auction.hasNext);
-        EnableIfChanged(bid_, ready && entry && entry->canBid);
-        EnableIfChanged(buyout_, ready && entry && entry->canBuyout);
+        EnableIfChanged(bid_, ready && view_.auction.enabled && entry && entry->canBid);
+        EnableIfChanged(buyout_, ready && view_.auction.enabled && entry && entry->canBuyout);
         EnableIfChanged(cancel_, ready && entry && entry->canCancel);
         EnableIfChanged(claim_, ready && entry && entry->canClaim);
-        EnableIfChanged(submit_, ready && asset_.GetCurSel() >= 0 &&
+        EnableIfChanged(submit_, ready && view_.auction.enabled && asset_.GetCurSel() >= 0 &&
             view_.auction.activeListings < view_.auction.listingLimit);
     }
 
@@ -198,6 +202,23 @@ namespace Client
     {
         if (!GetSafeHwnd()) return;
         const auto& auction = view_.auction;
+        if (tabs_.GetCurSel() == 4 && assetRevision_ != auction.revision)
+        {
+            FillAssets();
+            assetRevision_ = auction.revision;
+        }
+        if (detailRevision_ != auction.detailRevision)
+        {
+            detailRevision_ = auction.detailRevision;
+            if (auction.available && !auction.pending && detailRevision_)
+            {
+                if (auction.detailType == "pet")
+                    detail_.Show(GetTopLevelParent(), PetPropertiesText(auction.detailPet), L"宠物属性", auction.detailPet.image);
+                else if (auction.detailType == "item")
+                    detail_.Show(GetTopLevelParent(), ItemPropertiesText(auction.detailItem), L"道具属性");
+                else detail_.Show(GetTopLevelParent(), auction.detail.c_str(), L"竞拍详情");
+            }
+        }
         SetTextIfChanged(message_, auction.pending ? L"正在处理，请等待服务器确认…" : auction.message.c_str());
         bool matches = tabs_.GetCurSel() < 4 && static_cast<int>(auction.page) == tabs_.GetCurSel();
         if (!matches || !auction.available || !auction.received)
@@ -225,7 +246,14 @@ namespace Client
                 list_.SetItemText(row, 5, entry.buyout > 0 ? Price(entry.buyout) : CString(L"—"));
                 list_.SetItemText(row, 6, LegacyText(entry.seller));
                 CString state = LegacyText(entry.status);
-                if (entry.remainingSeconds > 0)
+                if (entry.status == "active") state = L"在售 / 待结算";
+                else if (entry.status == "sold") state = L"已成交";
+                else if (entry.status == "expired") state = L"流拍";
+                else if (entry.status == "cancelled") state = L"已撤拍";
+                else if (entry.status == "asset") state = L"资产待领取";
+                else if (entry.status == "refund") state = L"退款待领取";
+                else if (entry.status == "proceeds") state = L"货款待领取";
+                if (entry.status == "active" && entry.remainingSeconds > 0)
                     state.Format(L"%lld小时%lld分", static_cast<long long>(entry.remainingSeconds / 3600),
                         static_cast<long long>((entry.remainingSeconds % 3600 + 59) / 60));
                 list_.SetItemText(row, 7, state);
@@ -284,6 +312,7 @@ namespace Client
             selected = assets_[current].second;
         }
         assets_.clear();
+        assetRevisions_.clear();
         asset_.ResetContent();
         if (assetType_.GetCurSel() == 0)
         {
@@ -297,6 +326,7 @@ namespace Client
                     LegacyText(pet.nickname.empty() ? pet.name : pet.nickname).GetString(), pet.level);
                 asset_.AddString(text);
                 assets_.emplace_back(static_cast<int>(i), pet.uniqueCode);
+                assetRevisions_.push_back(0);
             }
         }
         else
@@ -309,6 +339,7 @@ namespace Client
                 text.Format(L"[%d] %s", static_cast<int>(i) - 4, LegacyText(item.name).GetString());
                 asset_.AddString(text);
                 assets_.emplace_back(static_cast<int>(i), item.uniqueCode);
+                assetRevisions_.push_back(item.revision);
             }
         }
         int selection = -1;
@@ -384,6 +415,7 @@ namespace Client
         value.type = assetType_.GetCurSel() == 0 ? "pet" : "item";
         value.slot = assets_[selected].first;
         value.uniqueCode = assets_[selected].second;
+        value.assetRevision = assetRevisions_[selected];
         value.hours = (duration_.GetCurSel() + 1) * 4;
         if (!ReadPrice(startPrice_, value.amount) || !ReadPrice(buyoutPrice_, value.buyout, true) ||
             (value.buyout > 0 && value.buyout <= value.amount) || value.hours < 4 || value.hours > 12)
@@ -427,7 +459,13 @@ namespace Client
     void AuctionPage::OnDetail(NMHDR*, LRESULT* result)
     {
         *result = 0;
-        if (const auto* entry = Selected()) detail_.Show(this, LegacyText(entry->description), L"竞拍详情");
+        if (const auto* entry = Selected())
+        {
+            auto value = Query();
+            value.action = Game::AuctionAction::Detail;
+            value.id = entry->listingId;
+            Send(value);
+        }
     }
     void AuctionPage::OnSearch() { Load(0); }
     void AuctionPage::OnPrevious() { Load(std::max(0, offset_ - 20)); }

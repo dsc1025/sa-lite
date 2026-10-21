@@ -21,6 +21,7 @@ namespace Client
           rolePage_(std::make_unique<RolePage>(view_, session_, footer_)),
           auctionPage_(std::make_unique<AuctionPage>(view_))
     {
+        auctionPage_->request = [this](const Game::AuctionRequest& request) { return session_.RequestAuction(request); };
         background_.CreateSolidBrush(GetSysColor(COLOR_BTNFACE));
         white_.CreateSolidBrush(GetSysColor(COLOR_WINDOW));
     }

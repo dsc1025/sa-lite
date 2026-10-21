@@ -54,6 +54,7 @@ void LoginClient::Disconnect() noexcept
     shopItems_.clear();
     shopCategory_ = -1;
     pearlBalance_ = 0;
+    auction_ = {};
     shopUncertain_ = false;
     itemStorage_.clear();
     itemStorageReceived_ = false;

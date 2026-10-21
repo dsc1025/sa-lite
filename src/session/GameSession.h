@@ -14,6 +14,7 @@ namespace Game
     struct NewCharacter;
     struct HealingSettings;
     struct CaptureSettings;
+    struct AuctionRequest;
     enum class PetStorageAction;
     enum class ItemStorageAction;
 }
@@ -51,6 +52,7 @@ namespace Client
         bool RequestItemStorage(Game::ItemStorageAction action, int slot = -1,
             std::uint32_t revision = 0, const std::string& uniqueCode = {});
         bool RequestShop(int category, int itemId = -1, int quantity = 1, int price = 0, int currency = 0);
+        bool RequestAuction(const Game::AuctionRequest& request);
         void SetEncounterEnabled(bool enabled, bool capture = false, int sourceInstanceId = -1);
         void SetCaptureSettings(const Game::CaptureSettings& settings);
         void SetCaptureMinimums(const std::array<int, 5>& minimums);
