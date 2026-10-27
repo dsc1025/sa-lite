@@ -23,6 +23,7 @@ namespace Client
     void BattleSceneWindow::LoadResources(const CString& configPath)
     {
         resourceDirectory_ = LoadResourceDirectory(std::filesystem::path(configPath.GetString()));
+        resourceDebug_.clear();
         animations_.clear();
         pictures_.clear();
         inspected_.clear();
@@ -34,21 +35,33 @@ namespace Client
         images_.close();
         sprites_.clear();
         images_.clear();
+        resourceDebug_.push_back(L"资源目录：" + resourceDirectory_.wstring());
         auto loadIndex = [&](const wchar_t* name, std::size_t recordSize, auto readRecord)
         {
             std::ifstream file(resourceDirectory_ / name, std::ios::binary | std::ios::ate);
             if (!file)
+            {
+                resourceDebug_.push_back(std::wstring(name) + L"：打开失败");
                 return;
+            }
             auto size = static_cast<std::streamoff>(file.tellg());
             if (size <= 0 || size % static_cast<std::streamoff>(recordSize) != 0 || size > 80000000)
+            {
+                resourceDebug_.push_back(std::wstring(name) + L"：索引长度无效");
                 return;
+            }
             file.seekg(0);
             std::vector<unsigned char> bytes(static_cast<std::size_t>(size));
             file.read(reinterpret_cast<char*>(bytes.data()), size);
             if (!file)
+            {
+                resourceDebug_.push_back(std::wstring(name) + L"：读取失败");
                 return;
+            }
             for (std::size_t offset = 0; offset < bytes.size(); offset += recordSize)
                 readRecord(bytes.data() + offset);
+            resourceDebug_.push_back(std::wstring(name) + L"：读取 " +
+                std::to_wstring(bytes.size() / recordSize) + L" 条索引");
         };
         loadIndex(L"spradrn_lite.bin", 12, [&](const unsigned char* record)
         {
@@ -75,6 +88,8 @@ namespace Client
         images_.open(resourceDirectory_ / L"real_lite.bin", std::ios::binary | std::ios::ate);
         spriteSize_ = sprites_ ? static_cast<std::uint64_t>(sprites_.tellg()) : 0;
         imageSize_ = images_ ? static_cast<std::uint64_t>(images_.tellg()) : 0;
+        resourceDebug_.push_back(L"spr_lite.bin：" + std::to_wstring(spriteSize_) +
+            L" 字节；real_lite.bin：" + std::to_wstring(imageSize_) + L" 字节（按需读取）");
         std::ifstream paletteFile(resourceDirectory_ / L"pal" / L"Palet_1.sap", std::ios::binary | std::ios::ate);
         std::array<unsigned char, 708> raw{};
         if (paletteFile && paletteFile.tellg() == 708)
@@ -98,6 +113,8 @@ namespace Client
             }
             paletteReady_ = static_cast<bool>(paletteFile);
         }
+        resourceDebug_.push_back(paletteReady_ ? L"Palet_1.sap：已载入" :
+            L"Palet_1.sap：读取失败，保留单位占位显示");
     }
 
     std::uint64_t BattleSceneWindow::SpriteKey(std::uint32_t image, int direction, int action, std::uint32_t frame)
@@ -427,6 +444,7 @@ namespace Client
     void BattleSceneWindow::Update(CWnd* owner, const SessionView& view, bool show)
     {
         ownerWindow_ = owner->GetSafeHwnd();
+        UpdateDebug(view);
         bool active = view.screen == Screen::Game && view.player.inBattle && show;
         CString roundText = L"回合：—";
         const int round = active ? view.battle.round : battle_.round;
@@ -478,6 +496,20 @@ namespace Client
             ShowWindow(SW_SHOWNOACTIVATE);
         Invalidate(FALSE);
         SetTextIfChanged(*this, title);
+    }
+
+    void BattleSceneWindow::UpdateDebug(const SessionView& view)
+    {
+        debugText_.Format(L"DEBUG 回合=%d  场地=%X  位置=%d\n",
+            view.battle.round, view.battle.fieldAttribute, view.battle.playerSlot);
+        if (!resourceDebug_.empty())
+            debugText_ += resourceDebug_.back().c_str() + CString(L"\n");
+        const std::size_t first = resourceDebug_.size() > 5 ? resourceDebug_.size() - 5 : 1;
+        for (std::size_t i = first; i + 1 < resourceDebug_.size(); ++i)
+            debugText_ += resourceDebug_[i].c_str() + CString(L"\n");
+        const std::size_t packetStart = view.battleDebug.size() > 12 ? view.battleDebug.size() - 12 : 0;
+        for (std::size_t i = packetStart; i < view.battleDebug.size(); ++i)
+            debugText_ += view.battleDebug[i].c_str() + CString(L"\n");
     }
 
     void BattleSceneWindow::OnPaint()
@@ -591,6 +623,31 @@ namespace Client
                 static_cast<std::int64_t>(std::max(0, member.hp)) * 104 / member.maxHp)) : 0;
             if (hp > 0)
                 dc.FillSolidRect(x + 4, y + 20, hp, 4, RGB(80, 200, 100));
+        }
+        TEXTMETRIC metrics{};
+        dc.GetTextMetrics(&metrics);
+        const int lineHeight = metrics.tmHeight + 2;
+        const int lineCount = std::max(1, (height / 2 - 12) / lineHeight);
+        std::vector<CString> lines;
+        int cursor = 0;
+        for (;;)
+        {
+            CString text = debugText_.Tokenize(L"\n", cursor);
+            if (text.IsEmpty())
+                break;
+            lines.push_back(text);
+        }
+        for (int line = 0; line < lineCount && line < static_cast<int>(lines.size()); ++line)
+        {
+            std::size_t index = line < 2 ? line :
+                lines.size() > static_cast<std::size_t>(lineCount) ? lines.size() - lineCount + line : line;
+            CRect row(8, 6 + line * lineHeight, area.right - 8, 6 + (line + 1) * lineHeight);
+            CRect shadow = row;
+            shadow.OffsetRect(1, 1);
+            dc.SetTextColor(RGB(0, 0, 0));
+            dc.DrawText(lines[index], shadow, DT_LEFT | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
+            dc.SetTextColor(RGB(220, 240, 170));
+            dc.DrawText(lines[index], row, DT_LEFT | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
         }
         dc.RestoreDC(saved);
         paint.BitBlt(0, 0, width, height, &dc, 0, 0, SRCCOPY);

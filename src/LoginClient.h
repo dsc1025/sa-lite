@@ -42,6 +42,7 @@ public:
     bool PollGame(int timeoutMs = 100);
     void SendChat(const std::string& text);
     const std::vector<std::string>& GetChatMessages() const noexcept { return chatMessages_; }
+    const std::wstring& GetOfflineMessage() const noexcept { return offlineMessage_; }
     bool MoveTo(int map, int x, int y, int timeoutMs = 2000);
     void SetPetState(int slot, PetState state);
     void IncreaseAttribute(int attribute);
@@ -84,6 +85,7 @@ public:
     const std::vector<Game::MagicStatus>& GetMagic() const noexcept { return magic_; }
     const Game::BattleState& GetBattle() const noexcept { return battle_; }
     const Game::BattleResult& GetBattleResult() const noexcept { return battleResult_; }
+    const std::vector<std::wstring>& GetBattleDebug() const noexcept { return battleDebug_; }
     void Disconnect() noexcept;
     bool IsConnected() const noexcept;
 
@@ -94,10 +96,12 @@ private:
     std::vector<std::string> ReceiveStrings(const std::vector<std::string>& fields) const;
     std::vector<std::string> WaitReply(const std::string& function, ULONGLONG deadline);
     bool HandleGamePacket(const std::vector<std::string>& fields);
+    bool HandleOfflineResult(const std::vector<std::string>& fields);
     bool HandleBattlePacket(const std::vector<std::string>& fields);
     bool HandleBattleResult(const std::vector<std::string>& fields);
     bool PollBattle();
     void FinishBattle();
+    void TraceBattle(const wchar_t* direction, const std::string& packet);
     bool HandlePositionPacket(const std::vector<std::string>& fields);
     bool HandleServerMessage(const std::vector<std::string>& fields);
     bool HandlePetStateReply(const std::vector<std::string>& fields);
@@ -122,6 +126,8 @@ private:
     std::vector<std::string> chatMessages_;
     bool loggedIn_ = false;
     bool inGame_ = false;
+    bool offlineResultReceived_ = false;
+    std::wstring offlineMessage_;
     std::string sessionKey_;
     std::vector<Character> characters_;
     PlayerStatus playerStatus_;
@@ -139,6 +145,7 @@ private:
     std::array<CaptureName, 5> captureNames_;
     Game::BattleState battle_;
     Game::BattleResult battleResult_;
+    std::vector<std::wstring> battleDebug_;
     std::vector<PetStatus> pets_ = std::vector<PetStatus>(5);
     std::vector<ItemStatus> items_ = std::vector<ItemStatus>(20);
     std::vector<Game::MagicStatus> magic_ = std::vector<Game::MagicStatus>(5);

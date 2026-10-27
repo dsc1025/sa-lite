@@ -24,6 +24,7 @@ namespace Game
         int round = -1;
         bool received = false;
         bool captureCounted = false, captureLevelOneCounted = false;
+        std::uint32_t fieldAttribute = 0;
         std::uint32_t menuFlags = 0;
         std::uint32_t readyMask = 0;
         bool commandsPending = false;

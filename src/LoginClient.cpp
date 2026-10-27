@@ -33,6 +33,8 @@ void LoginClient::Disconnect() noexcept
     connection_.Disconnect();
     loggedIn_ = false;
     inGame_ = false;
+    offlineResultReceived_ = false;
+    offlineMessage_.clear();
     sessionKey_.clear();
     characters_.clear();
     chatMessages_.clear();
@@ -42,6 +44,7 @@ void LoginClient::Disconnect() noexcept
     captureNames_ = {};
     battle_ = {};
     battleResult_ = {};
+    battleDebug_.clear();
     positionSerial_ = 0;
     eventSequence_ = 0;
     pets_.assign(5, {});
@@ -275,11 +278,17 @@ void LoginClient::EnterGame(const Character& character, int timeoutMs)
     try
     {
         auto deadline = GetTickCount64() + timeoutMs;
-        connection_.Send(EncodePacket("&;77;" + Encode64(character.name, sessionKey_, -1) + ";"
+        connection_.Send(EncodePacket("&;126;" + Encode64(character.name, sessionKey_, -1) + ";"
             + EncodeInteger(static_cast<std::uint32_t>(character.name.size()), sessionKey_) + ";#;"), deadline);
         auto reply = WaitReply("78", deadline);
         if (reply[0] != "successful")
             throw std::runtime_error("Character login rejected: " + reply[1]);
+        while (!offlineResultReceived_)
+        {
+            if (GetTickCount64() >= deadline)
+                throw std::runtime_error("服务器未确认 lite 离线协议，请检查服务端版本");
+            HandleGamePacket(DecodePacket(connection_.Receive(deadline)));
+        }
         connection_.Send(EncodePacket("&;120;" + Encode64("", sessionKey_, -1) + ";"
             + EncodeInteger(0, sessionKey_) + ";#;"), deadline);
         inGame_ = true;
@@ -290,6 +299,69 @@ void LoginClient::EnterGame(const Character& character, int timeoutMs)
         Disconnect();
         throw;
     }
+}
+
+bool LoginClient::HandleOfflineResult(const std::vector<std::string>& fields)
+{
+    auto strings = ReceiveStrings(fields);
+    if (strings.size() != 1)
+        throw std::runtime_error("Invalid offline settlement reply");
+    auto values = SplitLegacy(strings[0]);
+    if (values.size() < 3 || (values.size() - 3) % 3 != 0 ||
+        (values.size() - 3) / 3 > pets_.size())
+        throw std::runtime_error("Invalid offline settlement fields");
+    auto number = [&](std::size_t index) -> std::uint64_t
+    {
+        const auto& value = values[index];
+        if (value.empty() || value.size() > 19 ||
+            value.find_first_not_of("0123456789") != std::string::npos)
+            throw std::runtime_error("Invalid offline settlement number");
+        auto result = std::stoull(value);
+        if (result > INT64_MAX)
+            throw std::runtime_error("Offline settlement number too large");
+        return result;
+    };
+    auto seconds = number(0), experience = number(1), levels = number(2);
+    if (seconds > 24 * 60 * 60 || seconds % 60 != 0 || levels > INT32_MAX ||
+        (seconds == 0 && (experience != 0 || levels != 0)))
+        throw std::runtime_error("Invalid offline settlement result");
+    std::vector<bool> petReceived(pets_.size(), false);
+    std::wstring petMessages;
+    for (std::size_t i = 3; i < values.size(); i += 3)
+    {
+        auto slot = number(i), petExperience = number(i + 1), petLevels = number(i + 2);
+        if (slot >= pets_.size() || petReceived[slot] || petLevels > INT32_MAX ||
+            (seconds == 0 && (petExperience != 0 || petLevels != 0)))
+            throw std::runtime_error("Invalid offline settlement pet result");
+        petReceived[slot] = true;
+        petMessages += L"，宠物栏 " + std::to_wstring(slot + 1) + L" 经验 +" +
+            std::to_wstring(petExperience) + L"（升级 " + std::to_wstring(petLevels) + L" 级）";
+    }
+    if (offlineResultReceived_)
+        return false;
+    offlineMessage_ = L"本次没有可领取的离线经验。";
+    if (seconds > 0)
+    {
+        std::wstring message = L"离线挂机结算：" + std::to_wstring(seconds / 3600) + L"小时" +
+            std::to_wstring(seconds / 60 % 60) + L"分钟，人物经验 +" + std::to_wstring(experience) +
+            L"（升级 " + std::to_wstring(levels) + L" 级）";
+        message += petMessages;
+        offlineMessage_ = message;
+        std::replace(offlineMessage_.begin(), offlineMessage_.end(), L'，', L'\n');
+        int length = WideCharToMultiByte(936, 0, message.data(), static_cast<int>(message.size()),
+            nullptr, 0, nullptr, nullptr);
+        if (length <= 0)
+            throw std::runtime_error("Cannot encode offline settlement message");
+        std::string encoded(length, '\0');
+        if (!WideCharToMultiByte(936, 0, message.data(), static_cast<int>(message.size()),
+            encoded.data(), length, nullptr, nullptr))
+            throw std::runtime_error("Cannot encode offline settlement message");
+        chatMessages_.push_back(std::move(encoded));
+        if (chatMessages_.size() > 500)
+            chatMessages_.erase(chatMessages_.begin());
+    }
+    offlineResultReceived_ = true;
+    return true;
 }
 
 bool LoginClient::PollGame(int timeoutMs)

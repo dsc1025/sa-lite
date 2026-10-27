@@ -392,7 +392,9 @@ namespace Client
             {
                 state_->shared_.player = client->GetPlayerStatus();
                 state_->shared_.chatMessages = client->GetChatMessages();
+                state_->shared_.offlineMessage = client->GetOfflineMessage();
                 state_->shared_.battle = client->GetBattle();
+                state_->shared_.battleDebug = client->GetBattleDebug();
                 state_->shared_.battleResult = client->GetBattleResult();
                 state_->shared_.captureStatistics = client->GetCaptureStatistics();
                 state_->shared_.pets = client->GetPets();

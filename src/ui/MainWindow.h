@@ -113,6 +113,8 @@ namespace Client
         std::unique_ptr<AuctionPage> auctionPage_;
         bool closeWindow_ = false;
         bool expanded_ = false;
+        bool offlineNoticeShown_ = false;
+        ItemPropertiesWindow offlineNotice_;
         int displayedScreen_ = -1;
         int displayedTab_ = -1;
     };

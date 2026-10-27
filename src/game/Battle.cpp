@@ -20,11 +20,23 @@ namespace
     }
 }
 
+void LoginClient::TraceBattle(const wchar_t* direction, const std::string& packet)
+{
+    std::wstring text = std::to_wstring(GetTickCount64()) + L" " + direction + L" " +
+        TextEncoding::LegacyText(packet.substr(0, 2048));
+    if (packet.size() > 2048)
+        text += L" …（显示已截断）";
+    if (battleDebug_.size() >= 64)
+        battleDebug_.erase(battleDebug_.begin());
+    battleDebug_.push_back(text);
+}
+
 bool LoginClient::HandleBattlePacket(const std::vector<std::string>& fields)
 {
     auto strings = ReceiveStrings(fields);
     if (strings.size() != 1)
         throw std::runtime_error("Invalid battle reply");
+    TraceBattle(L"RX B/121", strings[0]);
     auto values = SplitLegacy(strings[0]);
     if (values[0] == "BU")
     {
@@ -64,7 +76,7 @@ bool LoginClient::HandleBattlePacket(const std::vector<std::string>& fields)
     if (values.size() < 3 || !values.back().empty() || (values.size() - 3) % 14 != 0)
         throw std::runtime_error("Incomplete battle members");
     auto updated = battle_;
-    BattleNumber(values[1]);
+    updated.fieldAttribute = BattleNumber(values[1]);
     updated.members = {};
     for (std::size_t i = 2; i + 14 < values.size(); i += 14)
     {
@@ -108,6 +120,7 @@ bool LoginClient::HandleBattleResult(const std::vector<std::string>& fields)
     auto strings = ReceiveStrings(fields);
     if (strings.size() != 1)
         throw std::runtime_error("Invalid battle result");
+    TraceBattle(L"RX RS/12", strings[0]);
     // RS starts with the character's slot (-2), level-up flag and base-62 experience.
     auto end = strings[0].find(',');
     if (end == std::string::npos)
@@ -158,6 +171,7 @@ bool LoginClient::PollBattle()
     {
         // STW acknowledges the post-battle XYD before resuming encounters.
         SendNumbers("8", { 0 }, GetTickCount64() + Game::BATTLE_DELAY_MS);
+        TraceBattle(L"TX STW/8", "0");
         playerStatus_.inBattle = false;
         battle_ = {};
         encounter_.nextRequest = GetTickCount64() + Game::BATTLE_DELAY_MS;
@@ -210,12 +224,14 @@ bool LoginClient::PollBattle()
     bool full = captureEnabled_ && IsCaptureFull();
     bool flee = captureEnabled_ && (full || (capture_.flee && captureTarget < 0)) && target >= 0;
     std::string packets;
+    std::vector<std::string> commands;
     auto append = [&](const std::string& command)
     {
         if (command.compare(0, 2, "W|") == 0)
             battle_.petAction = command.compare(0, 4, "W|0|") == 0 ? 0 : 3;
         else
             battle_.playerAction = command.compare(0, 2, "H|") == 0 ? 0 : 3;
+        commands.push_back(command);
         packets += EncodePacket("&;120;" + Encode64(command, sessionKey_, -1) + ";" +
             EncodeInteger(static_cast<std::uint32_t>(command.size()), sessionKey_) + ";#;");
     };
@@ -376,7 +392,11 @@ bool LoginClient::PollBattle()
         }
     }
     if (!packets.empty())
+    {
         connection_.Send(packets, GetTickCount64() + Game::BATTLE_DELAY_MS);
+        for (const auto& sent : commands)
+            TraceBattle(L"TX B/120", sent);
+    }
     battle_.sentRound = battle_.round;
     battle_.commandsPending = false;
     return true;

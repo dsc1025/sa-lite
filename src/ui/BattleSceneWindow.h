@@ -37,6 +37,7 @@ namespace Client
         int MemberAction(int slot) const;
         void PrepareAnimationFrames();
         void ApplyBattleState(const Game::BattleState& state);
+        void UpdateDebug(const SessionView& view);
         struct UnitAnimation
         {
             std::uint32_t frame = 0;
@@ -54,6 +55,8 @@ namespace Client
             std::uint64_t lastUsed = 0;
             std::vector<RGBQUAD> pixels;
         };
+        std::vector<std::wstring> resourceDebug_;
+        CString debugText_;
         CFont font_;
         CDC bufferDC_;
         CBitmap bufferBitmap_;

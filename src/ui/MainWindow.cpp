@@ -319,6 +319,9 @@ namespace Client
         if (chatWindow_->GetSafeHwnd() &&
             (message->hwnd == chatWindow_->GetSafeHwnd() || chatWindow_->IsChild(CWnd::FromHandle(message->hwnd))))
             return CFrameWnd::PreTranslateMessage(message);
+        if (offlineNotice_.GetSafeHwnd() &&
+            (message->hwnd == offlineNotice_.GetSafeHwnd() || offlineNotice_.IsChild(CWnd::FromHandle(message->hwnd))))
+            return CFrameWnd::PreTranslateMessage(message);
         if ((message->hwnd == mapPosition_.GetSafeHwnd() || message->hwnd == mapRegion_.GetSafeHwnd()) &&
             message->message == WM_KEYDOWN &&
             (message->wParam == VK_RETURN || message->wParam == VK_ESCAPE))
@@ -409,6 +412,19 @@ namespace Client
         {
             creationOffered_ = true;
             if (view_.characters.empty()) OnCreateCharacter();
+        }
+        if (view_.screen != Screen::Game)
+        {
+            offlineNoticeShown_ = false;
+            if (offlineNotice_.GetSafeHwnd())
+                offlineNotice_.DestroyWindow();
+        }
+        else if (!offlineNoticeShown_ && !view_.offlineMessage.empty())
+        {
+            offlineNoticeShown_ = true;
+            CString message(view_.offlineMessage.c_str());
+            message.Replace(L"\n", L"\r\n");
+            offlineNotice_.Show(this, message, L"离线挂机收益");
         }
         return 0;
     }

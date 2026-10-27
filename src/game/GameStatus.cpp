@@ -126,6 +126,8 @@ bool LoginClient::HandleGamePacket(const std::vector<std::string>& fields)
     }
     if (fields[1] == "119")
         return HandleEncounterReply(fields);
+    if (fields[1] == "127")
+        return HandleOfflineResult(fields);
     if (fields[1] == "12")
         return HandleBattleResult(fields);
     if (fields[1] == "121")
