@@ -49,12 +49,12 @@ namespace Client
             L"攻击：%d\r\n防御：%d\r\n敏捷：%d\r\n"
             // L"感知：%d\r\n"
             L"忠诚：%s\r\n技能栏：%d\r\n元素：地 %d  水 %d  火 %d  风 %d\r\n"
-            L"经验 / 下级经验：%d / %d",
+            L"经验 / 下级经验：%s / %s",
             LegacyText(pet.name).GetString(), LegacyText(pet.nickname).GetString(), pet.rebirth, pet.level,
             pet.hp, pet.maxHp, /* pet.mp, pet.maxMp, */ pet.attack, pet.defence, pet.quick,
             /* pet.perception, */ (pet.loyalty < 0 ? CString(L"领取后确定") : Number(pet.loyalty)).GetString(),
             pet.skillSlots, pet.earth, pet.water, pet.fire, pet.wind,
-            pet.experience, pet.nextExperience);
+            ExperienceNumber(pet.experience).GetString(), ExperienceNumber(pet.nextExperience).GetString());
         int initialAttributes[5];
         if (pet.level >= 1 && ParsePetInitialAttributes(pet.nickname, initialAttributes))
         {

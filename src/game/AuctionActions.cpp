@@ -170,7 +170,8 @@ std::string LoginClient::AuctionExchange(const std::string& command, const std::
                     pet.level = number("level"); pet.attack = number("attack"); pet.defence = number("defence");
                     pet.quick = number("quick"); pet.earth = number("earth"); pet.water = number("water");
                     pet.fire = number("fire"); pet.wind = number("wind"); pet.skillSlots = number("slots");
-                    pet.experience = number("experience"); pet.nextExperience = number("next");
+                    pet.experience = ParseNumber64(properties.at("experience"));
+                    pet.nextExperience = ParseNumber64(properties.at("next"));
                     pet.perception = number("perception"); pet.rebirth = number("rebirth");
                     pet.loyalty = -1;
                     pet.skillsReceived = true;

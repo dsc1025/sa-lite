@@ -10,7 +10,8 @@ using namespace Protocol;
 namespace
 {
     void ApplyStatus(const std::vector<std::string>& values, std::size_t start, std::uint32_t mask,
-        const std::vector<int*>& numbers, std::string* name = nullptr, std::string* nickname = nullptr)
+        const std::vector<int*>& numbers, std::string* name = nullptr, std::string* nickname = nullptr,
+        std::int64_t* experience = nullptr, std::int64_t* nextExperience = nullptr, std::size_t experienceBit = 0)
     {
         for (std::size_t bit = 1; bit <= 31; ++bit)
         {
@@ -18,7 +19,19 @@ namespace
                 continue;
             if (start >= values.size())
                 throw std::runtime_error("Incomplete status update");
-            if (bit <= numbers.size() && numbers[bit - 1])
+            if (experience && bit == experienceBit)
+            {
+                auto value = ParseNumber64(values[start]);
+                if (value < 0) throw std::runtime_error("Invalid current experience");
+                *experience = value;
+            }
+            else if (nextExperience && bit == experienceBit + 1)
+            {
+                auto value = ParseNumber64(values[start]);
+                if (value < -1) throw std::runtime_error("Invalid next experience");
+                *nextExperience = value;
+            }
+            else if (bit <= numbers.size() && numbers[bit - 1])
                 *numbers[bit - 1] = ParseNumber(values[start]);
             else if (name && bit == numbers.size() + 1)
                 *name = UnescapeLegacy(values[start]);
@@ -323,12 +336,13 @@ bool LoginClient::ApplyPlayerStatus(const std::vector<std::string>& values)
     auto status = playerStatus_;
     std::vector<int*> numbers = { &status.hp, &status.maxHp, &status.mp, &status.maxMp,
         &status.vital, &status.strength, &status.toughness, &status.dexterity,
-        &status.experience, &status.nextExperience, &status.level, &status.attack,
+        nullptr, nullptr, &status.level, &status.attack,
         &status.defence, &status.quick, &status.charm, &status.luck,
         &status.earth, &status.water, &status.fire, &status.wind, &status.gold,
         &status.title, &status.duelPoints, &status.rebirth, nullptr, nullptr, &status.ridePet };
     bool full = values[0] == "P1";
-    ApplyStatus(values, 1, full ? 0x01fffffe : ParseMask(values[0].substr(1)), numbers);
+    ApplyStatus(values, 1, full ? 0x01fffffe : ParseMask(values[0].substr(1)), numbers,
+        nullptr, nullptr, &status.experience, &status.nextExperience, 9);
     if (full && values.size() > 25)
         status.ridePet = ParseNumber(values[25]);
     ApplyExtra(values, status.perception, status.rebirth);
@@ -388,7 +402,7 @@ bool LoginClient::ApplyPetStatus(const std::vector<std::string>& values)
     }
     auto pet = values[1] == "1" ? PetStatus{} : pets_[slot];
     std::vector<int*> numbers = { &pet.image, &pet.hp, &pet.maxHp, &pet.mp, &pet.maxMp,
-        &pet.experience, &pet.nextExperience, &pet.level, &pet.attack, &pet.defence,
+        nullptr, nullptr, &pet.level, &pet.attack, &pet.defence,
         &pet.quick, &pet.loyalty, &pet.earth, &pet.water, &pet.fire, &pet.wind,
         &pet.skillSlots, &pet.canRename };
     bool full = values[1] == "1";
@@ -396,7 +410,7 @@ bool LoginClient::ApplyPetStatus(const std::vector<std::string>& values)
     // The server's partial-pet table omits MAXMP, so this bit carries no value.
     if (!full)
         mask &= ~(std::uint32_t{1} << 5);
-    ApplyStatus(values, 2, mask, numbers, &pet.name, &pet.nickname);
+    ApplyStatus(values, 2, mask, numbers, &pet.name, &pet.nickname, &pet.experience, &pet.nextExperience, 6);
     ApplyExtra(values, pet.perception, pet.rebirth);
     if (values.size() >= 3 && values[values.size() - 3] == "UC1" && values.back().empty())
         pet.uniqueCode = UnescapeLegacy(values[values.size() - 2]);

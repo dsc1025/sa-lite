@@ -31,5 +31,6 @@ namespace Client
     CString ErrorText(const char* message);
     std::string AsciiText(CEdit& edit);
     CString Number(int value);
+    CString ExperienceNumber(long double value);
     CString Ratio(int value, int maximum);
 }

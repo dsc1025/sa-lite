@@ -111,6 +111,17 @@ namespace Client
         return text;
     }
 
+    CString ExperienceNumber(long double value)
+    {
+        if (value < 0) return L"—";
+        CString text;
+        if (value < 1000000000)
+            text.Format(L"%.0f", static_cast<double>(value));
+        else
+            text.Format(L"%.3e", static_cast<double>(value));
+        return text;
+    }
+
     CString Ratio(int value, int maximum)
     {
         CString text;

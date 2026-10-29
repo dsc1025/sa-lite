@@ -1,5 +1,6 @@
 #include "LegacyFields.h"
 #include <stdexcept>
+#include <limits>
 
 namespace Protocol
 {
@@ -57,6 +58,31 @@ namespace Protocol
         if (consumed != value.size())
             throw std::runtime_error("Invalid character number");
         return result;
+    }
+
+    std::int64_t ParseNumber64(const std::string& value)
+    {
+        std::size_t consumed = 0;
+        auto result = std::stoll(value, &consumed);
+        if (consumed != value.size())
+            throw std::runtime_error("Invalid experience number");
+        return result;
+    }
+
+    std::int64_t ParseExperience62(const std::string& value)
+    {
+        const std::string alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        std::uint64_t result = 0;
+        const auto maximum = static_cast<std::uint64_t>((std::numeric_limits<std::int64_t>::max)());
+        if (value.empty()) throw std::runtime_error("Missing battle experience");
+        for (char digit : value)
+        {
+            auto number = alphabet.find(digit);
+            if (number == std::string::npos || result > (maximum - number) / 62)
+                throw std::runtime_error("Invalid battle experience");
+            result = result * 62 + number;
+        }
+        return static_cast<std::int64_t>(result);
     }
 
     std::uint32_t ParseMask(const std::string& value)

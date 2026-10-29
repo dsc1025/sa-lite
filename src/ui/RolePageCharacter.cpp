@@ -106,7 +106,7 @@ namespace Client
         AddRow(L"运气", Number(p.luck)); AddRow(L"感知", Number(p.perception));
         CString elements;
         elements.Format(L"地 %d   水 %d   火 %d   风 %d", p.earth, p.water, p.fire, p.wind);
-        AddRow(L"元素", elements); AddRow(L"经验 / 下级经验", Ratio(p.experience, p.nextExperience));
+        AddRow(L"元素", elements); AddRow(L"经验 / 下级经验", ExperienceNumber(p.experience) + L" / " + ExperienceNumber(p.nextExperience));
         AddRow(L"COST", Number(p.gold)); AddRow(L"决斗积分", Number(p.duelPoints));
         while (detail_.GetItemCount() > detailRow_) detail_.DeleteItem(detailRow_);
     }

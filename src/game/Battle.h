@@ -39,7 +39,7 @@ namespace Game
     struct BattleResult
     {
         bool received = false;
-        std::uint32_t experience = 0;
-        std::uint64_t petExperience = 0;
+        std::int64_t experience = 0;
+        long double petExperience = 0;
     };
 }

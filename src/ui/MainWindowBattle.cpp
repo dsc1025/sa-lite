@@ -146,8 +146,8 @@ namespace Client
             battleStart_.SetCheck(started ? BST_CHECKED : BST_UNCHECKED);
         CString experience;
         if (view_.battleResult.received)
-            experience.Format(L"经验获得：人物 %u    宠物 %llu",
-                view_.battleResult.experience, static_cast<unsigned long long>(view_.battleResult.petExperience));
+            experience.Format(L"经验获得：人物 %s    宠物 %s",
+                ExperienceNumber(view_.battleResult.experience).GetString(), ExperienceNumber(view_.battleResult.petExperience).GetString());
         else
             experience = L"经验获得：人物 —    宠物 —";
         SetTextIfChanged(battleExperience_, experience);
