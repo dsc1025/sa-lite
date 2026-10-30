@@ -27,6 +27,7 @@ namespace Client
         Game::HealingSettings healing_;
         Game::CaptureSettings capture_;
         bool captureEnabled_ = false;
+        bool towerEnabled_ = false;
         int requestedCharacter_ = -1;
         std::vector<std::string> requestedChat_;
         bool createRequested_ = false;

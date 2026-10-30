@@ -45,6 +45,7 @@ namespace Client
                 state_->requestedChat_.clear();
                 state_->encounterRequested_ = false;
                 state_->captureEnabled_ = false;
+                state_->towerEnabled_ = false;
                 state_->shared_ = {};
                 state_->shared_.screen = Screen::Connecting;
                 state_->shared_.message = L"正在连接并登录…";
@@ -377,6 +378,7 @@ namespace Client
             {
                 state_->encounterRequested_ = false;
                 state_->captureEnabled_ = false;
+                state_->towerEnabled_ = false;
                 state_->shared_.encounterEnabled = false;
                 state_->shared_.encounterPending = false;
                 state_->shared_.encounterMessage = L"遇敌未开始";

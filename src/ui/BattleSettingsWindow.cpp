@@ -49,7 +49,7 @@ namespace Client
         {
             if (!CreateEx(WS_EX_DLGMODALFRAME, AfxRegisterWndClass(CS_DBLCLKS,
                 LoadCursor(nullptr, IDC_ARROW), reinterpret_cast<HBRUSH>(COLOR_BTNFACE + 1)),
-                L"练级设置", WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_CLIPCHILDREN,
+                L"战斗设置", WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_CLIPCHILDREN,
                 CRect(0, 0, 484, 172), owner, 0))
             {
                 updating_ = false;
@@ -204,7 +204,7 @@ namespace Client
             if (!WritePrivateProfileStringW(L"Battle", keys[i], values[i], configPath_))
             {
                 MessageBox(L"无法保存 exe 同目录的 config.ini，请检查目录写入权限。",
-                    L"练级设置", MB_OK | MB_ICONWARNING);
+                    L"战斗设置", MB_OK | MB_ICONWARNING);
                 return;
             }
         }

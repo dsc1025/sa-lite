@@ -53,7 +53,7 @@ namespace Client
             std::uint32_t revision = 0, const std::string& uniqueCode = {});
         bool RequestShop(int category, int itemId = -1, int quantity = 1, int price = 0, int currency = 0);
         bool RequestAuction(const Game::AuctionRequest& request);
-        void SetEncounterEnabled(bool enabled, bool capture = false, int sourceInstanceId = -1);
+        void SetEncounterEnabled(bool enabled, bool capture = false, int sourceInstanceId = -1, bool tower = false);
         void SetCaptureSettings(const Game::CaptureSettings& settings);
         void SetCaptureMinimums(const std::array<int, 5>& minimums);
         void SetHealingSettings(const Game::HealingSettings& settings);

@@ -66,7 +66,7 @@ public:
     void TransferPetStorage(bool put, int slot, const std::string& uniqueCode);
     const std::vector<Game::StoredPet>& GetPetStorage() const noexcept { return petStorage_; }
     bool HasPetStorage() const noexcept { return petStorageReceived_; }
-    void SetEncounterEnabled(bool enabled);
+    void SetEncounterEnabled(bool enabled, bool tower = false);
     void PollEncounter();
     void SetHealingSettings(const Game::HealingSettings& settings) { healing_ = settings; }
     void SetCaptureSettings(const Game::CaptureSettings& settings, bool enabled) { capture_ = settings; captureEnabled_ = enabled; }
