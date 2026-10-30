@@ -7,6 +7,7 @@ namespace Game
     struct EncounterState
     {
         bool enabled = false;
+        bool tower = false;
         bool stopPending = false;
         bool requestPending = false;
         bool battleStarted = false;

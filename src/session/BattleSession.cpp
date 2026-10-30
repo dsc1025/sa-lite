@@ -27,7 +27,7 @@ namespace Client
         state_->capture_.minimums = minimums;
     }
 
-    void GameSession::SetEncounterEnabled(bool enabled, bool capture, int sourceInstanceId)
+    void GameSession::SetEncounterEnabled(bool enabled, bool capture, int sourceInstanceId, bool tower)
     {
         {
             std::lock_guard<std::mutex> lock(state_->mutex_);
@@ -36,6 +36,7 @@ namespace Client
             if (enabled && !state_->encounterRequested_)
             {
                 state_->captureEnabled_ = capture;
+                state_->towerEnabled_ = tower && !capture;
                 state_->capture_.sourceInstanceId = capture ? sourceInstanceId : -1;
             }
             state_->encounterRequested_ = enabled;
@@ -64,15 +65,16 @@ namespace Client
         bool failed = false;
         try
         {
-            bool capturing;
+            bool capturing, tower;
             {
                 std::lock_guard<std::mutex> lock(state_->mutex_);
                 capturing = state_->captureEnabled_;
+                tower = state_->towerEnabled_;
             }
             if (requested && capturing && client.IsCaptureFull() && !client.HasRejectedCapture())
                 throw std::runtime_error("携带宠物已满，抓宠已停止");
             if (requested != client.IsEncounterEnabled())
-                client.SetEncounterEnabled(requested);
+                client.SetEncounterEnabled(requested, tower);
             {
                 std::lock_guard<std::mutex> lock(state_->mutex_);
                 if (state_->stop_ || state_->encounterRequested_ != requested)
