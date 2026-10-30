@@ -345,7 +345,7 @@ namespace Client
             const int width = area.Width(), height = area.Height();
             if (width <= 0 || height <= 0)
                 return;
-            constexpr double cellScale = 24.0;
+            constexpr double cellScale = 16.0;
             std::vector<RGBQUAD> background(static_cast<std::size_t>(width) * height,
                 RGBQUAD{ 64, 64, 64, 0 });
             for (int py = 0; py < height; ++py)
