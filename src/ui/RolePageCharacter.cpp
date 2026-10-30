@@ -108,6 +108,10 @@ namespace Client
         elements.Format(L"地 %d   水 %d   火 %d   风 %d", p.earth, p.water, p.fire, p.wind);
         AddRow(L"元素", elements); AddRow(L"经验 / 下级经验", ExperienceNumber(p.experience) + L" / " + ExperienceNumber(p.nextExperience));
         AddRow(L"COST", Number(p.gold)); AddRow(L"决斗积分", Number(p.duelPoints));
+        CString tower;
+        if (p.towerReceived) tower.Format(L"%d / %d", p.towerFloor, p.towerStage);
+        else tower = L"等待数据";
+        AddRow(L"闯关进度", tower);
         while (detail_.GetItemCount() > detailRow_) detail_.DeleteItem(detailRow_);
     }
 }

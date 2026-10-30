@@ -346,6 +346,18 @@ bool LoginClient::ApplyPlayerStatus(const std::vector<std::string>& values)
     if (full && values.size() > 25)
         status.ridePet = ParseNumber(values[25]);
     ApplyExtra(values, status.perception, status.rebirth);
+    for (std::size_t i = 1; i + 2 < values.size(); ++i)
+        if (values[i] == "TW1" && values[i + 2] == "STW1")
+        {
+            const auto& progress = values[i + 1];
+            if (progress.size() < 5 || progress.size() > 12 ||
+                progress.find_first_not_of("0123456789") != std::string::npos)
+                throw std::runtime_error("Invalid tower progress");
+            status.towerFloor = ParseNumber(progress.substr(0, progress.size() - 4));
+            status.towerStage = ParseNumber(progress.substr(progress.size() - 4, 2));
+            status.towerReceived = true;
+            break;
+        }
     if (full)
         status.received = true;
     int balance = pearlBalance_;

@@ -12,6 +12,8 @@ namespace Game
         int mp = 0;
         int maxMp = 0;
         int level = 0;
+        int towerFloor = 0, towerStage = 1;
+        bool towerReceived = false;
         int remainingPoints = 0;
         bool remainingPointsReceived = false;
         int gold = 0;
