@@ -55,7 +55,7 @@ namespace Client
         bool mapPage = game && mainTabs_.GetCurSel() == 1;
         bool battle = game && mainTabs_.GetCurSel() == 2;
         bool shop = game && mainTabs_.GetCurSel() == 3;
-        ShowIfChanged(developing_, game && !role && !mapPage && !shop && (!battle || battleTabs_.GetCurSel() != 0));
+        ShowIfChanged(developing_, game && !role && !mapPage && !shop && !battle);
         RefreshBattle(battle);
         battleSceneWindow_->Update(this, view_, showBattle_);
         if (!game && battleSettingsWindow_->GetSafeHwnd())
